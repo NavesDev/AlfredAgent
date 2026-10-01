@@ -122,7 +122,7 @@ def load_vad(threshold: float = 0.5) -> Callable[[np.ndarray], bool]:
     from openwakeword.vad import VAD
 
     vad = VAD()
-    return lambda frame: bool(vad(frame) >= threshold)
+    return lambda frame: bool(vad.predict(frame, frame_size=640) >= threshold)
 
 
 def load_whisper(config: WhisperConfig) -> Callable[[np.ndarray], str]:

@@ -6,7 +6,7 @@ import pytest
 from config import Listener as ListenerConfig
 from errors import AudioError
 from events import Event, EventBus
-from infra.audio.listener import FRAME, Listener
+from infra.audio.listener import FRAME, Listener, load_vad
 from tests.conftest import drain
 
 WAKE, SPEECH, SILENCE = (np.full(FRAME, v, dtype=np.int16) for v in (2, 1, 0))
@@ -146,3 +146,7 @@ async def test_failure_is_published_and_listener_recovers(
     assert [e["type"] for e in published].count("error") == 1
     states = [e["state"] for e in published if e["type"] == "voice_state"]
     assert states == ["listening", "transcribing", "idle", "listening"]
+
+
+def test_real_vad_returns_false_on_silence() -> None:
+    assert load_vad()(np.zeros(FRAME, dtype=np.int16)) is False
