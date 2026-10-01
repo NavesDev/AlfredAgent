@@ -60,3 +60,23 @@ async def test_synthesis_failure_is_published_and_returns_to_idle(bus: EventBus)
     assert any(e["type"] == "error" and e["where"] == "talker" for e in events)
     assert events[-1]["state"] == "idle"
     assert not talker.is_speaking
+
+
+async def test_chime_plays_short_tone_without_entering_speaking_state(bus: EventBus) -> None:
+    queue = bus.subscribe()
+    talker, played = make(bus)
+
+    talker.chime("start")
+    await asyncio.sleep(0)
+
+    assert len(played) == 1 and 0 < len(played[0]) <= RATE // 5  # under 200 ms
+    assert not talker.is_speaking and drain(queue) == []
+
+
+async def test_start_and_end_chimes_differ(bus: EventBus) -> None:
+    talker, played = make(bus)
+
+    talker.chime("start")
+    talker.chime("end")
+
+    assert not np.array_equal(played[0], played[1])

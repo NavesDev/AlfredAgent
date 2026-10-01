@@ -14,6 +14,7 @@ from infra.audio import level
 
 KOKORO_RATE = 24000
 LEVELS_PER_S = 15
+CHIMES = {"start": (660.0, 990.0), "end": (990.0, 660.0)}  # rising = listening, falling = done
 
 log = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ class Talker:
     ) -> None:
         self._bus, self._synthesize, self._play = bus, synthesize, play
         self._block = sample_rate // LEVELS_PER_S
+        self._chimes = {kind: _sweep(*hz, sample_rate) for kind, hz in CHIMES.items()}
         self._queue: queue.Queue[str] = queue.Queue()
 
     @property
@@ -36,6 +38,10 @@ class Talker:
 
     def say(self, text: str) -> None:
         self._queue.put(text)
+
+    def chime(self, kind: str) -> None:
+        """Short cue played right away, outside the speech queue and voice states."""
+        self._play(self._chimes[kind])
 
     def run(self, stop: threading.Event) -> None:
         while not stop.is_set():
@@ -65,6 +71,12 @@ class Talker:
                 block = chunk[start : start + self._block]
                 self._bus.publish("audio_level", source="tts", level=level(block))
                 self._play(block)
+
+
+def _sweep(start_hz: float, end_hz: float, rate: int, seconds: float = 0.12) -> np.ndarray:
+    t = np.linspace(0, seconds, int(rate * seconds), endpoint=False)
+    phase = 2 * np.pi * np.cumsum(np.linspace(start_hz, end_hz, len(t))) / rate
+    return (0.3 * np.sin(phase) * np.hanning(len(t))).astype(np.float32)
 
 
 def load_kokoro(config: KokoroConfig) -> Callable[[str], Iterator[np.ndarray]]:

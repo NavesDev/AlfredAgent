@@ -49,6 +49,7 @@ async def serve(config: Config) -> None:
             router.handle(text), loop
         ).result(),
         muted=lambda: talker.is_speaking,
+        chime=talker.chime,
     )
 
     stop = threading.Event()

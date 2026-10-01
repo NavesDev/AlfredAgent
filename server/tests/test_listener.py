@@ -11,6 +11,7 @@ from tests.conftest import drain
 
 WAKE, SPEECH, SILENCE = (np.full(FRAME, v, dtype=np.int16) for v in (2, 1, 0))
 SILENCE_FRAMES = 10  # 800 ms / 80 ms
+chimes: list[str] = []
 
 
 class FakeWake:
@@ -26,6 +27,7 @@ class FakeWake:
 
 def make(bus: EventBus, text: str | Exception = "oi alfred", muted: bool = False):  # type: ignore[no-untyped-def]
     heard: list[str] = []
+    chimes.clear()
     recorded: list[np.ndarray] = []
 
     def transcribe(audio: np.ndarray) -> str:
@@ -43,6 +45,7 @@ def make(bus: EventBus, text: str | Exception = "oi alfred", muted: bool = False
         transcribe=transcribe,
         on_transcript=heard.append,
         muted=lambda: muted,
+        chime=chimes.append,
     )
     return listener, heard, recorded
 
@@ -67,6 +70,15 @@ async def test_wake_word_then_speech_then_silence_hands_off_transcript(bus: Even
     assert len(recorded[0]) == FRAME * (2 + SILENCE_FRAMES)
     states = [e["state"] for e in await events(queue, "voice_state")]
     assert states == ["listening", "transcribing"]
+
+
+async def test_chimes_on_wake_word_and_when_recording_stops(bus: EventBus) -> None:
+    listener, _, _ = make(bus)
+
+    feed(listener, WAKE)
+    assert chimes == ["start"]
+    feed(listener, SPEECH, *[SILENCE] * SILENCE_FRAMES)
+    assert chimes == ["start", "end"]
 
 
 async def test_publishes_transcript_event(bus: EventBus) -> None:
