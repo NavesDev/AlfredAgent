@@ -12,7 +12,7 @@ Falar com o Alfred e ouvir a resposta: wake word → gravação → Whisper → 
 
 | Tema | Decisão |
 |---|---|
-| Wake word | Modelo pré-treinado `hey_jarvis` do openWakeWord. O script de treino do `alfred.onnx` fica pronto, mas o treino e o verifier por voz ficam para a fase 7 |
+| Wake word | `alfred.onnx` treinado na própria máquina (`server/wakeword/train/`, resultados no README de lá). Verifier por voz fica para a fase 7 |
 | Autenticação Claude | `claude-agent-sdk` usando o CLI `claude` já logado (assinatura). Sem `ANTHROPIC_API_KEY` |
 | Ritmo da conversa | Toda fala começa pela wake word; sem janela de follow-up |
 | Pipeline | Um processo asyncio; captura, STT e TTS em threads; event bus em memória |
@@ -130,5 +130,5 @@ Smoke manual: "Hey Jarvis, qual a diferença entre JWT e sessão?" → resposta 
 
 - **Termos de uso:** usar a assinatura do Claude via Agent SDK em projeto próprio é zona cinzenta; se virar problema, trocar para `ANTHROPIC_API_KEY` é só configurar o ambiente.
 - **Latência em CPU:** large-v3-turbo int8 em 12 cores deve ficar em ~1–3 s por comando curto; se passar disso, `medium` ou `small`.
-- **Treino da wake word:** ~20 GB e horas de CPU; adiado para a fase 7. Script ainda não validado de ponta a ponta.
+- **Wake word:** treinada só com vozes sintéticas; acerta ~50% das frases pt-BR sintéticas. Validar com voz real e, se preciso, retreinar com gravações do usuário.
 - **Pronúncia:** Kokoro em pt-BR depende do `espeak-ng`; validar no smoke.

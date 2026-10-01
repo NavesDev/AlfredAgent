@@ -24,7 +24,7 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 
 | ID | Requisito | Fase |
 |---|---|---|
-| RF-01 | Escutar continuamente e ativar com a wake word configurável (`hey_jarvis` na F1; `alfred.onnx` treinado na F7) | F1/F7 |
+| RF-01 | Escutar continuamente e ativar com a wake word configurável (`alfred.onnx`, treinado com `server/wakeword/train/`) | F1 |
 | RF-02 | Detectar fim de fala com VAD e transcrever localmente com Whisper (pt, `initial_prompt` com jargão) | F1 |
 | RF-03 | Falar respostas com Kokoro (voz e velocidade configuráveis) | F1 |
 | RF-04 | Ler em voz alta apenas a linha `RESUMO:`; nunca output bruto, código ou caminhos longos | F1 |
@@ -142,13 +142,13 @@ Cada fase entrega algo usável sozinho.
 
 | Fase | Entrega | Critério de pronto |
 |---|---|---|
-| F1 | Voz de ponta a ponta (`hey_jarvis`) + `/ws` de eventos | "Alfred, qual a diferença entre JWT e sessão?" é respondido falando, só o `RESUMO:`; eventos de estado no `/ws` |
+| F1 | Voz de ponta a ponta + wake word `alfred.onnx` treinada + `/ws` de eventos | "Alfred, qual a diferença entre JWT e sessão?" é respondido falando, só o `RESUMO:`; eventos de estado no `/ws` |
 | F2 | Assistente geral | Web, Gmail e Calendar funcionando por voz |
 | F3 | Sessões nomeadas | 2+ sessões em paralelo, atalho `<nome>:`, foco, status, fila, interrupção |
 | F4 | Projetos, worktrees e tarefas | Criar worktree + sessão por voz, delegar tarefa, resume após reinício |
 | F5 | Permissões | Confirmação por canal, denylist, turno contaminado, barge-in, fila de notificações, auditoria |
 | F6 | Painel web | Telas listadas em RF-60/61, confirmação por clique, CommandBar |
-| F7 | Polimento | Wake word `alfred.onnx` treinada (script em `server/wakeword/train/`), verifier opcional com a voz do usuário, `initial_prompt` ajustado, fallback Haiku |
+| F7 | Polimento | Wake word refinada com gravações do usuário, verifier opcional com a voz do usuário, `initial_prompt` ajustado, fallback Haiku |
 
 ## Questões em aberto
 

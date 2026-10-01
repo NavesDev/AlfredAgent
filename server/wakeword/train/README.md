@@ -1,6 +1,6 @@
 # Treino da wake word "Alfred"
 
-Gera `server/wakeword/alfred.onnx` com o pipeline de treino do openWakeWord: milhares de amostras sintéticas de "Alfred" (Piper), aumentadas com ruído e reverberação, treinadas contra ~2000 h de fala negativa pré-computada.
+Gera `server/wakeword/alfred.onnx` com o pipeline de treino do openWakeWord: milhares de amostras sintéticas de "Alfred" (Piper em inglês + Kokoro em pt/es/it/fr), aumentadas com ruído e reverberação, treinadas contra ~2000 h de fala negativa pré-computada.
 
 ## Custo
 
@@ -9,9 +9,21 @@ Gera `server/wakeword/alfred.onnx` com o pipeline de treino do openWakeWord: mil
 | Features negativas ACAV100M + validação | ~17 GB |
 | Ruído de fundo (3000 clipes do AudioSet) + RIRs | ~1 GB |
 | Venv de treino (torch, speechbrain…) | ~3 GB |
-| Geração + aumento + treino em CPU (12 cores) | várias horas |
+| Geração (~66 mil clipes) + aumento + treino em CPU (12 cores) | ~1h30 (medido) |
 
 Roda isolado em `.work/` (fora do git) com venv próprio. Não afeta o server.
+
+## Resultado atual (v3, 2026-10-01)
+
+Avaliado com `evaluate.py` em vozes pt-BR do Kokoro, threshold 0.5:
+
+| Versão | Mudança | pt-BR (36) | `pm_alex`, voz fora do treino (12) | Falsos positivos (72) |
+|---|---|---|---|---|
+| v1 | Receita padrão, só Piper (inglês) | 1 | 0 | 0 |
+| v2 | `max_negative_weight` 500, meta de 1 FP/h | 3 | 1 | 0 |
+| v3 | + positivos Kokoro pt/es/it/fr (`kokoro_positives.py`) | **17** | **5** | **0** |
+
+Falhas concentradas em fala rápida e em "Alfred, …" emendado na frase. Vozes sintéticas não substituem a voz real: o próximo passo é testar ao vivo e, se precisar, treinar com gravações do próprio usuário.
 
 ## Uso
 
