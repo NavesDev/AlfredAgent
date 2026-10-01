@@ -72,9 +72,10 @@ Medido no primeiro uso real: ~16 s entre o fim da fala e o início da resposta (
 | Mudança | Como |
 |---|---|
 | Falar enquanto a resposta chega | Prompt pede `RESUMO:` na **primeira** linha; `include_partial_messages` faz streaming; `on_summary` entrega a linha ao talker assim que ela fecha. Se não vier, cai no `extract_summary` no fim |
+| Resultado medido | Frase falada em 4,0 s na primeira pergunta e 1,5 s na seguinte (antes ~9 s), sem contar Whisper |
 | Claude sempre aberto | `ClaudeSDKClient` conectado na inicialização (também valida login: fail-fast); reaberto quando o dia vira, após erro ou timeout |
 | Bips | Listener chama `chime("start")` ao detectar a wake word e `chime("end")` ao parar de gravar; tons gerados com numpy, tocados direto no alto-falante, fora da fila de fala |
-| Transcrever enquanto fala | Investigar: em CPU o encoder do Whisper processa janela fixa de 30 s (~6 s por chamada), então transcrição em pedaços só ajuda se a janela puder encolher |
+| Transcrever enquanto fala | **Descartado por ora.** Medido: `chunk_length` 30, 10 e 6 dão os mesmos 6,2 s para 5 s de fala, porque o CTranslate2 completa a janela até 30 s antes do encoder. Pedaços multiplicariam o custo. Saídas reais: modelo menor (`small` ~1,5 s, erra jargão), outro motor de STT, ou GPU |
 
 ## Sessão diária do agente
 
