@@ -1,0 +1,47 @@
+# Secrets / local config
+.env
+.env.*
+!.env.example
+server/config.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
+htmlcov/
+
+# Runtime data
+*.sqlite
+*.sqlite3
+*.db
+server/data/
+server/logs/
+*.log
+
+# Models (large binaries)
+server/models_bin/
+*.onnx
+!server/wakeword/*.onnx
+*.pt
+*.bin
+
+# Node / web
+node_modules/
+apps/web/dist/
+apps/web/.vite/
+*.tsbuildinfo
+
+# Tauri
+apps/desktop/src-tauri/target/
+
+# Editors / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+*.swp

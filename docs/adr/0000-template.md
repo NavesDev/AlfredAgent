@@ -1,0 +1,16 @@
+# NNNN — Título da decisão
+
+- **Status:** Proposto | Aceito | Substituído por NNNN
+- **Data:** AAAA-MM-DD
+
+## Contexto
+
+Qual problema ou força motivou a decisão.
+
+## Decisão
+
+O que foi decidido.
+
+## Consequências
+
+O que fica mais fácil, o que fica mais difícil, o que precisa ser feito.

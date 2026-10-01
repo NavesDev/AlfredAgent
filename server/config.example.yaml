@@ -1,0 +1,45 @@
+# Copy to config.yaml and adjust. Secrets go in .env, never here.
+
+whisper:
+  model: large-v3-turbo      # medium if RAM is tight
+  device: cuda               # cuda | cpu
+  compute_type: int8
+  language: pt
+  initial_prompt: "Spring, Liferay, endpoint, worktree, commit, backend, frontend"
+
+kokoro:
+  voice: pf_dora             # or pm_alex
+  speed: 1.1
+
+wakeword:
+  name: Alfred
+  model: wakeword/alfred.onnx
+  threshold: 0.65
+  aliases: [alfred, alfredo]
+
+agents:
+  default_model: sonnet
+  light_model: haiku         # simple questions + RESUMO fallback
+
+limits:
+  max_active_sessions: 3
+
+permissions:
+  default_confirmation: voice      # voice | key | web | voice+key
+  per_action:
+    git_push: key
+    send_email: voice+key
+    delete_file: voice
+    install_dependency: voice
+  tainted_turn: key
+  timeout_s: 60                    # no answer = denied
+
+router:
+  fuzzy_threshold: 85
+
+api:
+  host: 0.0.0.0
+  port: 8000
+
+storage:
+  db_path: data/alfred.sqlite3
