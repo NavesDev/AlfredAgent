@@ -63,12 +63,15 @@ class AlfredAgent:
         options = sdk.ClaudeAgentOptions(
             model=self._model, system_prompt=SYSTEM_PROMPT, tools=[], resume=resume
         )
-        async for message in self._query(prompt=text, options=options):
+        result = None
+        async for message in self._query(prompt=text, options=options):  # drain: lets the CLI exit
             if isinstance(message, sdk.AssistantMessage):
                 self._publish_progress(message)
             elif isinstance(message, sdk.ResultMessage):
-                return self._finish(message)
-        raise AgentError("stream ended without a result")
+                result = message
+        if result is None:
+            raise AgentError("stream ended without a result")
+        return self._finish(result)
 
     def _publish_progress(self, message: sdk.AssistantMessage) -> None:
         for block in message.content:

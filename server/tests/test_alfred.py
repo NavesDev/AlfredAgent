@@ -42,6 +42,7 @@ class FakeQuery:
     def __init__(self, *runs: list[Any] | Exception) -> None:
         self.runs = list(runs)
         self.calls: list[ClaudeAgentOptions] = []
+        self.drained = False
 
     async def __call__(self, *, prompt: str, options: ClaudeAgentOptions) -> AsyncIterator[Any]:
         self.calls.append(options)
@@ -52,6 +53,7 @@ class FakeQuery:
             if message == "hang":
                 await asyncio.sleep(10)
             yield message
+        self.drained = True
 
 
 def agent(bus: EventBus, tmp_path: Path, query: FakeQuery, timeout_s: float = 1) -> AlfredAgent:
@@ -70,6 +72,13 @@ async def test_ask_returns_reply_with_summary(bus: EventBus, tmp_path: Path) -> 
 
     assert reply.text == REPLY
     assert reply.summary == "JWT é stateless; sessão fica no server."
+
+
+async def test_ask_consumes_the_whole_stream(bus: EventBus, tmp_path: Path) -> None:
+    query = FakeQuery([result()])
+    await agent(bus, tmp_path, query).ask("oi")
+
+    assert query.drained
 
 
 async def test_ask_runs_without_tools_and_asks_for_resumo(bus: EventBus, tmp_path: Path) -> None:
