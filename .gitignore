@@ -26,7 +26,9 @@ server/logs/
 # Models (large binaries)
 server/models_bin/
 *.onnx
+server/wakeword/train/.work/
 !server/wakeword/*.onnx
+server/wakeword/train/.work/
 *.pt
 *.bin
 
