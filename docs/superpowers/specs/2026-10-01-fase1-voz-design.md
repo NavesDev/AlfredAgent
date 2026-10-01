@@ -63,7 +63,7 @@ Formato no fio: `{"type": str, "ts": float, ...dados}`.
 5. `thinking`: `AlfredAgent.ask` faz streaming (`agent_progress`) até o resultado.
 6. `alfred_reply` → `talker.say(summary)` → `speaking` → `idle`.
 
-Enquanto `talker.is_speaking`, o listener descarta detecções da wake word (evita autodisparo). Barge-in é fase 5.
+Captura e STT dividem a thread do listener: são sequenciais, e o microfone é ignorado enquanto o comando é processado. Enquanto `talker.is_speaking`, o listener descarta detecções da wake word (evita autodisparo). Barge-in é fase 5.
 
 ## Sessão diária do agente
 

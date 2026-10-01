@@ -94,11 +94,8 @@ alfred/
 
 ```mermaid
 flowchart TB
-    subgraph T1[Thread: captura]
-        cap[sounddevice stream] --> wwd[wake word + VAD]
-    end
-    subgraph T2[Thread: STT]
-        whisper[faster-whisper]
+    subgraph T1[Thread: listener]
+        cap[sounddevice stream] --> wwd[wake word + VAD] --> whisper[faster-whisper]
     end
     subgraph Loop[Loop asyncio principal]
         router2[router] --> agents[agentes / sessões]
@@ -108,13 +105,12 @@ flowchart TB
     subgraph T3[Thread: TTS]
         kokoro[Kokoro + playback]
     end
-    wwd -->|segmento de áudio| whisper
     whisper -->|call_soon_threadsafe| router2
     bus2 -->|fila de fala| kokoro
 ```
 
 - Captura e wake word ficam sempre ligados, com custo quase zero de CPU.
-- O Whisper só roda por segmento de fala; o modelo fica carregado.
+- O Whisper roda na thread do listener, só por segmento de fala; o modelo fica carregado. O microfone é ignorado enquanto o comando é processado.
 - O Kokoro consome uma fila de fala com prioridade; barge-in limpa a fila e para o playback.
 - Interrupções ("para") são casadas no próprio listener/router antes de qualquer `await` longo, para agir em milissegundos.
 
