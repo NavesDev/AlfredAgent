@@ -65,9 +65,20 @@ Formato no fio: `{"type": str, "ts": float, ...dados}`.
 
 Captura e STT dividem a thread do listener: são sequenciais, e o microfone é ignorado enquanto o comando é processado. Enquanto `talker.is_speaking`, o listener descarta detecções da wake word (evita autodisparo). Barge-in é fase 5.
 
+## Latência (2ª iteração)
+
+Medido no primeiro uso real: ~16 s entre o fim da fala e o início da resposta (VAD 0,8 s + Whisper ~6 s + Claude ~9 s + TTS ~0,5 s).
+
+| Mudança | Como |
+|---|---|
+| Falar enquanto a resposta chega | Prompt pede `RESUMO:` na **primeira** linha; `include_partial_messages` faz streaming; `on_summary` entrega a linha ao talker assim que ela fecha. Se não vier, cai no `extract_summary` no fim |
+| Claude sempre aberto | `ClaudeSDKClient` conectado na inicialização (também valida login: fail-fast); reaberto quando o dia vira, após erro ou timeout |
+| Bips | Listener chama `chime("start")` ao detectar a wake word e `chime("end")` ao parar de gravar; tons gerados com numpy, tocados direto no alto-falante, fora da fila de fala |
+| Transcrever enquanto fala | Investigar: em CPU o encoder do Whisper processa janela fixa de 30 s (~6 s por chamada), então transcrição em pedaços só ajuda se a janela puder encolher |
+
 ## Sessão diária do agente
 
-- Ao iniciar o primeiro `ask` do dia, se `state.date == hoje`, retoma com `resume=claude_session_id`.
+- Ao conectar, se `state.date == hoje`, retoma com `resume=claude_session_id`. O cliente fica aberto; quando o dia vira, é reconectado sem `resume`.
 - Caso contrário, abre sessão nova e grava o novo `claude_session_id` com a data de hoje.
 - "Dia" usa o fuso local da máquina, virando à meia-noite. Conversa em andamento na virada continua na sessão em que começou.
 

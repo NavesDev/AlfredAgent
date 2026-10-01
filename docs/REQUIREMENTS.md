@@ -27,10 +27,11 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 | RF-01 | Escutar continuamente e ativar com a wake word configurável (`alfred.onnx`, treinado com `server/wakeword/train/`) | F1 |
 | RF-02 | Detectar fim de fala com VAD e transcrever localmente com Whisper (pt, `initial_prompt` com jargão) | F1 |
 | RF-03 | Falar respostas com Kokoro (voz e velocidade configuráveis) | F1 |
-| RF-04 | Ler em voz alta apenas a linha `RESUMO:`; nunca output bruto, código ou caminhos longos | F1 |
+| RF-04 | Ler em voz alta apenas a linha `RESUMO:`, que abre a resposta e é falada assim que chega (streaming); nunca output bruto, código ou caminhos longos | F1 |
 | RF-05 | Se a resposta não trouxer `RESUMO:`, gerar resumo com Haiku | F7 |
 | RF-06 | Barge-in: wake word durante a fala interrompe o áudio imediatamente | F5 |
 | RF-07 | Fila de fala: notificações não atropelam o usuário falando nem outro áudio | F5 |
+| RF-08 | Bip curto ao detectar a wake word e outro ao parar de gravar | F1 |
 
 ### Roteamento
 

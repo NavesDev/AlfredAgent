@@ -163,12 +163,13 @@ Sessão ocupada não recebe dois prompts ao mesmo tempo: cada sessão tem uma fi
 - Modelo Sonnet por padrão; perguntas simples podem cair no Haiku.
 - Conhece a sessão em foco e o projeto atual (injetados no contexto).
 - Uma conversa por dia: o `claude_session_id` da sessão `alfred` rotaciona diariamente.
+- Cliente persistente (`ClaudeSDKClient`): o CLI fica aberto entre perguntas e é reaberto quando o dia vira ou após erro.
 
 ### Sessões nomeadas
 
 - Uma instância do Agent SDK por sessão, com `cwd` = path do workspace.
 - Auto mode do Claude Code + gate `canUseTool` do `permissions.py`.
-- `system_prompt` exige terminar com `RESUMO:` (até 2 frases, sem código nem caminhos longos).
+- `system_prompt` exige começar com `RESUMO:` (até 2 frases, sem código nem caminhos longos), falado assim que chega.
 - `claude_session_id` persistido para resume após reinício.
 - Limite de sessões ativas simultâneas (`limits.max_active_sessions`, padrão 3).
 

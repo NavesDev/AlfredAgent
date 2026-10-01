@@ -118,7 +118,7 @@ permissions:
 
 **Notificações.** Sessões rodam em background. Ao terminar, o orquestrador fala "backend terminou: <resumo>". Se você estiver falando ou outro áudio estiver tocando, a notificação entra numa fila de fala, sem atropelar.
 
-**Respostas faladas.** O output bruto nunca é lido. O `system_prompt` de cada sessão pede que ela termine com uma linha `RESUMO:` de até 2 frases, sem código nem caminhos longos; o TTS lê só essa linha. Se a linha não vier, o Haiku gera o resumo como fallback.
+**Respostas faladas.** O output bruto nunca é lido. O `system_prompt` de cada sessão pede que ela **comece** com uma linha `RESUMO:` de até 2 frases, sem código nem caminhos longos; o TTS lê só essa linha, assim que ela chega no streaming, sem esperar o resto da resposta. Se a linha não vier, o Haiku gera o resumo como fallback.
 
 **E-mail e agenda.** Ler roda direto. Enviar, responder ou mudar evento segue a confirmação configurada, com o Alfred lendo destinatário e resumo antes ("vou responder o João dizendo que topa sexta, posso?"). E-mail é sempre lido resumido, nunca na íntegra.
 
