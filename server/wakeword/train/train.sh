@@ -29,6 +29,7 @@ fetch "$PIPER_MODEL" piper-sample-generator/models/en_US-libritts_r-medium.pt
 "$PY" "$HERE/pget.py" "$HF/openwakeword_features_ACAV100M_2000_hrs_16bit.npy" openwakeword_features_ACAV100M_2000_hrs_16bit.npy
 "$PY" "$HERE/pget.py" "$HF/validation_set_features.npy" validation_set_features.npy
 "$PY" "$HERE/prepare_data.py" "$WORK"
+"$PY" -c "import openwakeword.utils as u; u.download_models(['alexa'])"  # melspectrogram/embedding feature models
 
 "$PY" -m openwakeword.train --training_config "$HERE/alfred.yml" --generate_clips --augment_clips --train_model \
   || [ -s output/alfred.onnx ]  # the final tflite export needs TensorFlow; the onnx is written before it
