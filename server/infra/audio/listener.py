@@ -4,6 +4,7 @@ Capture and STT share this thread: they are sequential, and the mic is ignored w
 """
 
 import logging
+import os
 import threading
 from collections.abc import Callable
 from pathlib import Path
@@ -129,7 +130,12 @@ def load_whisper(config: WhisperConfig) -> Callable[[np.ndarray], str]:
     from faster_whisper import WhisperModel
 
     try:
-        model = WhisperModel(config.model, device=config.device, compute_type=config.compute_type)
+        model = WhisperModel(
+            config.model,
+            config.device,
+            compute_type=config.compute_type,
+            cpu_threads=os.cpu_count() or 0,
+        )
     except Exception as e:
         raise DependencyError(f"cannot load Whisper {config.model!r}: {e}") from e
 
@@ -139,6 +145,7 @@ def load_whisper(config: WhisperConfig) -> Callable[[np.ndarray], str]:
                 audio.astype(np.float32) / 32768,
                 language=config.language,
                 initial_prompt=config.initial_prompt or None,
+                beam_size=1,
             )
             return " ".join(s.text for s in segments)
         except Exception as e:
