@@ -236,6 +236,26 @@ Tabelas auxiliares previstas: `audit_log` (toda tool call), `confirmation` (pedi
 | `permission_request` | id, sessão, ação, descrição, canal | talker, ws |
 | `permission_resolved` | id, aprovado, canal | ws |
 
+## Erros
+
+Exceções em camadas, todas em `server/errors.py`:
+
+```text
+AlfredError
+├── ConfigError        # config.yaml inválido            → fatal na inicialização
+├── DependencyError    # CLI claude, microfone, modelos   → fatal na inicialização
+├── AudioError         # falha em captura/STT/TTS         → recuperável
+└── AgentError         # falha/timeout no Agent SDK       → recuperável
+```
+
+Regras:
+
+- **`infra` traduz:** exceção de biblioteca externa vira a exceção da camada com `raise XError(...) from e`. Nada de `except Exception` engolindo erro.
+- **`controllers` decide:** captura `AudioError`/`AgentError` no limite do turno, publica `error` no bus, fala a mensagem curta e volta a `idle`.
+- **`main` encerra:** `ConfigError`/`DependencyError` imprimem a mensagem e saem com código 1.
+- **Fail-fast:** tudo que pode falhar é verificado na inicialização, antes de abrir o microfone: config válido, `claude` no `PATH`, dispositivo de áudio, modelos (Whisper, Kokoro, wake word) carregados de forma eager. Nada é carregado sob demanda no primeiro comando.
+- Exceção inesperada dentro de thread de áudio: loga com traceback, publica `error`, a thread segue. No loop principal, derruba o processo.
+
 ## Permissões
 
 ```mermaid

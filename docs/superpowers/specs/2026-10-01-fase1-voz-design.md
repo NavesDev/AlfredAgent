@@ -25,6 +25,7 @@ Todos em `server/`.
 
 | Arquivo | Responsabilidade | Depende de |
 |---|---|---|
+| `errors.py` | Hierarquia `AlfredError` → `ConfigError`, `DependencyError`, `AudioError`, `AgentError` (ver [ARCHITECTURE.md](../../ARCHITECTURE.md#erros)) | — |
 | `main.py` | Carrega config, cria bus, sobe threads de áudio, agente e Uvicorn no mesmo loop | tudo |
 | `config.py` | Modelo pydantic do `config.yaml`; `load_config(path) -> Config` | pydantic, pyyaml |
 | `events.py` | `EventBus`: `publish(type, **data)` (seguro de qualquer thread), `subscribe() -> asyncio.Queue`, `unsubscribe(q)` | asyncio |
@@ -71,6 +72,8 @@ Enquanto `talker.is_speaking`, o listener descarta detecções da wake word (evi
 - "Dia" usa o fuso local da máquina, virando à meia-noite. Conversa em andamento na virada continua na sessão em que começou.
 
 ## Tratamento de erros
+
+Exceções em camadas e fail-fast conforme [ARCHITECTURE.md](../../ARCHITECTURE.md#erros). Modelos são carregados na inicialização.
 
 | Situação | Comportamento |
 |---|---|
