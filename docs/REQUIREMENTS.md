@@ -24,7 +24,7 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 
 | ID | Requisito | Fase |
 |---|---|---|
-| RF-01 | Escutar continuamente e ativar com a wake word configurável (`alfred.onnx`, threshold 0.65) | F1 |
+| RF-01 | Escutar continuamente e ativar com a wake word configurável (`alfred.onnx` treinado; `hey_jarvis` como substituto até lá) | F1 |
 | RF-02 | Detectar fim de fala com VAD e transcrever localmente com Whisper (pt, `initial_prompt` com jargão) | F1 |
 | RF-03 | Falar respostas com Kokoro (voz e velocidade configuráveis) | F1 |
 | RF-04 | Ler em voz alta apenas a linha `RESUMO:`; nunca output bruto, código ou caminhos longos | F1 |
@@ -92,7 +92,7 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 |---|---|---|
 | RF-60 | Dashboard (`/`): sessões, confirmações pendentes, conversa ao vivo, tarefas abertas | F6 |
 | RF-61 | Telas `/projects`, `/projects/:id`, `/tasks`, `/activity` | F6 |
-| RF-62 | Atualização em tempo real via WebSocket (eventos do bus) | F6 |
+| RF-62 | Atualização em tempo real via WebSocket (eventos do bus, incluindo `voice_state` e `audio_level` para animações) | F1 (`/ws`), F6 (painel) |
 | RF-63 | CommandBar (Ctrl+K) para falar com o Alfred digitando | F6 |
 | RF-64 | Acessível em localhost e pelo celular na rede local | F6 |
 
@@ -142,13 +142,13 @@ Cada fase entrega algo usável sozinho.
 
 | Fase | Entrega | Critério de pronto |
 |---|---|---|
-| F1 | Voz de ponta a ponta | "Alfred, qual a diferença entre JWT e sessão?" é respondido falando, só o `RESUMO:` |
+| F1 | Voz de ponta a ponta + wake word treinada + `/ws` de eventos | "Alfred, qual a diferença entre JWT e sessão?" é respondido falando, só o `RESUMO:`; eventos de estado no `/ws` |
 | F2 | Assistente geral | Web, Gmail e Calendar funcionando por voz |
 | F3 | Sessões nomeadas | 2+ sessões em paralelo, atalho `<nome>:`, foco, status, fila, interrupção |
 | F4 | Projetos, worktrees e tarefas | Criar worktree + sessão por voz, delegar tarefa, resume após reinício |
 | F5 | Permissões | Confirmação por canal, denylist, turno contaminado, barge-in, fila de notificações, auditoria |
 | F6 | Painel web | Telas listadas em RF-60/61, confirmação por clique, CommandBar |
-| F7 | Polimento | Wake word treinada, `initial_prompt` ajustado, fallback Haiku |
+| F7 | Polimento | `initial_prompt` ajustado, fallback Haiku, ajuste fino da wake word |
 
 ## Questões em aberto
 
@@ -159,3 +159,4 @@ Cada fase entrega algo usável sozinho.
 5. **Rotação diária da conversa do `alfred`:** em que horário vira o dia, e o que acontece com uma conversa em andamento?
 6. **Autenticação do painel na rede local:** nenhuma no MVP? Qualquer um na LAN poderia aprovar confirmações via `web`.
 7. **Licença** do projeto.
+8. **Uso da assinatura via Agent SDK:** a fase 1 autentica pelo login do Claude Code; confirmar que o uso pessoal é aceito pelos termos, senão migrar para `ANTHROPIC_API_KEY`.

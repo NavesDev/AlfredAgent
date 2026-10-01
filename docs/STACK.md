@@ -8,7 +8,7 @@ Tecnologias do Alfred e o motivo de cada escolha. Mudanças relevantes viram um 
 |---|---|
 | Runtime do server | Python 3.11+, asyncio, um processo só |
 | Gerenciador de pacotes (Python) | uv + `pyproject.toml` |
-| Agentes | Claude Agent SDK (Python) |
+| Agentes | Claude Agent SDK (Python), usando o CLI `claude` logado (harness do Claude Code) |
 | Modelos | Sonnet (padrão), Haiku (perguntas simples e resumos de fallback) |
 | Integrações | MCP Gmail, MCP Google Calendar, WebSearch/WebFetch nativos do SDK |
 | Tools internas | Servidor MCP in-process (tools Python definidas no próprio código) |
@@ -92,8 +92,8 @@ kokoro:
 
 wakeword:
   name: Alfred
-  model: wakeword/alfred.onnx
-  threshold: 0.65
+  model: hey_jarvis    # trocar por wakeword/alfred.onnx após o treino
+  threshold: 0.5
   aliases: [alfred, alfredo]
 
 limits:
@@ -110,4 +110,4 @@ permissions:
   timeout_s: 60                    # sem resposta = negado
 ```
 
-Segredos (API key da Anthropic, credenciais Google) ficam em variáveis de ambiente / `.env`, nunca no YAML.
+Autenticação do Claude vem do login do Claude Code. Segredos (credenciais Google, API key se um dia trocar) ficam em variáveis de ambiente / `.env`, nunca no YAML.

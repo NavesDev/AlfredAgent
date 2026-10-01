@@ -2,7 +2,7 @@
 
 whisper:
   model: large-v3-turbo      # medium if RAM is tight
-  device: cuda               # cuda | cpu
+  device: cpu                # cuda | cpu
   compute_type: int8
   language: pt
   initial_prompt: "Spring, Liferay, endpoint, worktree, commit, backend, frontend"
@@ -13,13 +13,19 @@ kokoro:
 
 wakeword:
   name: Alfred
-  model: wakeword/alfred.onnx
-  threshold: 0.65
+  model: hey_jarvis          # pretrained name or path; wakeword/alfred.onnx after training
+  threshold: 0.5
   aliases: [alfred, alfredo]
+
+listener:
+  sample_rate: 16000
+  silence_ms: 800
+  max_record_s: 15
 
 agents:
   default_model: sonnet
   light_model: haiku         # simple questions + RESUMO fallback
+  timeout_s: 60
 
 limits:
   max_active_sessions: 3
@@ -43,3 +49,4 @@ api:
 
 storage:
   db_path: data/alfred.sqlite3
+  state_path: data/alfred_state.json
