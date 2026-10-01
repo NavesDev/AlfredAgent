@@ -7,7 +7,7 @@ Gera `server/wakeword/alfred.onnx` com o pipeline de treino do openWakeWord: mil
 | Item | Tamanho / tempo |
 |---|---|
 | Features negativas ACAV100M + validação | ~17 GB |
-| Ruído de fundo (AudioSet, FMA) + RIRs | ~3 GB |
+| Ruído de fundo (3000 clipes do AudioSet) + RIRs | ~1 GB |
 | Venv de treino (torch, speechbrain…) | ~3 GB |
 | Geração + aumento + treino em CPU (12 cores) | várias horas |
 
@@ -30,5 +30,5 @@ wakeword:
 
 ## Limitações
 
-- O gerador do Piper usa o modelo multi-locutor LibriTTS (inglês). As frases em `alfred.yml` incluem grafias que aproximam a pronúncia brasileira ("alfredi", "auf red").
+- O gerador do Piper usa o modelo multi-locutor LibriTTS (inglês). Grafias "abrasileiradas" ("alfredi", "auf red") soaram como "offered" no Piper e foram descartadas; os positivos são "alfred", "alfredo" e "hey alfred", e palavras parecidas ("offered", "afraid") entram como negativos.
 - A conversão final para `.tflite` do openWakeWord exige TensorFlow, que não suporta Python 3.11; o script ignora essa etapa. O `.onnx` é gerado antes e é o que o Alfred usa.
