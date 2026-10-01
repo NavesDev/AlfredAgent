@@ -43,7 +43,8 @@ def peak_score(wake: OpenWakeWord, pcm: np.ndarray) -> float:
     return max(wake.score(pcm[i : i + FRAME]) for i in range(0, len(pcm) - FRAME, FRAME))
 
 
-def main(model: str, word: str = "Alfred", threshold: float = 0.5) -> None:
+def main(model: str, word: str = "Alfred", threshold: str = "0.5") -> None:
+    cut = float(threshold)
     wake = OpenWakeWord(model)
     results: dict[bool, list[tuple[float, str]]] = {True: [], False: []}
     for voice in VOICES:
@@ -55,10 +56,13 @@ def main(model: str, word: str = "Alfred", threshold: float = 0.5) -> None:
                     pcm = to_16k_pcm(np.concatenate(list(synth(text))))
                     results[positive].append((peak_score(wake, pcm), f"{voice} x{speed}: {text}"))
 
-    hits = [s for s, _ in results[True] if s >= threshold]
-    false_accepts = [(s, t) for s, t in results[False] if s >= threshold]
-    print(f"model {model}, threshold {threshold}")
+    hits = [s for s, _ in results[True] if s >= cut]
+    false_accepts = [(s, t) for s, t in results[False] if s >= cut]
+    print(f"model {model}, threshold {cut}")
     print(f"recall: {len(hits)}/{len(results[True])}")
+    for voice in VOICES:  # kokoro_positives.py trains on all but pm_alex
+        scores = [s for s, t in results[True] if t.startswith(voice)]
+        print(f"  {voice}: {sum(s >= cut for s in scores)}/{len(scores)}")
     print(f"false accepts: {len(false_accepts)}/{len(results[False])}")
     for score, text in sorted(results[True])[:5]:
         print(f"  weakest positive {score:.2f}  {text}")

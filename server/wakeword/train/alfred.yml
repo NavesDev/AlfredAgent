@@ -23,8 +23,8 @@ feature_data_files:
 model_type: dnn
 layer_size: 32
 steps: 50000
-max_negative_weight: 1500
-target_false_positives_per_hour: 0.2
+max_negative_weight: 500
+target_false_positives_per_hour: 1.0  # 0.2 doubled the negative weight twice and made the model too conservative (recall 23%)
 batch_n_per_class:
   ACAV100M_sample: 1024
   adversarial_negative: 50

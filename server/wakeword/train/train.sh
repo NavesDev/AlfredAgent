@@ -31,7 +31,11 @@ fetch "$PIPER_MODEL" piper-sample-generator/models/en_US-libritts_r-medium.pt
 "$PY" "$HERE/prepare_data.py" "$WORK"
 "$PY" -c "import openwakeword.utils as u; u.download_models(['alexa'])"  # melspectrogram/embedding feature models
 
-"$PY" -m openwakeword.train --training_config "$HERE/alfred.yml" --generate_clips --augment_clips --train_model \
+CONFIG="$HERE/alfred.yml"
+"$PY" -m openwakeword.train --training_config "$CONFIG" --generate_clips
+# Kokoro runs from the server venv, which already has it and its voices
+(cd "$HERE/../.." && PYTHONPATH=. uv run python wakeword/train/kokoro_positives.py "$WORK/output/alfred/positive_train")
+"$PY" -m openwakeword.train --training_config "$CONFIG" --augment_clips --overwrite --train_model \
   || [ -s output/alfred.onnx ]  # the final tflite export needs TensorFlow; the onnx is written before it
 
 cp output/alfred.onnx "$HERE/../alfred.onnx"
