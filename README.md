@@ -10,7 +10,7 @@ Assistente pessoal por voz para a rotina de dev. Tira dúvidas, pesquisa na web,
 
 O Alfred escuta continuamente com wake word, transcreve localmente (Whisper), decide para onde mandar o comando, conversa com o Claude na nuvem e responde falando (Kokoro) só a linha de resumo.
 
-> **Status:** pré-MVP. Este repositório contém, por enquanto, a documentação de base. Veja o [roadmap](docs/REQUIREMENTS.md#roadmap-do-mvp).
+> **Status:** fase 1 (voz de ponta a ponta). Wake word provisória: **"Hey Jarvis"**. Veja o [roadmap](docs/REQUIREMENTS.md#roadmap-do-mvp).
 
 ## Objetivos
 
@@ -58,16 +58,21 @@ Detalhes em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#estrutura-de-pastas).
 
 ## Começando
 
-> Os comandos abaixo passam a funcionar a partir da fase 1 do roadmap.
-
 ```bash
+sudo apt install libportaudio2
 git clone <repo> alfred && cd alfred
-make setup        # instala dependências do server e do web
+make setup        # instala dependências (uv sync)
 cp server/config.example.yaml server/config.yaml
-make dev          # sobe server (voz + API) e Vite juntos
+make dev          # sobe voz + agente + API
 ```
 
-Painel em `http://localhost:5173` (dev) ou `http://localhost:8000` (build servido pelo FastAPI).
+A primeira execução baixa os modelos (Whisper ~1,6 GB, Kokoro ~330 MB). Diga **"Hey Jarvis"**, espere um instante e faça a pergunta.
+
+Eventos em tempo real (estado da voz, nível de áudio, progresso do agente):
+
+```bash
+websocat ws://localhost:8000/ws
+```
 
 ## Licença
 
