@@ -36,6 +36,7 @@ async def serve(config: Config) -> None:
         model=config.agents.default_model,
         timeout_s=config.agents.timeout_s,
     )
+    await agent.start()
     router = Router(bus, agent, talker)
     listener = Listener(
         bus,

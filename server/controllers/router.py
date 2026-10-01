@@ -1,5 +1,6 @@
 """Entry point for every command. Phase 1: everything goes to the main agent."""
 
+from collections.abc import Callable
 from typing import Protocol
 
 from errors import AgentError
@@ -10,7 +11,7 @@ FAILURE_MESSAGE = "Não consegui falar com o Claude agora."
 
 
 class Agent(Protocol):
-    async def ask(self, text: str) -> Reply: ...
+    async def ask(self, text: str, on_summary: Callable[[str], None]) -> Reply: ...
 
 
 class Speaker(Protocol):
@@ -24,11 +25,10 @@ class Router:
     async def handle(self, text: str) -> None:
         self._bus.publish("voice_state", state="thinking")
         try:
-            summary = (await self._agent.ask(text)).summary
+            reply = await self._agent.ask(text, self._talker.say)  # speaks as soon as it streams
         except AgentError as e:
             self._bus.publish("error", where="alfred", message=str(e))
-            summary = FAILURE_MESSAGE
-        if summary:
-            self._talker.say(summary)
-        else:
+            self._talker.say(FAILURE_MESSAGE)
+            return
+        if not reply.summary:
             self._bus.publish("voice_state", state="idle")

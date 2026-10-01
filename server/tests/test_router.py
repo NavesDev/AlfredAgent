@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Callable
 
 from controllers.router import FAILURE_MESSAGE, Router
 from errors import AgentError
@@ -12,10 +13,12 @@ class FakeAgent:
         self.reply = reply
         self.asked: list[str] = []
 
-    async def ask(self, text: str) -> Reply:
+    async def ask(self, text: str, on_summary: Callable[[str], None]) -> Reply:
         self.asked.append(text)
         if isinstance(self.reply, Exception):
             raise self.reply
+        if self.reply.summary:
+            on_summary(self.reply.summary)
         return self.reply
 
 
