@@ -13,6 +13,7 @@ def test_health() -> None:
 def test_ws_streams_published_events() -> None:
     app = create_app()
     with TestClient(app) as client:
+        assert client.portal
         app.state.bus = bus = EventBus(client.portal.call(asyncio.get_running_loop))
         with client.websocket_connect("/ws") as ws:
             bus.publish("voice_state", state="listening")

@@ -92,4 +92,4 @@ def open_speaker() -> Callable[[np.ndarray], None]:
 
     stream = sd.OutputStream(samplerate=KOKORO_RATE, channels=1, dtype="float32")
     stream.start()
-    return stream.write
+    return lambda block: stream.write(block)

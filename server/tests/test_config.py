@@ -26,5 +26,5 @@ def test_invalid_field_raises_config_error_naming_the_field(tmp_path: Path) -> N
     bad = tmp_path / "config.yaml"
     bad.write_text(EXAMPLE.read_text().replace("threshold: 0.5", "threshold: high"))
 
-    with pytest.raises(ConfigError, match="wakeword.threshold"):
+    with pytest.raises(ConfigError, match=r"wakeword\.threshold"):
         load_config(bad)

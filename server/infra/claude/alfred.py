@@ -73,9 +73,13 @@ class AlfredAgent:
     def _publish_progress(self, message: sdk.AssistantMessage) -> None:
         for block in message.content:
             if isinstance(block, sdk.TextBlock):
-                self._bus.publish("agent_progress", session="alfred", kind="text", content=block.text)
+                self._bus.publish(
+                    "agent_progress", session="alfred", kind="text", content=block.text
+                )
             elif isinstance(block, sdk.ToolUseBlock):
-                self._bus.publish("agent_progress", session="alfred", kind="tool", content=block.name)
+                self._bus.publish(
+                    "agent_progress", session="alfred", kind="tool", content=block.name
+                )
 
     def _finish(self, message: sdk.ResultMessage) -> Reply:
         if message.is_error or message.result is None:

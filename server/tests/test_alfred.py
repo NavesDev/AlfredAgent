@@ -26,8 +26,13 @@ REPLY = "JWT guarda o estado no token.\nRESUMO: JWT é stateless; sessão fica n
 
 def result(text: str = REPLY, session_id: str = "s1", is_error: bool = False) -> ResultMessage:
     return ResultMessage(
-        subtype="success", duration_ms=1, duration_api_ms=1, is_error=is_error,
-        num_turns=1, session_id=session_id, result=text,
+        subtype="success",
+        duration_ms=1,
+        duration_api_ms=1,
+        is_error=is_error,
+        num_turns=1,
+        session_id=session_id,
+        result=text,
     )
 
 
@@ -51,8 +56,12 @@ class FakeQuery:
 
 def agent(bus: EventBus, tmp_path: Path, query: FakeQuery, timeout_s: float = 1) -> AlfredAgent:
     return AlfredAgent(
-        bus, DailyState(tmp_path / "s.json"), model="sonnet", timeout_s=timeout_s,
-        query=query, today=lambda: TODAY,
+        bus,
+        DailyState(tmp_path / "s.json"),
+        model="sonnet",
+        timeout_s=timeout_s,
+        query=query,
+        today=lambda: TODAY,
     )
 
 

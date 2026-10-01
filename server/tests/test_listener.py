@@ -35,8 +35,14 @@ def make(bus: EventBus, text: str | Exception = "oi alfred", muted: bool = False
         return text
 
     listener = Listener(
-        bus, ListenerConfig(), threshold=0.5, wake=FakeWake(), is_speech=lambda f: bool(f[0]),
-        transcribe=transcribe, on_transcript=heard.append, muted=lambda: muted,
+        bus,
+        ListenerConfig(),
+        threshold=0.5,
+        wake=FakeWake(),
+        is_speech=lambda f: bool(f[0]),
+        transcribe=transcribe,
+        on_transcript=heard.append,
+        muted=lambda: muted,
     )
     return listener, heard, recorded
 
@@ -127,7 +133,9 @@ async def test_empty_transcript_returns_to_idle(bus: EventBus) -> None:
 
 
 @pytest.mark.parametrize("failure", [AudioError("mic died"), RuntimeError("bug")])
-async def test_failure_is_published_and_listener_recovers(bus: EventBus, failure: Exception) -> None:
+async def test_failure_is_published_and_listener_recovers(
+    bus: EventBus, failure: Exception
+) -> None:
     queue = bus.subscribe()
     listener, _, _ = make(bus, text=failure)
 

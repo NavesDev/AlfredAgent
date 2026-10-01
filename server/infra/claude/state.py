@@ -17,4 +17,6 @@ class DailyState:
 
     def save(self, session_id: str, day: date) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        self._path.write_text(json.dumps({"date": day.isoformat(), "claude_session_id": session_id}))
+        self._path.write_text(
+            json.dumps({"date": day.isoformat(), "claude_session_id": session_id})
+        )
