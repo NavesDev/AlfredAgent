@@ -1,0 +1,64 @@
+from pathlib import Path
+from typing import Literal
+
+import yaml
+from pydantic import BaseModel, ValidationError
+
+from errors import ConfigError
+
+
+class Whisper(BaseModel):
+    model: str
+    device: Literal["cpu", "cuda"]
+    compute_type: str
+    language: str
+    initial_prompt: str = ""
+
+
+class Kokoro(BaseModel):
+    voice: str
+    speed: float = 1.0
+
+
+class Wakeword(BaseModel):
+    model: str
+    threshold: float
+
+
+class Listener(BaseModel):
+    sample_rate: int = 16000
+    silence_ms: int = 800
+    max_record_s: int = 15
+
+
+class Agents(BaseModel):
+    default_model: str
+    timeout_s: int = 60
+
+
+class Api(BaseModel):
+    host: str = "0.0.0.0"
+    port: int = 8000
+
+
+class Storage(BaseModel):
+    state_path: Path
+
+
+class Config(BaseModel):
+    whisper: Whisper
+    kokoro: Kokoro
+    wakeword: Wakeword
+    listener: Listener = Listener()
+    agents: Agents
+    api: Api = Api()
+    storage: Storage
+
+
+def load_config(path: Path) -> Config:
+    if not path.exists():
+        raise ConfigError(f"config not found: {path}")
+    try:
+        return Config.model_validate(yaml.safe_load(path.read_text()))
+    except (yaml.YAMLError, ValidationError) as e:
+        raise ConfigError(f"invalid config {path}: {e}") from e

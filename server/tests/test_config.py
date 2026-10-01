@@ -1,0 +1,30 @@
+from pathlib import Path
+
+import pytest
+
+from config import load_config
+from errors import ConfigError
+
+EXAMPLE = Path(__file__).parent.parent / "config.example.yaml"
+
+
+def test_loads_example_config() -> None:
+    config = load_config(EXAMPLE)
+
+    assert config.whisper.model == "large-v3-turbo"
+    assert config.wakeword.model == "hey_jarvis"
+    assert config.listener.silence_ms == 800
+    assert config.agents.timeout_s == 60
+
+
+def test_missing_file_raises_config_error(tmp_path: Path) -> None:
+    with pytest.raises(ConfigError, match="not found"):
+        load_config(tmp_path / "nope.yaml")
+
+
+def test_invalid_field_raises_config_error_naming_the_field(tmp_path: Path) -> None:
+    bad = tmp_path / "config.yaml"
+    bad.write_text(EXAMPLE.read_text().replace("threshold: 0.5", "threshold: high"))
+
+    with pytest.raises(ConfigError, match="wakeword.threshold"):
+        load_config(bad)
