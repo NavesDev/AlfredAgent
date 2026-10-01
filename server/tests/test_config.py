@@ -12,7 +12,7 @@ def test_loads_example_config() -> None:
     config = load_config(EXAMPLE)
 
     assert config.whisper.model == "large-v3-turbo"
-    assert config.wakeword.model == "hey_jarvis"
+    assert config.wakeword.model == "wakeword/alfred.onnx"
     assert config.listener.silence_ms == 800
     assert config.agents.timeout_s == 60
 

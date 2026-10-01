@@ -92,7 +92,7 @@ kokoro:
 
 wakeword:
   name: Alfred
-  model: hey_jarvis    # trocar por wakeword/alfred.onnx após o treino
+  model: wakeword/alfred.onnx  # treinado em wakeword/train
   threshold: 0.5
   aliases: [alfred, alfredo]
 

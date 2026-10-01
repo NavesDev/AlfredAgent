@@ -10,7 +10,7 @@ Assistente pessoal por voz para a rotina de dev. Tira dúvidas, pesquisa na web,
 
 O Alfred escuta continuamente com wake word, transcreve localmente (Whisper), decide para onde mandar o comando, conversa com o Claude na nuvem e responde falando (Kokoro) só a linha de resumo.
 
-> **Status:** fase 1 (voz de ponta a ponta). Wake word provisória: **"Hey Jarvis"**. Veja o [roadmap](docs/REQUIREMENTS.md#roadmap-do-mvp).
+> **Status:** fase 1 (voz de ponta a ponta). Wake word: **"Alfred"** (modelo próprio, ainda em validação com voz real). Veja o [roadmap](docs/REQUIREMENTS.md#roadmap-do-mvp).
 
 ## Objetivos
 
@@ -66,7 +66,7 @@ cp server/config.example.yaml server/config.yaml
 make dev          # sobe voz + agente + API
 ```
 
-A primeira execução baixa os modelos (Whisper ~1,6 GB, Kokoro ~330 MB). Diga **"Hey Jarvis"**, espere um instante e faça a pergunta.
+A primeira execução baixa os modelos (Whisper ~1,6 GB, Kokoro ~330 MB). Diga **"Alfred"**, espere um instante e faça a pergunta. Se não acordar bem, `wakeword.model: hey_jarvis` no `config.yaml` volta ao modelo pronto.
 
 Eventos em tempo real (estado da voz, nível de áudio, progresso do agente):
 

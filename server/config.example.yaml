@@ -13,7 +13,7 @@ kokoro:
 
 wakeword:
   name: Alfred
-  model: hey_jarvis          # pretrained name or path; wakeword/alfred.onnx after training
+  model: wakeword/alfred.onnx  # trained by wakeword/train; or a pretrained name like hey_jarvis
   threshold: 0.5
   aliases: [alfred, alfredo]
 
