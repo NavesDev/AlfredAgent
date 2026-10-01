@@ -3,6 +3,7 @@
 Run from server/:  PYTHONPATH=. uv run python wakeword/live.py [MODEL] [THRESHOLD]
 """
 
+import contextlib
 import sys
 
 import sounddevice as sd
@@ -22,7 +23,5 @@ def main(model: str = "wakeword/alfred.onnx", threshold: str = "0.5") -> None:
 
 
 if __name__ == "__main__":
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         main(*sys.argv[1:])
-    except KeyboardInterrupt:
-        pass
