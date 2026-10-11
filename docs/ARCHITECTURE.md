@@ -161,6 +161,7 @@ Sessão ocupada não recebe dois prompts ao mesmo tempo: cada sessão tem uma fi
 - Tools: WebSearch, WebFetch, MCP Gmail, MCP Calendar e o MCP in-process de `infra/claude/tools.py` (projetos, sessões, worktrees, tarefas, `delegar`).
 - **Sem Bash e sem Edit.** Quem lê conteúdo externo nunca executa comando.
 - Tarefas no computador vão pela tool `delegar` para a sessão `sistema`, com Bash e auto mode, sem e-mail nem web ([ADR 0006](adr/0006-system-session-for-computer-tasks.md)).
+- Cada tipo de agente (`AgentKind` em `infra/claude/agents.py`) gera sua tool `delegar_<tipo>`; o Alfred cria, lista, limpa e apaga sessões por voz ([ADR 0007](adr/0007-polymorphic-agent-kinds.md)).
 - Até a fase 5: auto mode do Claude Code decide as permissões, com leituras liberadas, sem Bash/Edit/Write e sem URLs fora de http/https ([ADR 0005](adr/0005-main-agent-auto-mode.md)).
 - Modelo Sonnet por padrão; perguntas simples podem cair no Haiku.
 - Conhece a sessão em foco e o projeto atual (injetados no contexto).
@@ -230,7 +231,10 @@ Tabelas auxiliares previstas: `audit_log` (toda tool call), `confirmation` (pedi
 |---|---|---|
 | `transcript` | texto, origem (voz/painel) | ws |
 | `alfred_reply` | sessão, resumo, texto completo | talker (só resumo), ws |
-| `session_status` | sessão, status | ws, talker (quando termina) |
+| `session_created` | snapshot da sessão | ws |
+| `session_status` | snapshot da sessão (status, tarefa, atividade, fila, tokens, último resumo) | ws |
+| `session_cleared` | snapshot da sessão | ws |
+| `session_deleted` | nome | ws |
 | `task_updated` | tarefa | ws |
 | `permission_request` | id, sessão, ação, descrição, canal | talker, ws |
 | `permission_resolved` | id, aprovado, canal | ws |
@@ -284,7 +288,7 @@ flowchart TD
 |---|---|
 | `GET/POST /api/projects`, `GET /api/projects/{id}` | Projetos e workspaces |
 | `POST /api/projects/{id}/worktrees`, `DELETE …/{ws_id}` | Criar/remover worktree |
-| `GET/POST /api/sessions`, `POST /api/sessions/{id}/stop` | Sessões |
+| `GET /api/sessions`, `POST /api/sessions/{name}/clear`, `DELETE /api/sessions/{name}` | Sessões (criar só por voz por enquanto) |
 | `GET/POST/PATCH /api/tasks` | Tarefas |
 | `GET /api/confirmations`, `POST /api/confirmations/{id}` | Confirmações pendentes |
 | `POST /api/commands` | Texto para o mesmo router da voz |
