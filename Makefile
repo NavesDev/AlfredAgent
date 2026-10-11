@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 SERVER := server
 WEB := apps/web
-# Web targets are no-ops until apps/web exists (phase 6).
+# Web targets are no-ops if apps/web is missing.
 WEB_RUN = $(if $(wildcard $(WEB)/package.json),cd $(WEB) &&,@true)
 
 .PHONY: help setup dev dev-server dev-web test lint fmt gen-api build
