@@ -21,7 +21,7 @@ wakeword:
 
 listener:
   sample_rate: 16000
-  silence_ms: 800
+  silence_ms: 1200           # pause that ends a command; lower cuts you mid-sentence
   max_record_s: 15
 
 agents:

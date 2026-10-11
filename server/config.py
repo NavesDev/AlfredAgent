@@ -29,7 +29,7 @@ class Wakeword(BaseModel):
 
 class Listener(BaseModel):
     sample_rate: int = 16000
-    silence_ms: int = 800
+    silence_ms: int = 1200
     max_record_s: int = 15
 
 

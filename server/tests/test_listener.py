@@ -11,7 +11,7 @@ from infra.audio.listener import FRAME, Listener, load_vad
 from tests.conftest import drain
 
 WAKE, SPEECH, SILENCE = (np.full(FRAME, v, dtype=np.int16) for v in (2, 1, 0))
-SILENCE_FRAMES = 10  # 800 ms / 80 ms
+SILENCE_FRAMES = 15  # 1200 ms / 80 ms
 chimes: list[str] = []
 
 
