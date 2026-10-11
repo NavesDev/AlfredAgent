@@ -48,7 +48,7 @@ export function DashboardPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const caption = turns.findLast((t) => t.summary)?.summary ?? null
+  const caption = turns.at(-1)?.summary ?? null
 
   return (
     <div className="flex h-full flex-col bg-[radial-gradient(ellipse_at_center,#0d1424_0%,#05070d_70%)]">

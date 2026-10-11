@@ -10,7 +10,14 @@ export type AlfredEvent = Base &
     | { type: 'audio_level'; source: 'mic' | 'tts'; level: number }
     | { type: 'transcript'; text: string; source: 'voice' | 'web' }
     | { type: 'alfred_reply'; session: string; text: string; summary: string }
-    | { type: 'agent_progress'; session: string; kind: 'text' | 'tool'; content: string }
+    | {
+        type: 'agent_progress'
+        session: string
+        kind: 'text' | 'tool'
+        content: string
+        /** Search query or site host, tools only. */
+        detail?: string | null
+      }
     | { type: 'error'; where: string; message: string }
   )
 

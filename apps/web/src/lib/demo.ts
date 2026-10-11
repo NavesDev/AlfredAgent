@@ -27,8 +27,24 @@ const SCRIPT: Step[] = [
   },
   { at: 3300, event: { type: 'voice_state', state: 'thinking' } },
   {
-    at: 4200,
-    event: { type: 'agent_progress', session: 'alfred', kind: 'tool', content: 'WebSearch' },
+    at: 3900,
+    event: {
+      type: 'agent_progress',
+      session: 'alfred',
+      kind: 'tool',
+      content: 'WebSearch',
+      detail: 'JWT vs sessão',
+    },
+  },
+  {
+    at: 4600,
+    event: {
+      type: 'agent_progress',
+      session: 'alfred',
+      kind: 'tool',
+      content: 'WebFetch',
+      detail: 'auth0.com',
+    },
   },
   { at: 5200, event: { type: 'voice_state', state: 'speaking' } },
   ...wave(5200, 9200, 66, 'tts'),

@@ -1,4 +1,5 @@
 import type { AlfredEvent } from '../../../api/events'
+import { describeTool } from '../../../lib/tools'
 import type { TranscriptState, Turn } from '../types'
 
 const MAX_TURNS = 200
@@ -56,7 +57,10 @@ export function reduceTranscript(state: TranscriptState, event: AlfredEvent): Tr
       )
     case 'agent_progress':
       return updateLast(state, (t) => ({
-        steps: [...t.steps, { ts: event.ts, kind: event.kind, content: event.content }],
+        steps: [
+          ...t.steps,
+          { ts: event.ts, kind: event.kind, content: event.content, detail: event.detail ?? null },
+        ],
       }))
     case 'alfred_reply': {
       const reply = { reply: event.text, summary: event.summary || null }
@@ -83,7 +87,7 @@ export function toMarkdown(turns: Turn[]): string {
       const lines = [`### ${when}`]
       if (t.userText) lines.push(`**Você (${t.source}):** ${t.userText}`)
       for (const step of t.steps.filter((s) => s.kind === 'tool'))
-        lines.push(`- tool: ${step.content}`)
+        lines.push(`- ${describeTool(step.content, step.detail)} (${step.content})`)
       if (t.summary) lines.push(`**Alfred (falado):** ${t.summary}`)
       if (t.reply) lines.push('', t.reply)
       if (t.error) lines.push(`**Erro:** ${t.error}`)
