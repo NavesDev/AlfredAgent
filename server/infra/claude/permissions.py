@@ -1,11 +1,15 @@
-"""What the main agent may use. Until the confirmation gate exists (phase 5), anything with a
-side effect outside the browser stays off: it is hidden from the model and denied anyway.
+"""What the main agent may use (ADR 0005).
 
-The CLI also loads the user's own MCP servers (claude.ai connectors, plugins). With
-permission_mode "dontAsk" every tool not listed in ALLOWED is denied, so a newly installed
-server is safe by default; HIDDEN only keeps known ones out of the model's context so it does
-not offer capabilities it cannot use. Never add Bash, Edit or Write here (ADR 0003).
+The CLI loads the user's own MCP servers (claude.ai connectors, plugins). ALLOWED runs without
+asking; every other tool goes to Claude Code's auto mode classifier, which approves or denies
+each call. Two hard limits stay regardless: no Bash, Edit or Write (ADR 0003), and no url
+outside http/https (block_local_urls).
 """
+
+from typing import Any
+from urllib.parse import urlsplit
+
+from claude_agent_sdk import HookContext, HookJSONOutput
 
 GMAIL = "mcp__claude_ai_Gmail__"
 CALENDAR = "mcp__claude_ai_Google_Calendar__"
@@ -30,43 +34,28 @@ ALLOWED = [
         CALENDAR + name
         for name in ("list_calendars", "list_events", "get_event", "search_events", "suggest_time")
     ),
-    BROWSER,  # whole server; risk accepted in ADR 0004
+    BROWSER,
 ]
 
 HIDDEN = [
-    *(
-        GMAIL + name
-        for name in (
-            "send_message",
-            "reply",
-            "forward",
-            "create_draft",
-            "update_draft",
-            "delete_draft",
-            "trash_message",
-            "trash_thread",
-            "untrash_message",
-            "untrash_thread",
-            "mark_message_spam",
-            "mark_thread_spam",
-            "unmark_message_spam",
-            "unmark_thread_spam",
-            "label_message",
-            "label_thread",
-            "unlabel_message",
-            "unlabel_thread",
-            "update_message_labels",
-            "create_label",
-            "update_label",
-            "delete_label",
-        )
-    ),
-    *(
-        CALENDAR + name
-        for name in ("create_event", "update_event", "delete_event", "respond_to_event")
-    ),
     BROWSER + "__upload_file",  # would read local files into a web page
-    "mcp__claude_ai_Google_Drive",
-    "mcp__claude_ai_Claude_Docs",
-    "mcp__shoogle",
 ]
+
+WEB_SCHEMES = {"http", "https"}
+
+
+async def block_local_urls(
+    hook_input: Any, tool_use_id: str | None, context: HookContext
+) -> HookJSONOutput:
+    """PreToolUse: any tool given a url may only reach the web. Without this the browser
+    reads local files through file:// (and could leak them by navigating elsewhere)."""
+    url = (hook_input.get("tool_input") or {}).get("url")
+    if not isinstance(url, str) or urlsplit(url.strip()).scheme.lower() in WEB_SCHEMES:
+        return {}
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": "Só http/https; arquivos locais estão bloqueados.",
+        }
+    }

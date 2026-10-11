@@ -1,6 +1,6 @@
 # 0004 — Agente principal: leitura liberada + navegador, antes do gate de confirmação
 
-- **Status:** Aceito
+- **Status:** Substituído por 0005
 - **Data:** 2026-10-11
 
 ## Contexto

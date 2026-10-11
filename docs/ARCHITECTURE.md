@@ -160,7 +160,7 @@ Sessão ocupada não recebe dois prompts ao mesmo tempo: cada sessão tem uma fi
 - Sessão fixa, não presa a repositório.
 - Tools: WebSearch, WebFetch, MCP Gmail, MCP Calendar e o MCP in-process de `infra/claude/tools.py` (projetos, sessões, worktrees, tarefas, `delegar`).
 - **Sem Bash e sem Edit.** Quem lê conteúdo externo nunca executa comando.
-- Até a fase 5: leitura de Gmail/Agenda, web e navegador liberados; escrita escondida e negada ([ADR 0004](adr/0004-main-agent-read-only-plus-browser.md)).
+- Até a fase 5: auto mode do Claude Code decide as permissões, com leituras liberadas, sem Bash/Edit/Write e sem URLs fora de http/https ([ADR 0005](adr/0005-main-agent-auto-mode.md)).
 - Modelo Sonnet por padrão; perguntas simples podem cair no Haiku.
 - Conhece a sessão em foco e o projeto atual (injetados no contexto).
 - Uma conversa por dia: o `claude_session_id` da sessão `alfred` rotaciona diariamente.

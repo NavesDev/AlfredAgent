@@ -166,12 +166,12 @@ async def test_client_reads_only_streams_and_asks_for_resumo_first(
 
     options = connect.options[0]
     assert options.tools == ["WebSearch", "WebFetch"]
-    assert options.permission_mode == "dontAsk"
+    assert options.permission_mode == "auto"
     assert "mcp__claude_ai_Gmail__search_threads" in options.allowed_tools
-    assert "mcp__claude_ai_Gmail__send_message" in options.disallowed_tools
+    assert "mcp__claude_ai_Gmail__send_message" not in options.allowed_tools
     assert options.model == "sonnet"
     assert options.include_partial_messages
-    assert "NÃO envia" in str(options.system_prompt)
+    assert "verificador automático" in str(options.system_prompt)
     assert "Comece" in str(options.system_prompt) and "RESUMO:" in str(options.system_prompt)
 
 
@@ -302,3 +302,39 @@ def test_no_write_tool_is_both_allowed_and_hidden() -> None:
 )
 def test_tool_detail(tool_input: dict[str, Any], expected: str | None) -> None:
     assert tool_detail(tool_input) == expected
+
+
+@pytest.mark.parametrize(
+    ("url", "denied"),
+    [
+        ("https://www.linkedin.com", False),
+        ("HTTP://example.com", False),
+        ("file:///home/naves/Projetos/", True),
+        (" file:///etc/passwd", True),
+        ("chrome://settings", True),
+        ("javascript:alert(1)", True),
+    ],
+)
+async def test_block_local_urls(url: str, denied: bool) -> None:
+    out = await permissions.block_local_urls(
+        {"tool_name": "navigate_page", "tool_input": {"url": url}}, None, {"signal": None}
+    )
+    assert ("'deny'" in repr(out)) is denied
+
+
+async def test_block_local_urls_ignores_tools_without_url() -> None:
+    assert (
+        await permissions.block_local_urls({"tool_input": {"query": "x"}}, None, {"signal": None})
+        == {}
+    )
+
+
+def test_options_install_the_url_hook() -> None:
+    import claude_agent_sdk as sdk
+
+    from infra.claude.alfred import AlfredAgent
+
+    options = AlfredAgent(None, None, "sonnet", 1)._options(None)  # type: ignore[arg-type]
+    [matcher] = options.hooks["PreToolUse"]  # type: ignore[index]
+    assert isinstance(matcher, sdk.HookMatcher) and matcher.matcher is None
+    assert matcher.hooks == [permissions.block_local_urls]
