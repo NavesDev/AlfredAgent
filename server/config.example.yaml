@@ -10,6 +10,8 @@ whisper:
 kokoro:
   voice: pf_dora             # or pm_alex
   speed: 1.1
+  # Said right when you stop talking, while Whisper and Claude work. Empty = chime only.
+  acknowledgements: ["Certo.", "Deixa eu ver.", "Um momento.", "Só um instante."]
 
 wakeword:
   name: Alfred
@@ -19,13 +21,14 @@ wakeword:
 
 listener:
   sample_rate: 16000
-  silence_ms: 800
+  silence_ms: 1200           # pause that ends a command; lower cuts you mid-sentence
   max_record_s: 15
 
 agents:
   default_model: sonnet
   light_model: haiku         # simple questions + RESUMO fallback
   timeout_s: 60
+  session_timeout_s: 300     # tasks Alfred delegates to the "sistema" session
 
 limits:
   max_active_sessions: 3

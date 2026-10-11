@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import Iterator
+from itertools import pairwise
 
 import numpy as np
 
@@ -11,7 +12,9 @@ from tests.conftest import drain
 RATE = 24000
 
 
-def make(bus: EventBus, fail: bool = False) -> tuple[Talker, list[np.ndarray]]:
+def make(
+    bus: EventBus, fail: bool = False, acks: tuple[str, ...] = ()
+) -> tuple[Talker, list[np.ndarray]]:
     played: list[np.ndarray] = []
 
     def synthesize(text: str) -> Iterator[np.ndarray]:
@@ -19,7 +22,8 @@ def make(bus: EventBus, fail: bool = False) -> tuple[Talker, list[np.ndarray]]:
             raise AudioError("kokoro died")
         yield np.full(RATE, 0.5, dtype=np.float32)  # 1 s of audio
 
-    return Talker(bus, synthesize, played.append, sample_rate=RATE), played
+    talker = Talker(bus, synthesize, played.append, sample_rate=RATE, acknowledgements=acks)
+    return talker, played
 
 
 async def test_say_marks_speaking_until_played(bus: EventBus) -> None:
@@ -80,3 +84,54 @@ async def test_start_and_end_chimes_differ(bus: EventBus) -> None:
     talker.chime("end")
 
     assert not np.array_equal(played[0], played[1])
+
+
+async def test_acknowledge_plays_ready_clip_without_voice_states(bus: EventBus) -> None:
+    queue = bus.subscribe()
+    talker, played = make(bus, acks=("Certo.",))
+
+    talker.acknowledge()
+    assert talker.is_speaking  # keeps the wake word muted while it plays
+    talker.process_one()
+    await asyncio.sleep(0)
+
+    assert len(played) == 1 and len(played[0]) == RATE
+    assert not talker.is_speaking and drain(queue) == []
+
+
+async def test_acknowledge_does_not_repeat_the_same_clip_twice_in_a_row(bus: EventBus) -> None:
+    calls: list[str] = []
+
+    def synthesize(text: str) -> Iterator[np.ndarray]:
+        calls.append(text)
+        yield np.full(10, len(calls), dtype=np.float32)
+
+    played: list[np.ndarray] = []
+    talker = Talker(bus, synthesize, played.append, acknowledgements=("a", "b"))
+    for _ in range(6):
+        talker.acknowledge()
+        talker.process_one()
+
+    assert calls == ["a", "b"]  # synthesized once, at startup
+    assert all(x[0] != y[0] for x, y in pairwise(played))
+
+
+async def test_acknowledge_without_clips_falls_back_to_end_chime(bus: EventBus) -> None:
+    talker, played = make(bus)
+
+    talker.acknowledge()
+
+    assert len(played) == 1 and not talker.is_speaking
+
+
+async def test_rests_in_the_given_state_after_speaking(bus: EventBus) -> None:
+    queue = bus.subscribe()
+    talker, _ = make(bus)
+
+    talker.set_resting("thinking")
+    talker.say("Analisando seus e-mails.")
+    talker.process_one()
+    await asyncio.sleep(0)
+
+    states = [e["state"] for e in drain(queue) if e["type"] == "voice_state"]
+    assert states == ["speaking", "thinking"]

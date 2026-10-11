@@ -18,22 +18,25 @@ class Whisper(BaseModel):
 class Kokoro(BaseModel):
     voice: str
     speed: float = 1.0
+    acknowledgements: list[str] = []
 
 
 class Wakeword(BaseModel):
+    name: str = "Alfred"
     model: str
     threshold: float
 
 
 class Listener(BaseModel):
     sample_rate: int = 16000
-    silence_ms: int = 800
+    silence_ms: int = 1200
     max_record_s: int = 15
 
 
 class Agents(BaseModel):
     default_model: str
     timeout_s: int = 60
+    session_timeout_s: int = 300
 
 
 class Api(BaseModel):

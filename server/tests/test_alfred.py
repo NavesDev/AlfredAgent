@@ -17,7 +17,8 @@ from claude_agent_sdk import (
 
 from errors import AgentError, DependencyError
 from events import EventBus
-from infra.claude.alfred import AlfredAgent, check_cli
+from infra.claude import permissions
+from infra.claude.alfred import AlfredAgent, check_cli, tool_detail
 from infra.claude.state import DailyState
 from tests.conftest import drain
 
@@ -157,16 +158,20 @@ async def test_connects_once_and_reuses_client(bus: EventBus, tmp_path: Path) ->
     assert connect.clients[0].prompts == ["oi", "e aí?"]
 
 
-async def test_client_runs_without_tools_streams_and_asks_for_resumo_first(
+async def test_client_reads_only_streams_and_asks_for_resumo_first(
     bus: EventBus, tmp_path: Path
 ) -> None:
     connect = FakeConnect()
     await started(bus, tmp_path, connect)
 
     options = connect.options[0]
-    assert options.tools == []
+    assert options.tools == ["WebSearch", "WebFetch"]
+    assert options.permission_mode == "auto"
+    assert "mcp__claude_ai_Gmail__search_threads" in options.allowed_tools
+    assert "mcp__claude_ai_Gmail__send_message" not in options.allowed_tools
     assert options.model == "sonnet"
     assert options.include_partial_messages
+    assert "verificador automático" in str(options.system_prompt)
     assert "Comece" in str(options.system_prompt) and "RESUMO:" in str(options.system_prompt)
 
 
@@ -221,19 +226,25 @@ async def test_saves_session_id_after_reply(bus: EventBus, tmp_path: Path) -> No
 async def test_streams_progress_and_publishes_reply(bus: EventBus, tmp_path: Path) -> None:
     queue = bus.subscribe()
     stream = AssistantMessage(
-        content=[ToolUseBlock(id="t", name="WebSearch", input={}), TextBlock(text="Pensando")],
+        content=[
+            ToolUseBlock(id="t", name="WebSearch", input={"query": "notícias de IA"}),
+            TextBlock(text="Pensando"),
+        ],
         model="sonnet",
     )
     alfred = await started(bus, tmp_path, FakeConnect([stream, result()]))
+    activities: list[str] = []
 
-    await spoken_for(alfred)
+    await alfred.ask("oi", lambda _: None, activities.append)
     await asyncio.sleep(0)
 
-    events = [(e["type"], e.get("kind"), e.get("content")) for e in drain(queue)]
+    assert activities == ["Pesquisando na web"]
+    events = [(e["type"], e.get("kind"), e.get("content"), e.get("detail")) for e in drain(queue)]
+    assert events[0][:4] == ("agent_progress", "tool", "WebSearch", "notícias de IA")
     assert events == [
-        ("agent_progress", "tool", "WebSearch"),
-        ("agent_progress", "text", "Pensando"),
-        ("alfred_reply", None, None),
+        ("agent_progress", "tool", "WebSearch", "notícias de IA"),
+        ("agent_progress", "text", "Pensando", None),
+        ("alfred_reply", None, None, None),
     ]
 
 
@@ -270,3 +281,88 @@ def test_check_cli_fails_fast_when_claude_missing(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setenv("PATH", "")
     with pytest.raises(DependencyError, match="claude"):
         check_cli()
+
+
+def test_main_agent_never_gets_exec_or_file_tools() -> None:
+    """ADR 0003: whoever reads external content must not execute or write."""
+    exec_tools = {"Bash", "Edit", "Write", "NotebookEdit", "MultiEdit"}
+    assert not exec_tools & set(permissions.BUILTIN_TOOLS)
+    assert not exec_tools & set(permissions.ALLOWED)
+
+
+def test_no_write_tool_is_both_allowed_and_hidden() -> None:
+    assert not set(permissions.ALLOWED) & set(permissions.HIDDEN)
+
+
+@pytest.mark.parametrize(
+    ("tool_input", "expected"),
+    [
+        ({"query": "previsão do tempo"}, "previsão do tempo"),
+        ({"url": "https://www.linkedin.com/feed/"}, "www.linkedin.com"),
+        ({"selector": "#x"}, None),
+        ({"query": ""}, None),
+    ],
+)
+def test_tool_detail(tool_input: dict[str, Any], expected: str | None) -> None:
+    assert tool_detail(tool_input) == expected
+
+
+@pytest.mark.parametrize(
+    ("url", "denied"),
+    [
+        ("https://www.linkedin.com", False),
+        ("HTTP://example.com", False),
+        ("file:///home/naves/Projetos/", True),
+        (" file:///etc/passwd", True),
+        ("chrome://settings", True),
+        ("javascript:alert(1)", True),
+    ],
+)
+async def test_block_local_urls(url: str, denied: bool) -> None:
+    out = await permissions.block_local_urls(
+        {"tool_name": "navigate_page", "tool_input": {"url": url}}, None, {"signal": None}
+    )
+    assert ("'deny'" in repr(out)) is denied
+
+
+async def test_block_local_urls_ignores_tools_without_url() -> None:
+    assert (
+        await permissions.block_local_urls({"tool_input": {"query": "x"}}, None, {"signal": None})
+        == {}
+    )
+
+
+def test_options_install_the_url_hook() -> None:
+    import claude_agent_sdk as sdk
+
+    from infra.claude.alfred import AlfredAgent
+
+    options = AlfredAgent(None, None, "sonnet", 1)._options(None)  # type: ignore[arg-type]
+    [matcher] = options.hooks["PreToolUse"]  # type: ignore[index]
+    assert isinstance(matcher, sdk.HookMatcher) and matcher.matcher is None
+    assert matcher.hooks == [permissions.block_local_urls]
+
+
+async def test_delegar_tool_forwards_the_task_and_returns_the_message() -> None:
+    from infra.claude.tools import delegar_tool
+
+    tasks: list[str] = []
+
+    def delegate(task: str) -> str:
+        tasks.append(task)
+        return "enviado"
+
+    response = await delegar_tool(delegate).handler({"tarefa": "gira a tela"})
+
+    assert tasks == ["gira a tela"]
+    assert response["content"][0]["text"] == "enviado"
+    assert "mcp__alfred__delegar" in permissions.ALLOWED
+
+
+def test_agent_exposes_tools_server_as_alfred() -> None:
+    from infra.claude.tools import alfred_tools
+
+    server = alfred_tools(lambda task: "ok")
+    options = AlfredAgent(None, None, "sonnet", 1, tools=server)._options(None)  # type: ignore[arg-type]
+    assert options.mcp_servers == {"alfred": server}
+    assert "delegar" in str(options.system_prompt)

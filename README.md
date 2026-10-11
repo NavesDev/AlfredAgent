@@ -61,14 +61,16 @@ Detalhes em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#estrutura-de-pastas).
 ```bash
 sudo apt install libportaudio2
 git clone <repo> alfred && cd alfred
-make setup        # instala dependências (uv sync)
+make setup        # instala dependências (uv sync + pnpm install)
 cp server/config.example.yaml server/config.yaml
-make dev          # sobe voz + agente + API
+make dev          # sobe voz + agente + API + painel (Vite)
 ```
 
 A primeira execução baixa os modelos (Whisper ~1,6 GB, Kokoro ~330 MB). Diga **"Alfred"**, espere um instante e faça a pergunta. Se não acordar bem, `wakeword.model: hey_jarvis` no `config.yaml` volta ao modelo pronto.
 
-Eventos em tempo real (estado da voz, nível de áudio, progresso do agente):
+Painel em http://localhost:5173: um orbe 3D que reage ao estado (ouvindo, transcrevendo, pensando, falando) e ao volume do microfone/voz. O botão **Transcrição** (ou tecla `T`) abre o histórico com o que foi ouvido, as tools usadas, o que foi falado, a resposta completa e os tempos (STT, 1ª fala, resposta); **Copiar** exporta em Markdown para avaliar. **Demo** simula uma conversa sem o servidor.
+
+Eventos crus em tempo real (estado da voz, nível de áudio, progresso do agente):
 
 ```bash
 websocat ws://localhost:8000/ws

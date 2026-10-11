@@ -41,10 +41,12 @@ class Listener:
         on_transcript: Callable[[str], None],
         muted: Callable[[], bool],
         chime: Callable[[str], None] = lambda _: None,
+        acknowledge: Callable[[], None] | None = None,
     ) -> None:
         self._bus, self._config, self._threshold = bus, config, threshold
         self._wake, self._is_speech, self._transcribe = wake, is_speech, transcribe
         self._on_transcript, self._muted, self._chime = on_transcript, muted, chime
+        self._acknowledge = acknowledge or (lambda: chime("end"))
         self._max_samples = config.max_record_s * config.sample_rate
         self._recording: list[np.ndarray] | None = None
 
@@ -88,7 +90,10 @@ class Listener:
     def _finish(self) -> None:
         audio = np.concatenate(self._recording or [])[: self._max_samples]
         self._recording = None
-        self._chime("end")
+        if self._heard:
+            self._acknowledge()  # answer right away, before Whisper's seconds
+        else:
+            self._chime("end")
         self._bus.publish("voice_state", state="transcribing")
         text = self._transcribe(audio).strip()
         if not text:

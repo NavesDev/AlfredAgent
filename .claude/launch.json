@@ -1,0 +1,30 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--dir",
+        "apps/web",
+        "dev",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
+      "port": 5173
+    },
+    {
+      "name": "server",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "--directory",
+        "server",
+        "run",
+        "python",
+        "main.py"
+      ],
+      "port": 8000
+    }
+  ]
+}

@@ -11,13 +11,16 @@ import uvicorn
 from api.app import create_app
 from config import Config, load_config
 from controllers.router import Router
+from controllers.sessions import Sessions
 from errors import ConfigError, DependencyError
 from events import EventBus
 from infra.audio import check_audio
 from infra.audio.listener import Listener, OpenWakeWord, load_vad, load_whisper
 from infra.audio.talker import Talker, load_kokoro, open_speaker
 from infra.claude.alfred import AlfredAgent, check_cli
+from infra.claude.session import CodingSession
 from infra.claude.state import DailyState
+from infra.claude.tools import alfred_tools
 
 log = logging.getLogger("alfred")
 
@@ -29,12 +32,27 @@ async def serve(config: Config) -> None:
     bus = EventBus(loop)
 
     log.info("loading models…")
-    talker = Talker(bus, load_kokoro(config.kokoro), open_speaker())
+    talker = Talker(
+        bus,
+        load_kokoro(config.kokoro),
+        open_speaker(),
+        acknowledgements=config.kokoro.acknowledgements,
+    )
+    system = CodingSession(
+        bus,
+        "sistema",
+        cwd=Path.home(),
+        model=config.agents.default_model,
+        timeout_s=config.agents.session_timeout_s,
+    )
+    await system.start()
+    sessions = Sessions(bus, talker, system)
     agent = AlfredAgent(
         bus,
         DailyState(config.storage.state_path),
         model=config.agents.default_model,
         timeout_s=config.agents.timeout_s,
+        tools=alfred_tools(sessions.delegate),
     )
     await agent.start()
     router = Router(bus, agent, talker)
@@ -50,8 +68,10 @@ async def serve(config: Config) -> None:
         ).result(),
         muted=lambda: talker.is_speaking,
         chime=talker.chime,
+        acknowledge=talker.acknowledge,
     )
 
+    workers = asyncio.create_task(sessions.run())
     stop = threading.Event()
     for worker in (listener.run, talker.run):
         threading.Thread(target=worker, args=(stop,), daemon=True).start()
@@ -62,12 +82,13 @@ async def serve(config: Config) -> None:
         uvicorn.Config(app, config.api.host, config.api.port, log_level="warning")
     )
     log.info(
-        "ready on ws://%s:%d/ws, say %r", config.api.host, config.api.port, config.wakeword.model
+        "ready on ws://%s:%d/ws, say %r", config.api.host, config.api.port, config.wakeword.name
     )
     try:
         await server.serve()
     finally:
         stop.set()
+        workers.cancel()
 
 
 def main(config_path: Path = Path("config.yaml")) -> int:

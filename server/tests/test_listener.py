@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Callable
 
 import numpy as np
 import pytest
@@ -10,7 +11,7 @@ from infra.audio.listener import FRAME, Listener, load_vad
 from tests.conftest import drain
 
 WAKE, SPEECH, SILENCE = (np.full(FRAME, v, dtype=np.int16) for v in (2, 1, 0))
-SILENCE_FRAMES = 10  # 800 ms / 80 ms
+SILENCE_FRAMES = 15  # 1200 ms / 80 ms
 chimes: list[str] = []
 
 
@@ -25,7 +26,12 @@ class FakeWake:
         self.resets += 1
 
 
-def make(bus: EventBus, text: str | Exception = "oi alfred", muted: bool = False):  # type: ignore[no-untyped-def]
+def make(  # type: ignore[no-untyped-def]
+    bus: EventBus,
+    text: str | Exception = "oi alfred",
+    muted: bool = False,
+    acknowledge: Callable[[], None] | None = None,
+):
     heard: list[str] = []
     chimes.clear()
     recorded: list[np.ndarray] = []
@@ -46,6 +52,7 @@ def make(bus: EventBus, text: str | Exception = "oi alfred", muted: bool = False
         on_transcript=heard.append,
         muted=lambda: muted,
         chime=chimes.append,
+        acknowledge=acknowledge,
     )
     return listener, heard, recorded
 
@@ -79,6 +86,24 @@ async def test_chimes_on_wake_word_and_when_recording_stops(bus: EventBus) -> No
     assert chimes == ["start"]
     feed(listener, SPEECH, *[SILENCE] * SILENCE_FRAMES)
     assert chimes == ["start", "end"]
+
+
+async def test_acknowledges_instead_of_end_chime_when_speech_was_heard(bus: EventBus) -> None:
+    acks: list[str] = []
+    listener, heard, _ = make(bus, acknowledge=lambda: acks.append("ack"))
+
+    feed(listener, WAKE, SPEECH, *[SILENCE] * SILENCE_FRAMES)
+
+    assert acks == ["ack"] and chimes == ["start"] and heard == ["oi alfred"]
+
+
+async def test_only_chimes_when_recording_ends_without_speech(bus: EventBus) -> None:
+    acks: list[str] = []
+    listener, _, _ = make(bus, acknowledge=lambda: acks.append("ack"))
+
+    feed(listener, WAKE, *[SILENCE] * 200)  # hits max duration
+
+    assert acks == [] and chimes == ["start", "end"]
 
 
 async def test_publishes_transcript_event(bus: EventBus) -> None:
