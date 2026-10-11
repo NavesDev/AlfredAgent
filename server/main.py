@@ -29,7 +29,12 @@ async def serve(config: Config) -> None:
     bus = EventBus(loop)
 
     log.info("loading models…")
-    talker = Talker(bus, load_kokoro(config.kokoro), open_speaker())
+    talker = Talker(
+        bus,
+        load_kokoro(config.kokoro),
+        open_speaker(),
+        acknowledgements=config.kokoro.acknowledgements,
+    )
     agent = AlfredAgent(
         bus,
         DailyState(config.storage.state_path),
@@ -50,6 +55,7 @@ async def serve(config: Config) -> None:
         ).result(),
         muted=lambda: talker.is_speaking,
         chime=talker.chime,
+        acknowledge=talker.acknowledge,
     )
 
     stop = threading.Event()

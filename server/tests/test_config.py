@@ -13,6 +13,8 @@ def test_loads_example_config() -> None:
 
     assert config.whisper.model == "large-v3-turbo"
     assert config.wakeword.model == "wakeword/alfred.onnx"
+    assert config.wakeword.name == "Alfred"
+    assert config.kokoro.acknowledgements[0] == "Certo."
     assert config.listener.silence_ms == 800
     assert config.agents.timeout_s == 60
 

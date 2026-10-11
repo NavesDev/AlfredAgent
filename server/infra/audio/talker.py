@@ -2,8 +2,9 @@
 
 import logging
 import queue
+import random
 import threading
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 
 import numpy as np
 
@@ -26,11 +27,15 @@ class Talker:
         synthesize: Callable[[str], Iterator[np.ndarray]],
         play: Callable[[np.ndarray], None],
         sample_rate: int = KOKORO_RATE,
+        acknowledgements: Sequence[str] = (),
     ) -> None:
         self._bus, self._synthesize, self._play = bus, synthesize, play
         self._block = sample_rate // LEVELS_PER_S
         self._chimes = {kind: _sweep(*hz, sample_rate) for kind, hz in CHIMES.items()}
-        self._queue: queue.Queue[str] = queue.Queue()
+        # Synthesized once at startup so they play with no delay.
+        self._acks = [np.concatenate(list(synthesize(text))) for text in acknowledgements]
+        self._last_ack = -1
+        self._queue: queue.Queue[str | np.ndarray] = queue.Queue()
 
     @property
     def is_speaking(self) -> bool:
@@ -38,6 +43,16 @@ class Talker:
 
     def say(self, text: str) -> None:
         self._queue.put(text)
+
+    def acknowledge(self) -> None:
+        """Queue a short ready-made reply ("Certo.") so the user hears something while STT and
+        Claude work. Falls back to the end chime when none are configured."""
+        if not self._acks:
+            self.chime("end")
+            return
+        choices = [i for i in range(len(self._acks)) if i != self._last_ack] or [0]
+        self._last_ack = random.choice(choices)
+        self._queue.put(self._acks[self._last_ack])
 
     def chime(self, kind: str) -> None:
         """Short cue played right away, outside the speech queue and voice states."""
@@ -49,11 +64,17 @@ class Talker:
 
     def process_one(self, timeout: float | None = None) -> None:
         try:
-            text = self._queue.get(timeout=timeout)
+            item = self._queue.get(timeout=timeout)
         except queue.Empty:
             return
+        if not isinstance(item, str):  # acknowledgement: plays outside voice states
+            try:
+                self._play(item)
+            finally:
+                self._queue.task_done()
+            return
         try:
-            self._speak(text)
+            self._speak(item)
         except AudioError as e:
             self._bus.publish("error", where="talker", message=str(e))
         except Exception as e:
