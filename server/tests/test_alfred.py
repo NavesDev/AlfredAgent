@@ -18,7 +18,7 @@ from claude_agent_sdk import (
 from errors import AgentError, DependencyError
 from events import EventBus
 from infra.claude import permissions
-from infra.claude.alfred import AlfredAgent, check_cli
+from infra.claude.alfred import AlfredAgent, check_cli, tool_detail
 from infra.claude.state import DailyState
 from tests.conftest import drain
 
@@ -226,7 +226,10 @@ async def test_saves_session_id_after_reply(bus: EventBus, tmp_path: Path) -> No
 async def test_streams_progress_and_publishes_reply(bus: EventBus, tmp_path: Path) -> None:
     queue = bus.subscribe()
     stream = AssistantMessage(
-        content=[ToolUseBlock(id="t", name="WebSearch", input={}), TextBlock(text="Pensando")],
+        content=[
+            ToolUseBlock(id="t", name="WebSearch", input={"query": "notícias de IA"}),
+            TextBlock(text="Pensando"),
+        ],
         model="sonnet",
     )
     alfred = await started(bus, tmp_path, FakeConnect([stream, result()]))
@@ -234,11 +237,11 @@ async def test_streams_progress_and_publishes_reply(bus: EventBus, tmp_path: Pat
     await spoken_for(alfred)
     await asyncio.sleep(0)
 
-    events = [(e["type"], e.get("kind"), e.get("content")) for e in drain(queue)]
+    events = [(e["type"], e.get("kind"), e.get("content"), e.get("detail")) for e in drain(queue)]
     assert events == [
-        ("agent_progress", "tool", "WebSearch"),
-        ("agent_progress", "text", "Pensando"),
-        ("alfred_reply", None, None),
+        ("agent_progress", "tool", "WebSearch", "notícias de IA"),
+        ("agent_progress", "text", "Pensando", None),
+        ("alfred_reply", None, None, None),
     ]
 
 
@@ -286,3 +289,16 @@ def test_main_agent_never_gets_exec_or_file_tools() -> None:
 
 def test_no_write_tool_is_both_allowed_and_hidden() -> None:
     assert not set(permissions.ALLOWED) & set(permissions.HIDDEN)
+
+
+@pytest.mark.parametrize(
+    ("tool_input", "expected"),
+    [
+        ({"query": "previsão do tempo"}, "previsão do tempo"),
+        ({"url": "https://www.linkedin.com/feed/"}, "www.linkedin.com"),
+        ({"selector": "#x"}, None),
+        ({"query": ""}, None),
+    ],
+)
+def test_tool_detail(tool_input: dict[str, Any], expected: str | None) -> None:
+    assert tool_detail(tool_input) == expected

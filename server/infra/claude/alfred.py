@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Protocol
+from urllib.parse import urlsplit
 
 import claude_agent_sdk as sdk
 
@@ -144,12 +145,26 @@ class AlfredAgent:
     def _publish_progress(self, message: sdk.AssistantMessage) -> None:
         for block in message.content:
             if isinstance(block, sdk.TextBlock):
-                kind, content = "text", block.text
+                self._bus.publish(
+                    "agent_progress", session="alfred", kind="text", content=block.text
+                )
             elif isinstance(block, sdk.ToolUseBlock):
-                kind, content = "tool", block.name
-            else:
-                continue
-            self._bus.publish("agent_progress", session="alfred", kind=kind, content=content)
+                self._bus.publish(
+                    "agent_progress",
+                    session="alfred",
+                    kind="tool",
+                    content=block.name,
+                    detail=tool_detail(block.input),
+                )
+
+
+def tool_detail(tool_input: dict[str, Any]) -> str | None:
+    """Short human hint for the panel: the search query or the site being opened."""
+    if isinstance(query := tool_input.get("query"), str) and query:
+        return query[:80]
+    if isinstance(url := tool_input.get("url"), str) and url:
+        return urlsplit(url).hostname or url[:80]
+    return None
 
 
 def _text_delta(event: dict[str, Any]) -> str:
