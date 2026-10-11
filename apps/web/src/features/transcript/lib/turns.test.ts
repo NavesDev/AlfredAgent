@@ -24,6 +24,7 @@ describe('reduceTranscript', () => {
     ])
     expect(turns).toHaveLength(1)
     expect(turns[0]).toMatchObject({
+      session: 'alfred',
       userText: 'que horas são',
       sttS: 0.5,
       firstSpeechS: 1.5,
@@ -49,6 +50,23 @@ describe('reduceTranscript', () => {
       { type: 'alfred_reply', session: 'alfred', text: 'x', summary: '', ts: 5 },
     ])
     expect(turns[0]).toMatchObject({ userText: null, reply: 'x', summary: null })
+  })
+
+  it('keeps a delegated session reply as its own turn even mid-turn', () => {
+    const { turns } = run([
+      { type: 'transcript', text: 'gira a tela', source: 'voice', ts: 1 },
+      { type: 'agent_progress', session: 'sistema', kind: 'tool', content: 'Bash', ts: 2 },
+      {
+        type: 'alfred_reply',
+        session: 'sistema',
+        text: 'RESUMO: Feito.',
+        summary: 'Feito.',
+        ts: 3,
+      },
+    ])
+    expect(turns).toHaveLength(2)
+    expect(turns[0]).toMatchObject({ reply: null, steps: [] })
+    expect(turns[1]).toMatchObject({ session: 'sistema', summary: 'Feito.', userText: null })
   })
 })
 

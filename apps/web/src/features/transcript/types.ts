@@ -13,6 +13,8 @@ export type Turn = {
   firstSpeechS: number | null
   /** Transcript → full reply (seconds). */
   replyS: number | null
+  /** Who answered: "alfred" or a delegated session such as "sistema". */
+  session: string | null
   summary: string | null
   reply: string | null
   error: string | null

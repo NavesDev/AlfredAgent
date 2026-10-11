@@ -1,6 +1,10 @@
 // Turns raw tool names from agent_progress into what Alfred is doing, in pt-BR.
 
 const RULES: [RegExp, string][] = [
+  [/^mcp__alfred__delegar$/, 'Mandando para a sessão sistema'],
+  [/^Bash$/, 'Executando um comando'],
+  [/^(Read|Glob|Grep)$/, 'Lendo arquivos'],
+  [/^(Edit|Write)$/, 'Editando arquivos'],
   [/^WebSearch$/, 'Pesquisando na web'],
   [/^WebFetch$/, 'Lendo uma página'],
   [/Gmail__(search_threads|list_)/, 'Analisando seus e-mails'],

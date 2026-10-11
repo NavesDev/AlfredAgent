@@ -31,6 +31,7 @@ const blank = (ts: number): Omit<Turn, 'id'> => ({
   steps: [],
   firstSpeechS: null,
   replyS: null,
+  session: null,
   summary: null,
   reply: null,
   error: null,
@@ -56,6 +57,7 @@ export function reduceTranscript(state: TranscriptState, event: AlfredEvent): Tr
         },
       )
     case 'agent_progress':
+      if (event.session !== 'alfred') return state // delegated work shows up live, not here
       return updateLast(state, (t) => ({
         steps: [
           ...t.steps,
@@ -63,8 +65,9 @@ export function reduceTranscript(state: TranscriptState, event: AlfredEvent): Tr
         ],
       }))
     case 'alfred_reply': {
-      const reply = { reply: event.text, summary: event.summary || null }
-      if (!isOpen(state.turns.at(-1))) return push(state, { ...blank(event.ts), ...reply })
+      const reply = { reply: event.text, summary: event.summary || null, session: event.session }
+      if (event.session !== 'alfred' || !isOpen(state.turns.at(-1)))
+        return push(state, { ...blank(event.ts), ...reply })
       return updateLast(state, (t) => ({ ...reply, replyS: round(event.ts - t.heardAt) }))
     }
     case 'error': {
@@ -77,6 +80,9 @@ export function reduceTranscript(state: TranscriptState, event: AlfredEvent): Tr
   }
 }
 
+export const speaker = (session: string | null) =>
+  !session || session === 'alfred' ? 'Alfred' : `Alfred · ${session}`
+
 const seconds = (s: number | null) => (s === null ? '–' : `${s.toFixed(2)}s`)
 
 /** Plain-text export for pasting into notes or an issue. */
@@ -88,7 +94,7 @@ export function toMarkdown(turns: Turn[]): string {
       if (t.userText) lines.push(`**Você (${t.source}):** ${t.userText}`)
       for (const step of t.steps.filter((s) => s.kind === 'tool'))
         lines.push(`- ${describeTool(step.content, step.detail)} (${step.content})`)
-      if (t.summary) lines.push(`**Alfred (falado):** ${t.summary}`)
+      if (t.summary) lines.push(`**${speaker(t.session)} (falado):** ${t.summary}`)
       if (t.reply) lines.push('', t.reply)
       if (t.error) lines.push(`**Erro:** ${t.error}`)
       lines.push(

@@ -1,4 +1,5 @@
 import { describeTool } from '../../../lib/tools'
+import { speaker } from '../lib/turns'
 import type { Turn } from '../types'
 
 const time = (ts: number) =>
@@ -56,7 +57,9 @@ export function TurnCard({ turn }: { turn: Turn }) {
 
       {turn.summary && (
         <p className="text-sm text-gray-100">
-          <span className="mr-1.5 text-xs font-medium text-emerald-300">Alfred</span>
+          <span className="mr-1.5 text-xs font-medium text-emerald-300">
+            {speaker(turn.session)}
+          </span>
           {turn.summary}
         </p>
       )}

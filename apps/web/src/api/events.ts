@@ -19,6 +19,7 @@ export type AlfredEvent = Base &
         detail?: string | null
       }
     | { type: 'error'; where: string; message: string }
+    | { type: 'session_status'; session: string; status: 'busy' | 'idle' }
   )
 
 export type EventOf<T extends AlfredEvent['type']> = Extract<AlfredEvent, { type: T }>
