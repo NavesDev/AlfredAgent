@@ -62,7 +62,7 @@ async def serve(config: Config) -> None:
         uvicorn.Config(app, config.api.host, config.api.port, log_level="warning")
     )
     log.info(
-        "ready on ws://%s:%d/ws, say %r", config.api.host, config.api.port, config.wakeword.model
+        "ready on ws://%s:%d/ws, say %r", config.api.host, config.api.port, config.wakeword.name
     )
     try:
         await server.serve()
