@@ -39,6 +39,10 @@ class Agents(BaseModel):
     session_timeout_s: int = 300
 
 
+class Limits(BaseModel):
+    max_active_sessions: int = 3
+
+
 class Api(BaseModel):
     host: str = "0.0.0.0"
     port: int = 8000
@@ -54,6 +58,7 @@ class Config(BaseModel):
     wakeword: Wakeword
     listener: Listener = Listener()
     agents: Agents
+    limits: Limits = Limits()
     api: Api = Api()
     storage: Storage
 

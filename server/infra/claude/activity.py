@@ -5,7 +5,11 @@ import re
 _RULES: list[tuple[re.Pattern[str], str]] = [
     (re.compile(p), label)
     for p, label in [
-        (r"^mcp__alfred__delegar$", "Mandando para a sessão sistema"),
+        (r"^mcp__alfred__delegar_", "Mandando para uma sessão"),
+        (r"^mcp__alfred__criar_sessao$", "Criando uma sessão"),
+        (r"^mcp__alfred__limpar_sessao$", "Limpando uma sessão"),
+        (r"^mcp__alfred__apagar_sessao$", "Apagando uma sessão"),
+        (r"^mcp__alfred__listar_sessoes$", "Vendo as sessões"),
         (r"^Bash$", "Executando um comando"),
         (r"^(Read|Glob|Grep)$", "Lendo arquivos"),
         (r"^(Edit|Write)$", "Editando arquivos"),

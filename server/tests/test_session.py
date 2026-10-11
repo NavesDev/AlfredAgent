@@ -6,13 +6,16 @@ from claude_agent_sdk import AssistantMessage, ProcessError, ToolUseBlock
 
 from errors import AgentError
 from events import EventBus
+from infra.claude.agents import KINDS
 from infra.claude.session import CodingSession
 from tests.conftest import drain
 from tests.test_alfred import FakeConnect, result
 
 
 def session(bus: EventBus, connect: FakeConnect, timeout_s: float = 1) -> CodingSession:
-    return CodingSession(bus, "sistema", Path("/home/u"), "sonnet", timeout_s, connect=connect)
+    return CodingSession(
+        bus, "sistema", KINDS["geral"], Path("/home/u"), "sonnet", timeout_s, connect=connect
+    )
 
 
 async def test_options_give_shell_and_files_but_no_mail_or_web(bus: EventBus) -> None:
@@ -24,7 +27,8 @@ async def test_options_give_shell_and_files_but_no_mail_or_web(bus: EventBus) ->
     assert options.strict_mcp_config and options.mcp_servers == {}
     assert options.setting_sources == []
     assert options.cwd == Path("/home/u")
-    assert "RESUMO:" in str(options.system_prompt)
+    assert options.system_prompt == KINDS["geral"].prompt("sistema", Path("/home/u"))
+    assert options.tools == KINDS["geral"].tools
 
 
 async def test_run_publishes_progress_and_reply_with_summary(bus: EventBus) -> None:
@@ -63,3 +67,23 @@ async def test_timeout_raises_agent_error(bus: EventBus) -> None:
 
     with pytest.raises(AgentError, match="timeout"):
         await s.run("a")
+
+
+async def test_clear_forgets_the_conversation(bus: EventBus) -> None:
+    connect = FakeConnect([result("RESUMO: a")], [result("RESUMO: b")])
+    s = session(bus, connect)
+    await s.run("a")
+
+    await s.clear()
+
+    assert connect.clients[0].closed
+    assert (await s.run("b")).summary == "b"
+    assert len(connect.clients) == 2
+
+
+async def test_reply_carries_the_tokens_of_the_turn(bus: EventBus) -> None:
+    done = result("RESUMO: ok")
+    done.usage = {"input_tokens": 1200, "output_tokens": 300, "cache_read_input_tokens": 9}
+    s = session(bus, FakeConnect([done]))
+
+    assert (await s.run("a")).tokens == 1500

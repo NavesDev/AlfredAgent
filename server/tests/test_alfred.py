@@ -343,26 +343,11 @@ def test_options_install_the_url_hook() -> None:
     assert matcher.hooks == [permissions.block_local_urls]
 
 
-async def test_delegar_tool_forwards_the_task_and_returns_the_message() -> None:
-    from infra.claude.tools import delegar_tool
-
-    tasks: list[str] = []
-
-    def delegate(task: str) -> str:
-        tasks.append(task)
-        return "enviado"
-
-    response = await delegar_tool(delegate).handler({"tarefa": "gira a tela"})
-
-    assert tasks == ["gira a tela"]
-    assert response["content"][0]["text"] == "enviado"
-    assert "mcp__alfred__delegar" in permissions.ALLOWED
-
-
 def test_agent_exposes_tools_server_as_alfred() -> None:
     from infra.claude.tools import alfred_tools
 
-    server = alfred_tools(lambda task: "ok")
+    server = alfred_tools(None)  # type: ignore[arg-type]
     options = AlfredAgent(None, None, "sonnet", 1, tools=server)._options(None)  # type: ignore[arg-type]
     assert options.mcp_servers == {"alfred": server}
-    assert "delegar" in str(options.system_prompt)
+    assert "delegar_geral" in str(options.system_prompt)
+    assert "apagar_sessao" in str(options.system_prompt)

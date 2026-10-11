@@ -10,7 +10,7 @@ from infra.claude.alfred import Reply
 
 FAILURE_MESSAGE = "Não consegui falar com o Claude agora."
 NARRATE_EVERY_S = 3.0
-SILENT_ACTIVITIES = {"Mandando para a sessão sistema"}  # Alfred says it himself right after
+SILENT_ACTIVITIES = {"Mandando para uma sessão"}  # Alfred says it himself right after
 
 
 class Agent(Protocol):

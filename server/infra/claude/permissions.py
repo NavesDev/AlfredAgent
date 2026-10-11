@@ -11,6 +11,8 @@ from urllib.parse import urlsplit
 
 from claude_agent_sdk import HookContext, HookJSONOutput
 
+from infra.claude.agents import KINDS
+
 GMAIL = "mcp__claude_ai_Gmail__"
 CALENDAR = "mcp__claude_ai_Google_Calendar__"
 BROWSER = "mcp__plugin_chrome-devtools-mcp_chrome-devtools"
@@ -35,7 +37,16 @@ ALLOWED = [
         for name in ("list_calendars", "list_events", "get_event", "search_events", "suggest_time")
     ),
     BROWSER,
-    "mcp__alfred__delegar",
+    *(
+        f"mcp__alfred__{name}"
+        for name in (
+            *(f"delegar_{kind}" for kind in KINDS),
+            "criar_sessao",
+            "limpar_sessao",
+            "apagar_sessao",
+            "listar_sessoes",
+        )
+    ),
 ]
 
 HIDDEN = [
