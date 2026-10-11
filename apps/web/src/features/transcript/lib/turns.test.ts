@@ -11,7 +11,14 @@ describe('reduceTranscript', () => {
       { type: 'voice_state', state: 'transcribing', ts: 13 },
       { type: 'transcript', text: 'que horas são', source: 'voice', ts: 13.5 },
       { type: 'voice_state', state: 'thinking', ts: 13.5 },
-      { type: 'agent_progress', session: 'alfred', kind: 'tool', content: 'WebSearch', ts: 14 },
+      {
+        type: 'agent_progress',
+        session: 'alfred',
+        kind: 'tool',
+        content: 'WebSearch',
+        label: 'Pesquisando na web',
+        ts: 14,
+      },
       { type: 'voice_state', state: 'speaking', ts: 15 },
       {
         type: 'alfred_reply',
@@ -30,7 +37,7 @@ describe('reduceTranscript', () => {
       firstSpeechS: 1.5,
       replyS: 2.5,
       summary: 'São 10h.',
-      steps: [{ kind: 'tool', content: 'WebSearch' }],
+      steps: [{ kind: 'tool', content: 'WebSearch', label: 'Pesquisando na web' }],
     })
   })
 

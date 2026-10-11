@@ -3,6 +3,21 @@
 @theme {
   --font-sans: ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'JetBrains Mono', 'SFMono-Regular', monospace;
+  --animate-activity-in: activity-in 450ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  @keyframes activity-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+      filter: blur(4px);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-activity-in {
+    animation: none;
+  }
 }
 
 html,

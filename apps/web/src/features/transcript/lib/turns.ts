@@ -1,5 +1,4 @@
 import type { AlfredEvent } from '../../../api/events'
-import { describeTool } from '../../../lib/tools'
 import type { TranscriptState, Turn } from '../types'
 
 const MAX_TURNS = 200
@@ -61,7 +60,13 @@ export function reduceTranscript(state: TranscriptState, event: AlfredEvent): Tr
       return updateLast(state, (t) => ({
         steps: [
           ...t.steps,
-          { ts: event.ts, kind: event.kind, content: event.content, detail: event.detail ?? null },
+          {
+            ts: event.ts,
+            kind: event.kind,
+            content: event.content,
+            label: event.label ?? event.content,
+            detail: event.detail ?? null,
+          },
         ],
       }))
     case 'alfred_reply': {
@@ -80,6 +85,9 @@ export function reduceTranscript(state: TranscriptState, event: AlfredEvent): Tr
   }
 }
 
+export const describe = (label: string, detail: string | null) =>
+  detail ? `${label}: ${detail}` : label
+
 export const speaker = (session: string | null) =>
   !session || session === 'alfred' ? 'Alfred' : `Alfred · ${session}`
 
@@ -93,7 +101,7 @@ export function toMarkdown(turns: Turn[]): string {
       const lines = [`### ${when}`]
       if (t.userText) lines.push(`**Você (${t.source}):** ${t.userText}`)
       for (const step of t.steps.filter((s) => s.kind === 'tool'))
-        lines.push(`- ${describeTool(step.content, step.detail)} (${step.content})`)
+        lines.push(`- ${describe(step.label, step.detail)} (${step.content})`)
       if (t.summary) lines.push(`**${speaker(t.session)} (falado):** ${t.summary}`)
       if (t.reply) lines.push('', t.reply)
       if (t.error) lines.push(`**Erro:** ${t.error}`)

@@ -15,7 +15,9 @@ export type AlfredEvent = Base &
         session: string
         kind: 'text' | 'tool'
         content: string
-        /** Search query or site host, tools only. */
+        /** What Alfred is doing, in pt-BR (tools only), e.g. "Analisando seus e-mails". */
+        label?: string
+        /** Search query, site host or command description, tools only. */
         detail?: string | null
       }
     | { type: 'error'; where: string; message: string }

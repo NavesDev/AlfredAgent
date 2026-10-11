@@ -12,8 +12,8 @@ export function ActivityList({ items }: { items: Activity[] }) {
         return (
           <li
             key={item.id}
-            className={`flex max-w-xl items-center gap-2 truncate transition-opacity duration-500 ${
-              latest ? 'text-amber-200' : 'text-gray-500 opacity-60'
+            className={`flex max-w-xl items-center gap-2 truncate transition-all duration-500 ${
+              latest ? 'animate-activity-in text-amber-200' : 'text-xs text-gray-500 opacity-60'
             }`}
           >
             {latest && (

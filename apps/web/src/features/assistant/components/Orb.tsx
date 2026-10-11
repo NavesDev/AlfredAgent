@@ -76,7 +76,10 @@ const LOOKS: Record<VoiceState, Look> = {
 /** Level events stop arriving between utterances; fade instead of freezing on the last value. */
 const LEVEL_TTL_MS = 250
 
-function Blob({ state, level }: { state: VoiceState; level: RefObject<Level> }) {
+type Props = { state: VoiceState; level: RefObject<Level>; pulse: number }
+
+function Blob({ state, level, pulse }: Props) {
+  const seenPulse = useRef(pulse)
   const mesh = useRef<THREE.Mesh>(null)
   const halo = useRef<THREE.Mesh>(null)
   const smooth = useRef({
@@ -88,6 +91,7 @@ function Blob({ state, level }: { state: VoiceState; level: RefObject<Level> }) 
     amp: 0.06,
     react: 0,
     detail: 1.4,
+    kick: 0,
   })
 
   const material = useRef<THREE.ShaderMaterial>(null)
@@ -120,14 +124,20 @@ function Blob({ state, level }: { state: VoiceState; level: RefObject<Level> }) 
     for (const key of ['speed', 'spin', 'scale', 'amp', 'react', 'detail'] as const) {
       s[key] += (look[key] - s[key]) * k
     }
-    s.time += delta * (s.speed + s.level * 1.5)
+    // Each new activity gives the orb a short swell.
+    if (seenPulse.current !== pulse) {
+      seenPulse.current = pulse
+      s.kick = 1
+    }
+    s.kick *= Math.exp(-delta * 2.5)
+    s.time += delta * (s.speed + s.level * 1.5 + s.kick * 1.2)
 
     const u = material.current?.uniforms
     if (u) {
       u.uTime.value = s.time
-      u.uAmp.value = s.amp + s.level * s.react
+      u.uAmp.value = s.amp + s.level * s.react + s.kick * 0.14
       u.uDetail.value = s.detail
-      u.uLevel.value = s.level * s.react // shared with the halo
+      u.uLevel.value = s.level * s.react + s.kick * 0.6 // shared with the halo
       u.uCore.value.lerp(new THREE.Color(look.core), k)
       u.uRim.value.lerp(new THREE.Color(look.rim), k)
     }
@@ -135,9 +145,10 @@ function Blob({ state, level }: { state: VoiceState; level: RefObject<Level> }) 
     if (mesh.current) {
       mesh.current.rotation.y += delta * s.spin
       mesh.current.rotation.x += delta * s.spin * 0.35
-      mesh.current.scale.setScalar(s.scale + s.level * s.react * 0.12)
+      mesh.current.scale.setScalar(s.scale + s.level * s.react * 0.12 + s.kick * 0.07)
     }
-    if (halo.current) halo.current.scale.setScalar(s.scale * 1.35 + s.level * s.react * 0.25)
+    if (halo.current)
+      halo.current.scale.setScalar(s.scale * 1.35 + s.level * s.react * 0.25 + s.kick * 0.2)
   })
 
   return (
@@ -167,6 +178,57 @@ function Blob({ state, level }: { state: VoiceState; level: RefObject<Level> }) 
   )
 }
 
+const RING_POINTS = 140
+const RING_OPACITY: Partial<Record<VoiceState, number>> = { thinking: 0.9, transcribing: 0.45 }
+
+/** Two tilted rings of particles orbiting the orb while it works. */
+function ThinkingRings({ state }: { state: VoiceState }) {
+  const group = useRef<THREE.Group>(null)
+  const fade = useRef(0)
+  const positions = useMemo(() => {
+    const out = new Float32Array(RING_POINTS * 3)
+    for (let i = 0; i < RING_POINTS; i++) {
+      const a = (i / RING_POINTS) * Math.PI * 2
+      const r = 1.5 + Math.sin(i * 12.9898) * 0.05
+      out.set([Math.cos(a) * r, Math.sin(i * 78.233) * 0.03, Math.sin(a) * r], i * 3)
+    }
+    return out
+  }, [])
+
+  useFrame((_, delta) => {
+    const g = group.current
+    if (!g) return
+    const k = 1 - Math.exp(-delta * 3)
+    fade.current += ((RING_OPACITY[state] ?? 0) - fade.current) * k
+    g.visible = fade.current > 0.01
+    g.children.forEach((ring, i) => {
+      ring.rotation.y += delta * (state === 'thinking' ? 1.4 : 0.6) * (i ? -0.7 : 1)
+      const m = (ring as THREE.Points).material as THREE.PointsMaterial
+      m.opacity = fade.current
+      m.color.lerp(new THREE.Color(LOOKS[state].rim), k)
+    })
+  })
+
+  return (
+    <group ref={group}>
+      {[0.45, -0.6].map((tilt) => (
+        <points key={tilt} rotation={[tilt + Math.PI / 2.4, 0, tilt]}>
+          <bufferGeometry>
+            <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+          </bufferGeometry>
+          <pointsMaterial
+            size={0.035}
+            transparent
+            opacity={0}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </points>
+      ))}
+    </group>
+  )
+}
+
 /** Keeps the whole orb in view when the canvas is taller than wide (phones, open transcript). */
 function FitCamera() {
   useFrame(({ camera, size }) => {
@@ -175,7 +237,7 @@ function FitCamera() {
   return null
 }
 
-export function Orb({ state, level }: { state: VoiceState; level: RefObject<Level> }) {
+export function Orb({ state, level, pulse }: Props) {
   return (
     <Canvas
       camera={{ position: [0, 0, 4.2], fov: 45 }}
@@ -183,7 +245,8 @@ export function Orb({ state, level }: { state: VoiceState; level: RefObject<Leve
       gl={{ antialias: true, alpha: true }}
     >
       <FitCamera />
-      <Blob state={state} level={level} />
+      <Blob state={state} level={level} pulse={pulse} />
+      <ThinkingRings state={state} />
     </Canvas>
   )
 }

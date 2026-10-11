@@ -1,4 +1,10 @@
-export type Step = { ts: number; kind: 'text' | 'tool'; content: string; detail: string | null }
+export type Step = {
+  ts: number
+  kind: 'text' | 'tool'
+  content: string
+  label: string
+  detail: string | null
+}
 
 /** One exchange: what was heard, what the agent did, what it answered, and the timings. */
 export type Turn = {

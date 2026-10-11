@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useEvents } from '../../../hooks/useEvents'
-import { describeTool } from '../../../lib/tools'
 
 export type Activity = { id: number; text: string }
 
@@ -11,7 +10,8 @@ export function useActivity(): Activity[] {
   const [items, setItems] = useState<Activity[]>([])
   useEvents((event) => {
     if (event.type === 'agent_progress' && event.kind === 'tool') {
-      const text = describeTool(event.content, event.detail)
+      const label = event.label ?? event.content
+      const text = event.detail ? `${label}: ${event.detail}` : label
       setItems((prev) =>
         prev.at(-1)?.text === text ? prev : [...prev, { id: event.ts, text }].slice(-KEEP),
       )

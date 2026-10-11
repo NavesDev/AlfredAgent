@@ -1,5 +1,4 @@
-import { describeTool } from '../../../lib/tools'
-import { speaker } from '../lib/turns'
+import { describe, speaker } from '../lib/turns'
 import type { Turn } from '../types'
 
 const time = (ts: number) =>
@@ -49,7 +48,7 @@ export function TurnCard({ turn }: { turn: Turn }) {
               key={i}
               className="rounded border border-amber-400/20 bg-amber-400/5 px-1.5 py-0.5 text-[11px] text-amber-200/80"
             >
-              <span title={step.content}>{describeTool(step.content, step.detail)}</span>
+              <span title={step.content}>{describe(step.label, step.detail)}</span>
             </li>
           ))}
         </ul>
