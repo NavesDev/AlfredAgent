@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useConnection } from '../../../hooks/useEvents'
 import { playDemo } from '../../../lib/demo'
 import { Assistant } from '../../assistant/components/Assistant'
+import { AgentStrip } from '../../sessions/components/AgentStrip'
 import { TranscriptPanel } from '../../transcript/components/TranscriptPanel'
 import { useTranscript } from '../../transcript/hooks/useTranscript'
 
@@ -81,8 +82,13 @@ export function DashboardPage() {
       </header>
 
       <main className="relative flex min-h-0 flex-1 flex-col md:flex-row">
-        <section className="min-h-0 flex-1">
-          <Assistant caption={caption} />
+        <section className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1">
+            <Assistant caption={caption} />
+          </div>
+          <div className="mx-auto w-full max-w-5xl">
+            <AgentStrip />
+          </div>
         </section>
         {showTranscript && (
           <div className="h-[45%] border-t border-white/10 md:h-auto md:w-[420px] md:border-t-0">
