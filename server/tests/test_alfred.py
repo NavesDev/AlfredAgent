@@ -233,11 +233,14 @@ async def test_streams_progress_and_publishes_reply(bus: EventBus, tmp_path: Pat
         model="sonnet",
     )
     alfred = await started(bus, tmp_path, FakeConnect([stream, result()]))
+    activities: list[str] = []
 
-    await spoken_for(alfred)
+    await alfred.ask("oi", lambda _: None, activities.append)
     await asyncio.sleep(0)
 
+    assert activities == ["Pesquisando na web"]
     events = [(e["type"], e.get("kind"), e.get("content"), e.get("detail")) for e in drain(queue)]
+    assert events[0][:4] == ("agent_progress", "tool", "WebSearch", "notícias de IA")
     assert events == [
         ("agent_progress", "tool", "WebSearch", "notícias de IA"),
         ("agent_progress", "text", "Pensando", None),

@@ -9,12 +9,16 @@ from tests.conftest import drain
 
 
 class FakeAgent:
-    def __init__(self, reply: Reply | Exception) -> None:
-        self.reply = reply
+    def __init__(self, reply: Reply | Exception, activities: list[str] | None = None) -> None:
+        self.reply, self.activities = reply, activities or []
         self.asked: list[str] = []
 
-    async def ask(self, text: str, on_summary: Callable[[str], None]) -> Reply:
+    async def ask(
+        self, text: str, on_summary: Callable[[str], None], on_activity: Callable[[str], None]
+    ) -> Reply:
         self.asked.append(text)
+        for label in self.activities:
+            on_activity(label)
         if isinstance(self.reply, Exception):
             raise self.reply
         if self.reply.summary:
@@ -23,11 +27,16 @@ class FakeAgent:
 
 
 class FakeTalker:
-    def __init__(self) -> None:
+    def __init__(self, speaking: bool = False) -> None:
         self.said: list[str] = []
+        self.resting: list[str] = []
+        self.is_speaking = speaking
 
     def say(self, text: str) -> None:
         self.said.append(text)
+
+    def set_resting(self, state: str) -> None:
+        self.resting.append(state)
 
 
 async def test_routes_text_to_alfred_and_speaks_summary(bus: EventBus) -> None:
@@ -68,3 +77,47 @@ async def test_empty_summary_goes_back_to_idle_silently(bus: EventBus) -> None:
 
     assert talker.said == []
     assert drain(queue)[-1]["state"] == "idle"
+
+
+class Clock:
+    def __init__(self, *times: float) -> None:
+        self.times = list(times)
+
+    def __call__(self) -> float:
+        return self.times.pop(0)
+
+
+async def test_narrates_activity_changes_at_most_every_three_seconds(bus: EventBus) -> None:
+    talker = FakeTalker()
+    agent = FakeAgent(
+        Reply("x", ""),
+        [
+            "Analisando seus e-mails",
+            "Analisando seus e-mails",
+            "Lendo um e-mail",
+            "Olhando a página",
+        ],
+    )
+
+    await Router(bus, agent, talker, clock=Clock(0, 1, 2, 5)).handle("oi")
+
+    assert talker.said == ["Analisando seus e-mails.", "Olhando a página."]
+
+
+async def test_does_not_narrate_over_speech_or_the_delegation(bus: EventBus) -> None:
+    talker = FakeTalker(speaking=True)
+    await Router(bus, FakeAgent(Reply("x", ""), ["Pesquisando na web"]), talker).handle("oi")
+    assert talker.said == []
+
+    talker = FakeTalker()
+    agent = FakeAgent(Reply("x", ""), ["Mandando para a sessão sistema"])
+    await Router(bus, agent, talker).handle("oi")
+    assert talker.said == []
+
+
+async def test_talker_rests_in_thinking_during_the_turn_then_idle(bus: EventBus) -> None:
+    talker = FakeTalker()
+
+    await Router(bus, FakeAgent(Reply("x", "y")), talker).handle("oi")
+
+    assert talker.resting == ["thinking", "idle"]

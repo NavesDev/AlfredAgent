@@ -36,6 +36,7 @@ class Talker:
         self._acks = [np.concatenate(list(synthesize(text))) for text in acknowledgements]
         self._last_ack = -1
         self._queue: queue.Queue[str | np.ndarray] = queue.Queue()
+        self._resting = "idle"
 
     @property
     def is_speaking(self) -> bool:
@@ -43,6 +44,10 @@ class Talker:
 
     def say(self, text: str) -> None:
         self._queue.put(text)
+
+    def set_resting(self, state: str) -> None:
+        """voice_state published when the queue empties: "thinking" while a turn is still on."""
+        self._resting = state
 
     def acknowledge(self) -> None:
         """Queue a short ready-made reply ("Certo.") so the user hears something while STT and
@@ -83,7 +88,7 @@ class Talker:
         finally:
             self._queue.task_done()
             if not self.is_speaking:
-                self._bus.publish("voice_state", state="idle")
+                self._bus.publish("voice_state", state=self._resting)
 
     def _speak(self, text: str) -> None:
         self._bus.publish("voice_state", state="speaking")

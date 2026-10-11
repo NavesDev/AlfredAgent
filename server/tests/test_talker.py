@@ -122,3 +122,16 @@ async def test_acknowledge_without_clips_falls_back_to_end_chime(bus: EventBus) 
     talker.acknowledge()
 
     assert len(played) == 1 and not talker.is_speaking
+
+
+async def test_rests_in_the_given_state_after_speaking(bus: EventBus) -> None:
+    queue = bus.subscribe()
+    talker, _ = make(bus)
+
+    talker.set_resting("thinking")
+    talker.say("Analisando seus e-mails.")
+    talker.process_one()
+    await asyncio.sleep(0)
+
+    states = [e["state"] for e in drain(queue) if e["type"] == "voice_state"]
+    assert states == ["speaking", "thinking"]

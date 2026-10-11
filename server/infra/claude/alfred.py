@@ -13,6 +13,7 @@ import claude_agent_sdk as sdk
 from errors import AgentError, DependencyError
 from events import EventBus
 from infra.claude import permissions
+from infra.claude.activity import describe_tool
 from infra.claude.state import DailyState
 from infra.claude.summary import extract_summary, parse_resumo
 
@@ -80,13 +81,18 @@ class AlfredAgent:
         except sdk.ClaudeSDKError as e:
             raise DependencyError(f"cannot start Claude: {e}") from e
 
-    async def ask(self, text: str, on_summary: Callable[[str], None]) -> Reply:
+    async def ask(
+        self,
+        text: str,
+        on_summary: Callable[[str], None],
+        on_activity: Callable[[str], None] = lambda _: None,
+    ) -> Reply:
         try:
             async with asyncio.timeout(self._timeout_s):
                 if self._client is None or self._day != self._today():
                     await self._open(resume=None)
                 assert self._client is not None
-                return await self._run(self._client, text, on_summary)
+                return await self._run(self._client, text, on_summary, on_activity)
         except (TimeoutError, sdk.ClaudeSDKError) as e:
             await self._close()  # next ask reconnects fresh
             reason = f"timeout after {self._timeout_s}s" if isinstance(e, TimeoutError) else e
@@ -124,7 +130,13 @@ class AlfredAgent:
             include_partial_messages=True,
         )
 
-    async def _run(self, client: Client, text: str, on_summary: Callable[[str], None]) -> Reply:
+    async def _run(
+        self,
+        client: Client,
+        text: str,
+        on_summary: Callable[[str], None],
+        on_activity: Callable[[str], None],
+    ) -> Reply:
         await client.query(text)
         streamed, spoken, result = "", None, None
         async for message in client.receive_response():  # drain: lets the turn finish cleanly
@@ -137,6 +149,9 @@ class AlfredAgent:
                         on_summary(spoken)
             elif isinstance(message, sdk.AssistantMessage):
                 publish_progress(self._bus, "alfred", message)
+                for block in message.content:
+                    if isinstance(block, sdk.ToolUseBlock):
+                        on_activity(describe_tool(block.name))
             elif isinstance(message, sdk.ResultMessage):
                 result = message
         if result is None:
@@ -161,6 +176,7 @@ def publish_progress(bus: EventBus, session: str, message: sdk.AssistantMessage)
                 session=session,
                 kind="tool",
                 content=block.name,
+                label=describe_tool(block.name),
                 detail=tool_detail(block.input),
             )
 
