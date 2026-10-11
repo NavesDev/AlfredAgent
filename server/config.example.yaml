@@ -28,6 +28,7 @@ agents:
   default_model: sonnet
   light_model: haiku         # simple questions + RESUMO fallback
   timeout_s: 60
+  session_timeout_s: 300     # tasks Alfred delegates to the "sistema" session
 
 limits:
   max_active_sessions: 3

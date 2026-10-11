@@ -36,6 +36,7 @@ class Listener(BaseModel):
 class Agents(BaseModel):
     default_model: str
     timeout_s: int = 60
+    session_timeout_s: int = 300
 
 
 class Api(BaseModel):

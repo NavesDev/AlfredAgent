@@ -35,6 +35,7 @@ ALLOWED = [
         for name in ("list_calendars", "list_events", "get_event", "search_events", "suggest_time")
     ),
     BROWSER,
+    "mcp__alfred__delegar",
 ]
 
 HIDDEN = [
