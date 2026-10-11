@@ -18,9 +18,11 @@ class Whisper(BaseModel):
 class Kokoro(BaseModel):
     voice: str
     speed: float = 1.0
+    acknowledgements: list[str] = []
 
 
 class Wakeword(BaseModel):
+    name: str = "Alfred"
     model: str
     threshold: float
 
