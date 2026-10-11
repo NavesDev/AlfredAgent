@@ -17,6 +17,7 @@ from claude_agent_sdk import (
 
 from errors import AgentError, DependencyError
 from events import EventBus
+from infra.claude import permissions
 from infra.claude.alfred import AlfredAgent, check_cli
 from infra.claude.state import DailyState
 from tests.conftest import drain
@@ -157,16 +158,20 @@ async def test_connects_once_and_reuses_client(bus: EventBus, tmp_path: Path) ->
     assert connect.clients[0].prompts == ["oi", "e aí?"]
 
 
-async def test_client_runs_without_tools_streams_and_asks_for_resumo_first(
+async def test_client_reads_only_streams_and_asks_for_resumo_first(
     bus: EventBus, tmp_path: Path
 ) -> None:
     connect = FakeConnect()
     await started(bus, tmp_path, connect)
 
     options = connect.options[0]
-    assert options.tools == []
+    assert options.tools == ["WebSearch", "WebFetch"]
+    assert options.permission_mode == "dontAsk"
+    assert "mcp__claude_ai_Gmail__search_threads" in options.allowed_tools
+    assert "mcp__claude_ai_Gmail__send_message" in options.disallowed_tools
     assert options.model == "sonnet"
     assert options.include_partial_messages
+    assert "NÃO envia" in str(options.system_prompt)
     assert "Comece" in str(options.system_prompt) and "RESUMO:" in str(options.system_prompt)
 
 
@@ -270,3 +275,14 @@ def test_check_cli_fails_fast_when_claude_missing(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setenv("PATH", "")
     with pytest.raises(DependencyError, match="claude"):
         check_cli()
+
+
+def test_main_agent_never_gets_exec_or_file_tools() -> None:
+    """ADR 0003: whoever reads external content must not execute or write."""
+    exec_tools = {"Bash", "Edit", "Write", "NotebookEdit", "MultiEdit"}
+    assert not exec_tools & set(permissions.BUILTIN_TOOLS)
+    assert not exec_tools & set(permissions.ALLOWED)
+
+
+def test_no_write_tool_is_both_allowed_and_hidden() -> None:
+    assert not set(permissions.ALLOWED) & set(permissions.HIDDEN)
