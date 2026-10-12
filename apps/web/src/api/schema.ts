@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+  '/api/alfred/clear': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Clear Alfred */
+    post: operations['clear_alfred_api_alfred_clear_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/sessions': {
     parameters: {
       query?: never
@@ -397,6 +414,24 @@ export interface components {
 }
 export type $defs = Record<string, never>
 export interface operations {
+  clear_alfred_api_alfred_clear_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+    }
+  }
   list_sessions_api_sessions_get: {
     parameters: {
       query?: never
