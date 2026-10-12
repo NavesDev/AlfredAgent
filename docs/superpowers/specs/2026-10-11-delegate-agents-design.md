@@ -143,7 +143,7 @@ Novo modelo `Limits` em `config.py`, opcional, com o padrão acima.
 
 Primeira versão usou uma faixa de cartões; ficou genérica e não mostrava a ligação com o Alfred. Substituída pela **constelação**:
 
-- Cada sessão é um nó em volta do orb do Alfred: mini orb (mesmos shaders, `src/lib/orb/`) na cor do status (âmbar ocupado, verde livre, vermelho erro), maior e com halo pulsando quando ocupado.
+- Cada sessão é um ponto neutro em volta do orb (SVG/CSS, sem WebGL): cinza quando livre, branco com halo respirando quando ocupado, vermelho em erro. O orb do Alfred é a única cor da tela. Mini orbs coloridos foram testados e descartados: pesados visualmente e um contexto WebGL por agente.
 - Rótulo flutuante sob o nó: nome e, embaixo, a atividade atual (ocupado) ou `livre · modelo`.
 - Um filamento cinza neutro liga o centro do orb a cada nó, desenhado atrás dos dois orbs. Livre: linha fraca. Ocupado: tracejado animado, mais claro.
 - Pulso de luz corre pelo filamento: Alfred → nó quando uma tarefa começa, nó → Alfred quando termina (derivado dos eventos `session_status`).

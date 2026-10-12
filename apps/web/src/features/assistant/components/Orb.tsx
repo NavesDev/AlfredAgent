@@ -3,7 +3,7 @@ import { useMemo, useRef, type RefObject } from 'react'
 import * as THREE from 'three'
 import type { VoiceState } from '../../../api/events'
 import type { Level } from '../hooks/useVoice'
-import { fragmentShader, haloFragmentShader, vertexShader } from '../../../lib/orb/shaders'
+import { fragmentShader, haloFragmentShader, vertexShader } from './orbShaders'
 
 type Look = {
   core: string

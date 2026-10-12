@@ -1,29 +1,27 @@
 import type { SessionView } from '../../../api/events'
-import type { MiniLook } from '../../../lib/orb/MiniOrb'
 
-type Look = { label: string; color: string; text: string; pill: string; orb: MiniLook }
+// Agents stay neutral so Alfred's orb is the only color on screen; red is kept for errors.
+
+type Look = { label: string; dot: string; name: string; pill: string }
 
 export const STATUS: Record<SessionView['status'], Look> = {
   busy: {
     label: 'ocupado',
-    color: '#fbbf24',
-    text: 'text-amber-200',
-    pill: 'border-amber-300/30 bg-amber-300/10 text-amber-200',
-    orb: { core: '#451a03', rim: '#fbbf24', active: true },
+    dot: 'size-2.5 bg-gray-100',
+    name: 'text-gray-100',
+    pill: 'border-white/20 bg-white/10 text-gray-100',
   },
   idle: {
     label: 'livre',
-    color: '#34d399',
-    text: 'text-emerald-200',
-    pill: 'border-emerald-300/30 bg-emerald-300/10 text-emerald-200',
-    orb: { core: '#052e2b', rim: '#34d399', active: false },
+    dot: 'size-2 bg-gray-500',
+    name: 'text-gray-300',
+    pill: 'border-white/10 text-gray-400',
   },
   error: {
     label: 'erro',
-    color: '#f87171',
-    text: 'text-red-200',
+    dot: 'size-2 bg-red-400',
+    name: 'text-red-200',
     pill: 'border-red-300/30 bg-red-300/10 text-red-200',
-    orb: { core: '#450a0a', rim: '#f87171', active: false },
   },
 }
 

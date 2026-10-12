@@ -1,11 +1,10 @@
 import type { SessionView } from '../../../api/events'
-import { MiniOrb } from '../../../lib/orb/MiniOrb'
 import type { Point } from '../lib/constellation'
 import { STATUS } from '../lib/status'
 
 type Props = { session: SessionView; at: Point; open: boolean; onToggle: () => void }
 
-/** An agent as a small orb with a floating label: name, then what it is doing. */
+/** An agent as a small dot with a floating label: name, then what it is doing. */
 export function AgentNode({ session, at, open, onToggle }: Props) {
   const status = STATUS[session.status]
   const busy = session.status === 'busy'
@@ -13,7 +12,7 @@ export function AgentNode({ session, at, open, onToggle }: Props) {
     ? (session.activity ?? session.task ?? 'trabalhando')
     : session.status === 'error'
       ? 'falhou na última tarefa'
-      : `${status.label} · ${session.model}`
+      : status.label
 
   return (
     <button
@@ -22,24 +21,24 @@ export function AgentNode({ session, at, open, onToggle }: Props) {
       aria-expanded={open}
       aria-label={`Sessão ${session.name}, ${status.label}`}
       style={{ left: at.x, top: at.y, transition: 'left 600ms, top 600ms' }}
-      className="animate-node-in pointer-events-auto absolute z-20 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
+      className="group animate-node-in pointer-events-auto absolute z-20 grid size-8 -translate-x-1/2 -translate-y-1/2 place-items-center"
     >
-      <span
-        className={`relative block transition-[width,height] duration-500 ${busy ? 'size-16' : 'size-12'}`}
-      >
+      {busy && (
         <span
           aria-hidden="true"
-          style={{ background: `radial-gradient(circle, ${status.color}55 0%, transparent 70%)` }}
-          className={`absolute -inset-3 rounded-full transition-opacity ${
-            busy || open ? 'opacity-100' : 'opacity-50'
-          } ${busy ? 'animate-pulse' : ''}`}
+          className="animate-breathe absolute size-6 rounded-full bg-gray-100/15"
         />
-        <MiniOrb {...status.orb} />
-      </span>
-      <span className="pointer-events-none absolute top-full mt-1 flex w-36 flex-col items-center text-center">
-        <span className={`text-xs font-medium tracking-wide ${status.text}`}>{session.name}</span>
+      )}
+      <span
+        aria-hidden="true"
+        className={`relative rounded-full transition-all duration-500 group-hover:scale-125 ${status.dot} ${
+          open ? 'ring-4 ring-white/10' : ''
+        }`}
+      />
+      <span className="pointer-events-none absolute top-full flex w-36 flex-col items-center text-center">
+        <span className={`text-xs tracking-wide ${status.name}`}>{session.name}</span>
         <span
-          className={`max-w-full truncate text-[11px] ${busy ? 'font-mono text-gray-300' : 'text-gray-500'}`}
+          className={`max-w-full truncate text-[11px] ${busy ? 'font-mono text-gray-400' : 'text-gray-600'}`}
         >
           {line}
         </span>
