@@ -8,7 +8,8 @@ from errors import SessionNotFound
 from events import EventBus
 from infra.claude import permissions
 from infra.claude.activity import describe_tool
-from infra.claude.tools import SERVER, alfred_tools, session_tools
+from infra.claude.alfred import AlfredAgent
+from infra.claude.tools import SERVER, session_tools
 from tests.test_projects import FakeGit
 from tests.test_sessions import Env, settle
 
@@ -157,4 +158,7 @@ def test_activity_labels() -> None:
 
 
 def test_server_is_named_alfred(tools: Tools) -> None:
-    assert alfred_tools(tools.env.sessions, tools.projects)["name"] == SERVER == "alfred"
+    agent = AlfredAgent(None, None, "sonnet", 1, tools=tools.list)  # type: ignore[arg-type]
+    servers = agent._options(None).mcp_servers
+    assert isinstance(servers, dict)
+    assert dict(servers[SERVER])["name"] == SERVER == "alfred"

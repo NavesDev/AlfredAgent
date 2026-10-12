@@ -24,7 +24,7 @@ from infra.claude.agents import AgentKind, SessionContext
 from infra.claude.alfred import AlfredAgent, check_cli
 from infra.claude.session import CodingSession
 from infra.claude.state import DailyState
-from infra.claude.tools import alfred_tools
+from infra.claude.tools import session_tools
 from models import settings as settings_model
 from models.db import open_db
 
@@ -60,7 +60,7 @@ async def serve(config: Config) -> None:
         DailyState(config.storage.state_path),
         model=lambda: settings.resolve("alfred", None, None),
         timeout_s=config.agents.timeout_s,
-        tools=alfred_tools(sessions, projects),
+        tools=session_tools(sessions, projects),
     )
     await agent.start()
     router = Router(bus, agent, talker)
