@@ -35,3 +35,13 @@ def test_save_creates_parent_dirs(tmp_path: Path) -> None:
     DailyState(tmp_path / "data" / "s.json").save("abc", TODAY)
 
     assert (tmp_path / "data" / "s.json").exists()
+
+
+def test_clear_forgets_the_session(tmp_path: Path) -> None:
+    state = DailyState(tmp_path / "s.json")
+    state.save("abc", TODAY)
+
+    state.clear()
+    state.clear()  # nothing left to remove is fine
+
+    assert state.session_for(TODAY) is None

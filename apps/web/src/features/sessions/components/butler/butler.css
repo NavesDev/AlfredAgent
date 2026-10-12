@@ -1,4 +1,4 @@
-/* Pixel butler animations (see docs/superpowers/specs/assets/2026-10-11-butler-mockup.html). */
+/* Pixel butler and messenger animations (see docs/superpowers/specs/assets/2026-10-11-butler-mockup.html). */
 
 .bt-bob {
   animation: bt-bob 0.5s ease-in-out infinite alternate;
@@ -79,6 +79,25 @@
 }
 .bt-tapfoot {
   animation: bt-tap-a 0.45s steps(1) infinite;
+}
+.bt-walk-a {
+  animation: bt-tap-a 0.5s steps(1) infinite;
+}
+.bt-walk-b {
+  animation: bt-tap-b 0.5s steps(1) infinite;
+}
+.bt-swing {
+  animation: bt-sway 0.5s ease-in-out infinite alternate;
+  transform-box: view-box;
+  transform-origin: 9px 16px;
+}
+.bt-tick {
+  animation: bt-tick 1.2s steps(8) infinite;
+  transform-box: view-box;
+  transform-origin: 30px 13px;
+}
+.bt-hop {
+  animation: bt-hop 0.9s ease-out infinite;
 }
 
 @keyframes bt-bob {
@@ -201,6 +220,16 @@
   }
   to {
     transform: rotate(5deg);
+  }
+}
+@keyframes bt-tick {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes bt-hop {
+  35% {
+    transform: translateY(-2px);
   }
 }
 @keyframes bt-shake {

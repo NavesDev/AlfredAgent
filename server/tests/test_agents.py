@@ -1,6 +1,13 @@
 from pathlib import Path
 
-from infra.claude.agents import KINDS, AgentKind, GeneralAgent, ImplementationAgent, SessionContext
+from infra.claude.agents import (
+    KINDS,
+    MAX_BUFFER,
+    AgentKind,
+    GeneralAgent,
+    ImplementationAgent,
+    SessionContext,
+)
 
 CTX = SessionContext(name="downloads", cwd=Path("/home/u"), model="sonnet")
 
@@ -91,3 +98,9 @@ async def test_implementation_delegate_tool_needs_a_session() -> None:
     assert tool.name == "delegar_implementacao"
     assert sorted(tool.input_schema["required"]) == ["sessao", "tarefa"]
     assert calls == [("back", "cria o endpoint")]
+
+
+def test_every_kind_reads_big_cli_messages() -> None:
+    # screenshots and long outputs overflow the SDK's 1 MB default and kill the task
+    for kind in KINDS.values():
+        assert kind.options(CTX).max_buffer_size == MAX_BUFFER >= 32 * 1024 * 1024

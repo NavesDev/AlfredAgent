@@ -15,7 +15,8 @@ import claude_agent_sdk as sdk
 from errors import AgentError, DependencyError
 from events import EventBus
 from infra.claude import permissions
-from infra.claude.activity import describe_tool, phase_of
+from infra.claude.activity import action_of, describe_tool, phase_of
+from infra.claude.agents import MAX_BUFFER
 from infra.claude.state import DailyState
 from infra.claude.summary import extract_summary, parse_resumo
 from infra.claude.tools import SERVER
@@ -69,12 +70,14 @@ class Reply:
     summary: str
     tokens: int = 0
     session_id: str | None = None
+    context: tuple[int, int] | None = None  # (tokens in the context window, window size)
 
 
 class Client(Protocol):
     async def query(self, prompt: str) -> None: ...
     def receive_response(self) -> AsyncIterator[Any]: ...
     async def disconnect(self) -> None: ...
+    async def get_context_usage(self) -> Any: ...
 
 
 async def connect_sdk(options: sdk.ClaudeAgentOptions) -> Client:
@@ -109,6 +112,7 @@ class AlfredAgent:
         self._timeout_s, self._connect, self._today = timeout_s, connect, today
         self._client: Client | None = None
         self._day: date | None = None
+        self._turn = asyncio.Lock()  # one question at a time; reset waits for the current one
 
     async def start(self) -> None:
         """Connect eagerly so a missing login fails at startup, not on the first question."""
@@ -122,6 +126,22 @@ class AlfredAgent:
         text: str,
         on_summary: Callable[[str], None],
         on_activity: Callable[[str], None] = lambda _: None,
+    ) -> Reply:
+        async with self._turn:
+            return await self._ask(text, on_summary, on_activity)
+
+    async def reset(self) -> None:
+        """Forgets today's conversation; the next question starts a fresh session."""
+        async with self._turn:
+            await self._close()
+            self._state.clear()
+        self._bus.publish("alfred_cleared")
+
+    async def _ask(
+        self,
+        text: str,
+        on_summary: Callable[[str], None],
+        on_activity: Callable[[str], None],
     ) -> Reply:
         try:
             async with asyncio.timeout(self._timeout_s):
@@ -168,6 +188,7 @@ class AlfredAgent:
             mcp_servers=self._tools,
             resume=resume,
             include_partial_messages=True,
+            max_buffer_size=MAX_BUFFER,
         )
 
     async def _run(
@@ -187,6 +208,8 @@ class AlfredAgent:
                     spoken = parse_resumo(first_line) or ""
                     if spoken:
                         on_summary(spoken)
+            elif isinstance(message, sdk.RateLimitEvent):
+                publish_rate_limit(self._bus, message)
             elif isinstance(message, sdk.AssistantMessage):
                 publish_progress(self._bus, "alfred", message)
                 for block in message.content:
@@ -197,7 +220,7 @@ class AlfredAgent:
         if result is None:
             raise AgentError("stream ended without a result")
         if result.is_error or result.result is None:
-            raise AgentError(f"agent returned error: {result.errors or result.subtype}")
+            raise AgentError(failure(result))
         if not spoken and (spoken := extract_summary(result.result)):
             on_summary(spoken)
         self._state.save(result.session_id, self._day or self._today(), self._version)
@@ -220,9 +243,31 @@ def publish_progress(bus: EventBus, session: str, message: sdk.AssistantMessage)
                 kind="tool",
                 content=block.name,
                 label=describe_tool(block.name),
+                action=action_of(block.name),
                 detail=tool_detail(block.input),
                 phase=phase_of(block.name),
             )
+
+
+def publish_rate_limit(bus: EventBus, message: sdk.RateLimitEvent) -> None:
+    """The plan's usage windows, as the CLI reports them while it works."""
+    info = message.rate_limit_info
+    bus.publish(
+        "rate_limit",
+        window=info.rate_limit_type or "unknown",
+        status=info.status,
+        utilization=info.utilization,
+        resets_at=info.resets_at,
+    )
+
+
+async def read_context(client: Client) -> tuple[int, int] | None:
+    """How full the conversation's context window is; None when the CLI can't say."""
+    try:
+        usage = await client.get_context_usage()
+        return int(usage["totalTokens"]), int(usage["rawMaxTokens"])
+    except Exception:  # an optional readout must never fail the task
+        return None
 
 
 def tool_detail(tool_input: dict[str, Any]) -> str | None:
@@ -238,3 +283,13 @@ def tool_detail(tool_input: dict[str, Any]) -> str | None:
 def _text_delta(event: dict[str, Any]) -> str:
     delta = event.get("delta", {}) if event.get("type") == "content_block_delta" else {}
     return str(delta.get("text", "")) if delta.get("type") == "text_delta" else ""
+
+
+ERROR_MAX = 500
+
+
+def failure(result: sdk.ResultMessage) -> str:
+    """Why a run failed, in the CLI's own words: its errors, else its final text, else the kind."""
+    errors = [str(e) for e in result.errors or [] if str(e).strip()]
+    text = "; ".join(errors) or (result.result or "").strip() or f"falhou ({result.subtype})"
+    return " ".join(text.split())[:ERROR_MAX]

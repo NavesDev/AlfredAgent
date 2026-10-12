@@ -14,7 +14,15 @@ import claude_agent_sdk as sdk
 from errors import AgentError
 from events import EventBus
 from infra.claude.agents import AgentKind, SessionContext
-from infra.claude.alfred import Client, Reply, connect_sdk, publish_progress
+from infra.claude.alfred import (
+    Client,
+    Reply,
+    connect_sdk,
+    failure,
+    publish_progress,
+    publish_rate_limit,
+    read_context,
+)
 from infra.claude.summary import extract_summary
 
 
@@ -82,13 +90,18 @@ class CodingSession:
                 result = message
             elif isinstance(message, sdk.SystemMessage):
                 self._publish_system(message)
+            elif isinstance(message, sdk.RateLimitEvent):
+                publish_rate_limit(self._bus, message)
         if result is None:
             raise AgentError("stream ended without a result")
         if result.is_error or result.result is None:
-            raise AgentError(f"session returned error: {result.errors or result.subtype}")
+            raise AgentError(failure(result))
         usage = result.usage or {}
         tokens = int(usage.get("input_tokens", 0)) + int(usage.get("output_tokens", 0))
-        reply = Reply(result.result, extract_summary(result.result), tokens, result.session_id)
+        context = await read_context(client)
+        reply = Reply(
+            result.result, extract_summary(result.result), tokens, result.session_id, context
+        )
         self._bus.publish("alfred_reply", session=self.name, text=reply.text, summary=reply.summary)
         return reply
 

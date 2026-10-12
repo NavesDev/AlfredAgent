@@ -15,6 +15,7 @@ from controllers.projects import Projects
 from controllers.router import Router
 from controllers.sessions import Sessions
 from controllers.settings import Settings
+from controllers.usage import Usage
 from errors import ConfigError, DependencyError
 from events import EventBus
 from infra.audio import check_audio
@@ -54,6 +55,7 @@ async def serve(config: Config) -> None:
 
     sessions = Sessions(bus, talker, db, settings, new_session, home=Path.home())
     sessions.load()
+    usage = Usage(bus, sessions, settings, config.agents.session_timeout_s)
     projects = Projects(db, bus)
     agent = AlfredAgent(
         bus,
@@ -79,16 +81,21 @@ async def serve(config: Config) -> None:
         acknowledge=talker.acknowledge,
     )
 
-    jobs = [asyncio.create_task(job()) for job in (sessions.run, sessions.watch_idle, settings.run)]
+    jobs = [
+        asyncio.create_task(job())
+        for job in (sessions.run, sessions.watch_idle, settings.run, usage.run)
+    ]
     stop = threading.Event()
     for worker in (listener.run, talker.run):
         threading.Thread(target=worker, args=(stop,), daemon=True).start()
 
     app = create_app()
     app.state.bus = bus
+    app.state.alfred = agent
     app.state.sessions = sessions
     app.state.projects = projects
     app.state.settings = settings
+    app.state.usage = usage
     server = uvicorn.Server(
         uvicorn.Config(app, config.api.host, config.api.port, log_level="warning")
     )

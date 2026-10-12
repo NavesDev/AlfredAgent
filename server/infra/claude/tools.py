@@ -95,7 +95,8 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
 
     @sdk.tool(
         "listar_sessoes",
-        "Lista as sessões com tipo, projeto, workspace, status e tarefa atual.",
+        "Lista as sessões com tipo, projeto, workspace, status, tarefa atual e, quando a "
+        "última tarefa falhou, o motivo do erro.",
         {},
     )
     async def listar_sessoes(args: Result) -> Result:
@@ -103,9 +104,10 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
             return "\n".join(
                 f"{v.name} ({v.label}, "
                 + (f"{v.project}/{v.workspace}" if v.project else v.cwd)
-                + f"): {v.status}"
-                + (f", fazendo: {v.task}" if v.task else "")
+                + f"): {'esperando vaga' if v.waiting else v.status}"
+                + (f", {'vai fazer' if v.waiting else 'fazendo'}: {v.task}" if v.task else "")
                 + (f", {v.queue} na fila" if v.queue else "")
+                + (f", último erro: {v.last_error}" if v.last_error else "")
                 for v in sessions.list()
             )
 

@@ -75,6 +75,8 @@ export function reduceTranscript(state: TranscriptState, event: AlfredEvent): Tr
         return push(state, { ...blank(event.ts), ...reply })
       return updateLast(state, (t) => ({ ...reply, replyS: round(event.ts - t.heardAt) }))
     }
+    case 'alfred_cleared': // a fresh conversation starts with an empty transcript
+      return { ...initialTranscript, nextId: state.nextId }
     case 'error': {
       const error = `${event.where}: ${event.message}`
       if (!isOpen(state.turns.at(-1))) return push(state, { ...blank(event.ts), error })

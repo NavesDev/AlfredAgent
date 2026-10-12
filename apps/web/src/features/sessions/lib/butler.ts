@@ -2,10 +2,19 @@ import type { AlfredEvent, SessionView } from '../../../api/events'
 
 // What the butler (implementation sessions) is doing. The base state follows the session;
 // a flash plays once on top of it: a letter when a subagent is called, the hat trick when a
-// task ends well. "waiting" is drawn but has no trigger until permissions land (F5).
+// task ends well. "queued" is the wait for a free slot; "waiting" is drawn but has no trigger
+// until permissions land (F5).
 
 export type ButlerState =
-  'sleeping' | 'exploring' | 'editing' | 'running' | 'delegating' | 'done' | 'error' | 'waiting'
+  | 'sleeping'
+  | 'exploring'
+  | 'editing'
+  | 'running'
+  | 'delegating'
+  | 'done'
+  | 'error'
+  | 'waiting'
+  | 'queued'
 
 export type FlashState = 'delegating' | 'done'
 export type Flash = { state: FlashState; at: number }
@@ -13,6 +22,7 @@ export type Flash = { state: FlashState; at: number }
 export const FLASH_MS: Record<FlashState, number> = { delegating: 1500, done: 3000 }
 
 export function baseState(session: SessionView): ButlerState {
+  if (session.waiting) return 'queued'
   if (session.status === 'error') return 'error'
   if (session.status === 'idle') return 'sleeping'
   return session.phase ?? 'editing'
@@ -32,7 +42,12 @@ export function flashFor(
 }
 
 export function butlerState(session: SessionView, flash: Flash | null, now: number): ButlerState {
-  if (session.status !== 'error' && flash && now - flash.at < FLASH_MS[flash.state]) {
+  if (
+    !session.waiting &&
+    session.status !== 'error' &&
+    flash &&
+    now - flash.at < FLASH_MS[flash.state]
+  ) {
     return flash.state
   }
   return baseState(session)

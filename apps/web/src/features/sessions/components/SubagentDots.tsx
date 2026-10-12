@@ -1,6 +1,7 @@
 import type { SubagentView } from '../../../api/events'
 
-// Subagents as small squares tied to the session's node, flashing while they work.
+// Subagents as small squares tied to the session's node, flashing while they work. Drawn
+// before the node so the tie lines pass behind it; line and square fade out together.
 const RADIUS = 36
 const ANGLES = [-50, 50, -100, 100, -145, 145].map((deg) => (deg * Math.PI) / 180)
 
@@ -19,7 +20,9 @@ export function SubagentDots({ subagents }: { subagents: SubagentView[] }) {
             y2={-Math.cos(ANGLES[i]) * RADIUS}
             stroke="#3a3a40"
             strokeWidth={1}
-            opacity={s.status === 'running' ? 1 : 0.3}
+            className={`transition-opacity duration-700 ${
+              s.status === 'running' ? 'opacity-100' : 'opacity-0'
+            }`}
           />
         ))}
       </svg>

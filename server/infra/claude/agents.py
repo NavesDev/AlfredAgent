@@ -12,6 +12,10 @@ from typing import Any, ClassVar
 
 import claude_agent_sdk as sdk
 
+# One CLI message can carry a screenshot, a big file or a long command output; the SDK's 1 MB
+# default turns those into a failed task ("JSON message exceeded maximum buffer size").
+MAX_BUFFER = 64 * 1024 * 1024
+
 # (session name, task) -> what Alfred says
 Delegate = Callable[[str, str], str]
 
@@ -69,6 +73,7 @@ a tarefa não peça explicitamente.
             strict_mcp_config=True,  # no mail, calendar, browser or other MCP servers
             setting_sources=[],  # no user hooks, plugins or permission rules
             cwd=ctx.cwd,
+            max_buffer_size=MAX_BUFFER,
         )
 
     def delegate_tool(self, delegate: Delegate) -> sdk.SdkMcpTool[Any]:
@@ -114,6 +119,7 @@ Use MCPs externos (e-mail, agenda, navegador) só quando a tarefa pedir isso exp
             permission_mode="auto",
             disallowed_tools=[f"mcp__{name}" for name in ctx.mcp_disabled],
             cwd=ctx.cwd,
+            max_buffer_size=MAX_BUFFER,
         )
 
     def delegate_tool(self, delegate: Delegate) -> sdk.SdkMcpTool[Any]:

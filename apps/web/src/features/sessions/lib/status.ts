@@ -24,5 +24,3 @@ export const STATUS: Record<SessionView['status'], Look> = {
     pill: 'border-red-300/30 bg-red-300/10 text-red-200',
   },
 }
-
-export const formatTokens = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`)

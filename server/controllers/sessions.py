@@ -7,6 +7,7 @@ idle sessions give theirs up after idle_minutes, or sooner when another session 
 
 import asyncio
 import contextlib
+import logging
 import sqlite3
 import time
 from collections.abc import Callable
@@ -25,6 +26,8 @@ from models.session import Phase, SessionView, Status, SubagentView
 
 ACTIVITY_MAX = 80
 IDLE_CHECK_S = 30
+
+log = logging.getLogger("alfred.sessions")
 
 
 class Session(Protocol):
@@ -60,6 +63,8 @@ class Slot:
     tasks_done: int = 0
     tokens: int = 0
     last_summary: str | None = None
+    last_error: str | None = None
+    context: tuple[int, int] | None = None
     last_used: float = 0.0
     subagents: dict[str, SubagentView] = field(default_factory=dict)
 
@@ -140,7 +145,8 @@ class Sessions:
         await self._stop(slot)
         records.update_session(self._db, slot.session.name, claude_session_id=None)
         slot.status, slot.task, slot.activity, slot.phase = "idle", None, None, None
-        slot.tasks_done, slot.tokens, slot.last_summary = 0, 0, None
+        slot.tasks_done, slot.tokens, slot.last_summary, slot.last_error = 0, 0, None, None
+        slot.context = None
         slot.subagents.clear()
         slot.worker = asyncio.create_task(self._work(slot))
         view = self._view(slot)
@@ -225,6 +231,7 @@ class Sessions:
     async def _work(self, slot: Slot) -> None:
         while True:
             task = await slot.queue.get()
+            slot.task = task  # visible while it waits for a slot, not only once it runs
             await self._acquire(slot)
             await self._process(slot, task)
             self._wake()
@@ -272,19 +279,24 @@ class Sessions:
     async def _process(self, slot: Slot, task: str) -> None:
         name = slot.session.name
         slot.status, slot.task, slot.activity, slot.phase = "busy", task, None, None
+        slot.last_error = None
         slot.subagents.clear()
         self._publish_status(slot)
         try:
             reply = await slot.session.run(task)
         except AgentError as e:
-            slot.status = "error"
+            log.warning("session %s failed: %s", name, e)
+            slot.status, slot.last_error = "error", str(e)
             self._bus.publish("error", where=name, message=str(e))
-            self._talker.say(f"A sessão {name} não conseguiu terminar a tarefa.")
+            self._talker.say(
+                f"A sessão {name} não conseguiu terminar a tarefa. O motivo está no painel."
+            )
         else:
             slot.status = "idle"
             slot.tasks_done += 1
             slot.tokens += reply.tokens
             slot.last_summary = reply.summary or None
+            slot.context = reply.context or slot.context
             if reply.session_id:
                 records.update_session(self._db, name, claude_session_id=reply.session_id)
             self._talker.say(reply.summary or f"A sessão {name} terminou.")
@@ -357,7 +369,10 @@ class Sessions:
             connected=s.connected,
             tasks_done=slot.tasks_done,
             tokens=slot.tokens,
+            context_tokens=slot.context[0] if slot.context else None,
+            context_max=slot.context[1] if slot.context else None,
             last_summary=slot.last_summary,
+            last_error=slot.last_error,
             protected=slot.protected,
             subagents=list(slot.subagents.values()),
         )

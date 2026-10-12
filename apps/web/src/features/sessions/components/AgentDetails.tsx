@@ -2,16 +2,35 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import type { SessionView } from '../../../api/events'
 import { EFFORTS, field } from '../../../lib/sessionForm'
 import { ModelSelect } from '../../../components/ModelSelect'
-import { useButler } from '../hooks/useButler'
+import { useLook } from '../hooks/useLook'
 import { useSessionActions } from '../hooks/useSessionActions'
-import { formatTokens, STATUS } from '../lib/status'
-import { Butler } from './butler/Butler'
+import { formatTokens } from '../../../lib/format'
+import { STATUS } from '../lib/status'
+import { AgentFigure } from './AgentFigure'
 
 const CONFIRM_MS = 4000
 const SUBAGENT = { running: 'rodando', completed: 'feito', failed: 'falhou', stopped: 'parado' }
 
-function BigButler({ session }: { session: SessionView }) {
-  return <Butler state={useButler(session)} className="mx-auto h-24 w-28" />
+/** How full the model's context window was after the last task, in one thin line. */
+function ContextMeter({ session }: { session: SessionView }) {
+  const { context_tokens: used, context_max: max } = session
+  if (used == null || !max) return null
+  const share = Math.min(100, Math.round((used / max) * 100))
+  const fill = share >= 95 ? 'bg-red-400' : share >= 80 ? 'bg-amber-400' : 'bg-gray-400'
+  return (
+    <div
+      title="Perto de encher, a sessão compacta a conversa ou falha; limpar começa do zero"
+      className="flex items-center gap-2 text-[11px] text-gray-500"
+    >
+      <span>contexto</span>
+      <span className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
+        <span className={`block h-full rounded-full ${fill}`} style={{ width: `${share}%` }} />
+      </span>
+      <span className="tabular-nums">
+        {formatTokens(used)} / {formatTokens(max)}
+      </span>
+    </div>
+  )
 }
 
 type Props = { session: SessionView; style: CSSProperties; onClose: () => void }
@@ -19,6 +38,7 @@ type Props = { session: SessionView; style: CSSProperties; onClose: () => void }
 /** What a node opens: everything about the session, plus clear and delete. */
 export function AgentDetails({ session, style, onClose }: Props) {
   const { clear, remove, change } = useSessionActions()
+  const look = useLook(session)
   const [confirming, setConfirming] = useState(false)
   const status = STATUS[session.status]
   const error = clear.error ?? remove.error ?? change.error
@@ -55,7 +75,7 @@ export function AgentDetails({ session, style, onClose }: Props) {
           ×
         </button>
       </header>
-      {session.kind === 'implementacao' && <BigButler session={session} />}
+      <AgentFigure look={look} className="mx-auto h-24 w-28" />
       <p className="text-xs text-gray-400">
         {session.label}
         {session.project && (
@@ -100,8 +120,10 @@ export function AgentDetails({ session, style, onClose }: Props) {
         <p className="truncate font-mono text-xs text-gray-400">{session.activity}…</p>
       )}
       <p className="text-xs text-gray-500">
-        fila {session.queue} · {session.tasks_done} tarefas · {formatTokens(session.tokens)} tokens
+        fila {session.queue} · {session.tasks_done} tarefas · gastou {formatTokens(session.tokens)}{' '}
+        tokens
       </p>
+      <ContextMeter session={session} />
       {session.subagents.length > 0 && (
         <ul className="flex flex-col gap-0.5 border-l border-white/10 pl-2 text-xs">
           {session.subagents.map((sub) => (
@@ -115,6 +137,17 @@ export function AgentDetails({ session, style, onClose }: Props) {
             </li>
           ))}
         </ul>
+      )}
+      {session.last_error && (
+        <div
+          role="alert"
+          className="rounded-md border border-red-300/25 bg-red-400/10 px-2 py-1.5 text-xs text-red-200"
+        >
+          <p className="font-medium">Por que falhou</p>
+          <p className="mt-0.5 font-mono text-[11px] break-words whitespace-pre-wrap text-red-200/80">
+            {session.last_error}
+          </p>
+        </div>
       )}
       {session.last_summary && (
         <p className="text-xs text-gray-400">último: “{session.last_summary}”</p>

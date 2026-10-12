@@ -7,7 +7,27 @@ export type SubagentView = components['schemas']['SubagentView']
 export type Project = components['schemas']['Project']
 export type Workspace = components['schemas']['Workspace']
 export type SettingsView = components['schemas']['SettingsView']
+export type UsageView = components['schemas']['UsageView']
+export type RateLimit = components['schemas']['RateLimit']
 export type Phase = NonNullable<SessionView['phase']>
+
+/** Mirrors server/infra/claude/activity.py's Action. */
+export type ActivityAction =
+  | 'delegate'
+  | 'session'
+  | 'project'
+  | 'command'
+  | 'files_read'
+  | 'files_edit'
+  | 'web_search'
+  | 'web_page'
+  | 'email_read'
+  | 'email_send'
+  | 'calendar_read'
+  | 'calendar_write'
+  | 'drive'
+  | 'browser'
+  | 'tool'
 
 export type VoiceState = 'idle' | 'listening' | 'transcribing' | 'thinking' | 'speaking'
 
@@ -19,6 +39,7 @@ export type AlfredEvent = Base &
     | { type: 'audio_level'; source: 'mic' | 'tts'; level: number }
     | { type: 'transcript'; text: string; source: 'voice' | 'web' }
     | { type: 'alfred_reply'; session: string; text: string; summary: string }
+    | { type: 'alfred_cleared' }
     | {
         type: 'agent_progress'
         session: string
@@ -26,6 +47,8 @@ export type AlfredEvent = Base &
         content: string
         /** What Alfred is doing, in pt-BR (tools only), e.g. "Analisando seus e-mails". */
         label?: string
+        /** The kind of step, for the activity cards (tools only), e.g. "web_search". */
+        action?: ActivityAction
         /** Search query, site host or command description, tools only. */
         detail?: string | null
         /** What a coding session is doing, from the tool: exploring, editing or running. */
@@ -54,6 +77,13 @@ export type AlfredEvent = Base &
     | { type: 'project_updated'; project: Project }
     | { type: 'project_deleted'; id: number }
     | { type: 'settings_updated'; settings: SettingsView }
+    | {
+        type: 'rate_limit'
+        window: string
+        status: RateLimit['status']
+        utilization: number | null
+        resets_at: number | null
+      }
   )
 
 export type EventOf<T extends AlfredEvent['type']> = Extract<AlfredEvent, { type: T }>

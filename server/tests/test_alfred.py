@@ -18,7 +18,7 @@ from claude_agent_sdk import (
 from errors import AgentError, DependencyError
 from events import EventBus
 from infra.claude import permissions
-from infra.claude.alfred import AlfredAgent, check_cli, setup_version, tool_detail
+from infra.claude.alfred import AlfredAgent, check_cli, failure, setup_version, tool_detail
 from infra.claude.state import DailyState
 from tests.conftest import drain
 
@@ -48,7 +48,8 @@ def delta(text: str) -> StreamEvent:
 class FakeClient:
     """Stands in for ClaudeSDKClient: each query plays the next scripted run.
 
-    A callable in a run is invoked at that point of the stream instead of being yielded.
+    A callable in a run is invoked at that point of the stream instead of being yielded;
+    "pause" suspends the stream briefly and "hang" past any timeout.
     """
 
     def __init__(self, runs: list[Run]) -> None:
@@ -65,6 +66,8 @@ class FakeClient:
         for message in run:
             if message == "hang":
                 await asyncio.sleep(10)
+            elif message == "pause":
+                await asyncio.sleep(0.01)
             elif callable(message):
                 message()
             else:
@@ -72,6 +75,9 @@ class FakeClient:
 
     async def disconnect(self) -> None:
         self.closed = True
+
+    async def get_context_usage(self) -> dict[str, Any]:
+        return {"totalTokens": 41_000, "rawMaxTokens": 200_000}
 
 
 class FakeConnect:
@@ -185,6 +191,34 @@ async def test_start_resumes_todays_session(bus: EventBus, tmp_path: Path) -> No
     assert connect.options[0].resume == "s1"
 
 
+async def test_reset_forgets_the_conversation(bus: EventBus, tmp_path: Path) -> None:
+    queue = bus.subscribe()
+    connect = FakeConnect([result(session_id="s1")], [result(session_id="s2")])
+    alfred = await started(bus, tmp_path, connect)
+    await spoken_for(alfred)
+
+    await alfred.reset()
+    await asyncio.sleep(0)
+
+    assert connect.clients[0].closed
+    assert DailyState(tmp_path / "s.json").session_for(TODAY, VERSION) is None
+    assert [e["type"] for e in drain(queue)][-1] == "alfred_cleared"
+    await spoken_for(alfred)
+    assert connect.options[-1].resume is None
+
+
+async def test_reset_waits_for_the_current_answer(bus: EventBus, tmp_path: Path) -> None:
+    connect = FakeConnect(["pause", result()])
+    alfred = await started(bus, tmp_path, connect)
+    asking = asyncio.create_task(spoken_for(alfred))
+    await asyncio.sleep(0)  # the answer is now streaming
+
+    await alfred.reset()
+
+    assert asking.done() and await asking == ["JWT é stateless; sessão fica no server."]
+    assert connect.clients[0].closed
+
+
 async def test_changed_setup_starts_a_fresh_session(bus: EventBus, tmp_path: Path) -> None:
     DailyState(tmp_path / "s.json").save("s1", TODAY, "older-setup")
     connect = FakeConnect()
@@ -256,8 +290,9 @@ async def test_streams_progress_and_publishes_reply(bus: EventBus, tmp_path: Pat
     await asyncio.sleep(0)
 
     assert activities == ["Pesquisando na web"]
-    events = [(e["type"], e.get("kind"), e.get("content"), e.get("detail")) for e in drain(queue)]
-    assert events[0][:4] == ("agent_progress", "tool", "WebSearch", "notícias de IA")
+    published = drain(queue)
+    assert published[0]["action"] == "web_search"
+    events = [(e["type"], e.get("kind"), e.get("content"), e.get("detail")) for e in published]
     assert events == [
         ("agent_progress", "tool", "WebSearch", "notícias de IA"),
         ("agent_progress", "text", "Pensando", None),
@@ -285,6 +320,27 @@ async def test_error_result_raises_agent_error(bus: EventBus, tmp_path: Path) ->
 
     with pytest.raises(AgentError):
         await spoken_for(alfred)
+
+
+async def test_error_result_says_why(bus: EventBus, tmp_path: Path) -> None:
+    connect = FakeConnect([result("Prompt is too long", is_error=True)])
+    alfred = await started(bus, tmp_path, connect)
+
+    with pytest.raises(AgentError, match="Prompt is too long"):
+        await spoken_for(alfred)
+
+
+def test_failure_prefers_the_cli_errors_then_its_text() -> None:
+    errored = result("x", is_error=True)
+    errored.errors = ["API Error: 529 Overloaded", " "]
+    empty = result("", is_error=True)
+    empty.subtype = "error_max_turns"
+
+    assert failure(errored) == "API Error: 529 Overloaded"
+    assert failure(result("  Credit\n balance is too low ", is_error=True)) == (
+        "Credit balance is too low"
+    )
+    assert failure(empty) == "falhou (error_max_turns)"
 
 
 async def test_timeout_raises_agent_error(bus: EventBus, tmp_path: Path) -> None:

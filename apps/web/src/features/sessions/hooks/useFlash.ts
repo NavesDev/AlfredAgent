@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import type { SessionView } from '../../../api/events'
 import { useEvents } from '../../../hooks/useEvents'
-import { butlerState, FLASH_MS, flashFor, type ButlerState, type Flash } from '../lib/butler'
+import { FLASH_MS, flashFor, type Flash } from '../lib/butler'
 
-/** What the butler of this session shows now, including one-off flashes from the /ws. */
-export function useButler(session: SessionView): ButlerState {
+/** The latest one-off flash of this session from the /ws, and a clock that moves at its edges. */
+export function useFlash(session: SessionView): { flash: Flash | null; now: number } {
   const before = useRef(session.status)
   const [flash, setFlash] = useState<Flash | null>(null)
   const [now, setNow] = useState(0) // moves at a flash's start and end; renders stay pure
@@ -27,5 +27,5 @@ export function useButler(session: SessionView): ButlerState {
     return () => clearTimeout(timer)
   }, [flash])
 
-  return butlerState(session, flash, now)
+  return { flash, now }
 }

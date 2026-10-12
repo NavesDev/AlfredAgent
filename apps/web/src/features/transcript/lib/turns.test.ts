@@ -5,6 +5,17 @@ import { initialTranscript, reduceTranscript, toMarkdown } from './turns'
 const run = (events: AlfredEvent[]) => events.reduce(reduceTranscript, initialTranscript)
 
 describe('reduceTranscript', () => {
+  it("empties when Alfred's conversation is cleared", () => {
+    const state = run([
+      { type: 'transcript', text: 'oi', source: 'web', ts: 1 },
+      { type: 'alfred_reply', session: 'alfred', text: 'Olá.', summary: 'Olá.', ts: 2 },
+      { type: 'alfred_cleared', ts: 3 },
+    ])
+
+    expect(state.turns).toEqual([])
+    expect(state.nextId).toBe(2)
+  })
+
   it('builds one turn with timings from a voice exchange', () => {
     const { turns } = run([
       { type: 'voice_state', state: 'listening', ts: 10 },

@@ -30,6 +30,20 @@ def test_ws_streams_published_events() -> None:
     assert (event["type"], event["state"]) == ("voice_state", "listening")
 
 
+def test_clear_alfred() -> None:
+    class FakeAlfred:
+        cleared = 0
+
+        async def reset(self) -> None:
+            self.cleared += 1
+
+    app = create_app()
+    app.state.alfred = alfred = FakeAlfred()
+
+    assert TestClient(app).post("/api/alfred/clear").status_code == 204
+    assert alfred.cleared == 1
+
+
 class Api:
     def __init__(self, app: FastAPI, client: TestClient, home: Path) -> None:
         self.client, self.home = client, home
