@@ -3,76 +3,158 @@ from typing import Any
 
 import pytest
 
-from controllers.sessions import Sessions
+from controllers.projects import Projects
 from errors import SessionNotFound
 from events import EventBus
 from infra.claude import permissions
 from infra.claude.activity import describe_tool
 from infra.claude.tools import SERVER, alfred_tools, session_tools
-from tests.test_sessions import Factory, FakeSession, FakeTalker, settle
+from tests.test_projects import FakeGit
+from tests.test_sessions import Env, settle
+
+
+class Tools:
+    def __init__(self, env: Env, home: Path) -> None:
+        self.env, self.home = env, home
+        self.projects = Projects(env.db, env.sessions._bus, FakeGit())
+        self.list = session_tools(env.sessions, self.projects)
+
+    async def call(self, name: str, args: dict[str, Any]) -> str:
+        tool = next(t for t in self.list if t.name == name)
+        response = await tool.handler(args)
+        return str(response["content"][0]["text"])
 
 
 @pytest.fixture
-async def sessions(bus: EventBus, tmp_path: Path) -> Sessions:
-    s = Sessions(bus, FakeTalker(), Factory(), max_active=3, home=tmp_path)
-    s.add(FakeSession("sistema"), protected=True)
-    return s
+async def tools(bus: EventBus, tmp_path: Path) -> Tools:
+    return Tools(Env(bus, tmp_path), tmp_path)
 
 
-async def call(sessions: Sessions, name: str, args: dict[str, Any]) -> str:
-    tool = next(t for t in session_tools(sessions) if t.name == name)
-    response = await tool.handler(args)
-    return str(response["content"][0]["text"])
-
-
-def test_every_tool_is_allowed_without_asking(sessions: Sessions) -> None:
-    names = {t.name for t in session_tools(sessions)}
+def test_every_tool_is_allowed_without_asking(tools: Tools) -> None:
+    names = {t.name for t in tools.list}
 
     assert names == {
         "delegar_geral",
+        "delegar_implementacao",
         "criar_sessao",
         "limpar_sessao",
         "apagar_sessao",
         "listar_sessoes",
+        "criar_projeto",
+        "listar_projetos",
+        "criar_workspace",
+        "criar_worktree",
+        "apagar_workspace",
     }
     assert {f"mcp__{SERVER}__{n}" for n in names} <= set(permissions.ALLOWED)
     assert not {"Bash", "Edit", "Write"} & set(permissions.ALLOWED)
 
 
-async def test_delegar_geral_reaches_the_session(sessions: Sessions) -> None:
-    assert "sistema" in await call(sessions, "delegar_geral", {"tarefa": "gira a tela"})
+async def test_delegar_geral_reaches_the_session(tools: Tools) -> None:
+    assert "sistema" in await tools.call("delegar_geral", {"tarefa": "gira a tela"})
 
 
-async def test_errors_become_spoken_messages(sessions: Sessions) -> None:
-    text = await call(sessions, "delegar_geral", {"tarefa": "a", "sessao": "backend"})
+async def test_errors_become_spoken_messages(tools: Tools) -> None:
+    text = await tools.call("delegar_geral", {"tarefa": "a", "sessao": "backend"})
 
     assert text == "Não existe sessão chamada backend."
     with pytest.raises(SessionNotFound):
-        sessions.delegate("backend", "a")
+        tools.env.sessions.delegate("backend", "a")
+    assert "Não existe projeto" in await tools.call(
+        "criar_workspace", {"projeto": "nada", "nome": "x", "pasta": "/"}
+    )
 
 
-async def test_lifecycle_tools(sessions: Sessions) -> None:
-    created = await call(sessions, "criar_sessao", {"tipo": "geral", "nome": "downloads"})
-    listed = await call(sessions, "listar_sessoes", {})
-    cleared = await call(sessions, "limpar_sessao", {"nome": "downloads"})
-    deleted = await call(sessions, "apagar_sessao", {"nome": "downloads"})
-    refused = await call(sessions, "apagar_sessao", {"nome": "sistema"})
+async def test_lifecycle_tools(tools: Tools) -> None:
+    created = await tools.call("criar_sessao", {"tipo": "geral", "nome": "downloads"})
+    listed = await tools.call("listar_sessoes", {})
+    cleared = await tools.call("limpar_sessao", {"nome": "downloads"})
+    deleted = await tools.call("apagar_sessao", {"nome": "downloads"})
+    refused = await tools.call("apagar_sessao", {"nome": "sistema"})
     await settle()
 
     assert "downloads" in created and "Geral" in created
     assert "sistema" in listed and "downloads" in listed
     assert "limpa" in cleared and "apagada" in deleted
     assert "só limpa" in refused
-    assert [v.name for v in sessions.list()] == ["sistema"]
+    assert [v.name for v in tools.env.sessions.list()] == ["sistema"]
+
+
+async def test_project_workspace_worktree_and_implementation_session(tools: Tools) -> None:
+    (tools.home / "api").mkdir()
+
+    project = await tools.call("criar_projeto", {"nome": "Recurve", "apelidos": ["billing"]})
+    workspace = await tools.call(
+        "criar_workspace", {"projeto": "billing", "nome": "back", "pasta": str(tools.home / "api")}
+    )
+    worktree = await tools.call(
+        "criar_worktree", {"projeto": "Recurve", "workspace_pai": "back", "nome": "cancel"}
+    )
+    session = await tools.call(
+        "criar_sessao",
+        {
+            "tipo": "implementacao",
+            "nome": "back",
+            "projeto": "Recurve",
+            "workspace": "cancel",
+            "modelo": "opus",
+            "effort": "high",
+        },
+    )
+    sent = await tools.call(
+        "delegar_implementacao", {"sessao": "back", "tarefa": "cria o endpoint"}
+    )
+    listed = await tools.call("listar_projetos", {})
+    await settle()
+
+    assert "Recurve" in project and "back" in workspace and "cancel" in worktree
+    assert "back" in session and "Implementação" in session
+    assert "back" in sent
+    assert "Recurve" in listed and "cancel" in listed and "back" in listed
+    [view] = [v for v in tools.env.sessions.list() if v.name == "back"]
+    assert (view.project, view.workspace, view.model, view.effort) == (
+        "Recurve",
+        "cancel",
+        "opus",
+        "high",
+    )
+    assert tools.env.made["back"].tasks == ["cria o endpoint"]
+
+
+async def test_session_with_an_unknown_workspace_is_refused(tools: Tools) -> None:
+    await tools.call("criar_projeto", {"nome": "Recurve"})
+
+    text = await tools.call(
+        "criar_sessao",
+        {"tipo": "implementacao", "nome": "back", "projeto": "Recurve", "workspace": "nada"},
+    )
+
+    assert "workspace nada" in text
+
+
+async def test_delete_workspace(tools: Tools) -> None:
+    (tools.home / "api").mkdir()
+    await tools.call("criar_projeto", {"nome": "Recurve"})
+    await tools.call(
+        "criar_workspace", {"projeto": "Recurve", "nome": "back", "pasta": str(tools.home / "api")}
+    )
+
+    text = await tools.call("apagar_workspace", {"projeto": "Recurve", "nome": "back"})
+
+    assert "apagado" in text
+    assert tools.projects.find("Recurve").workspaces == []
 
 
 def test_activity_labels() -> None:
     assert describe_tool("mcp__alfred__delegar_geral") == "Mandando para uma sessão"
+    assert describe_tool("mcp__alfred__delegar_implementacao") == "Mandando para uma sessão"
     assert describe_tool("mcp__alfred__criar_sessao") == "Criando uma sessão"
-    assert describe_tool("mcp__alfred__limpar_sessao") == "Limpando uma sessão"
-    assert describe_tool("mcp__alfred__apagar_sessao") == "Apagando uma sessão"
-    assert describe_tool("mcp__alfred__listar_sessoes") == "Vendo as sessões"
+    assert describe_tool("mcp__alfred__criar_projeto") == "Criando um projeto"
+    assert describe_tool("mcp__alfred__listar_projetos") == "Vendo os projetos"
+    assert describe_tool("mcp__alfred__criar_workspace") == "Criando um workspace"
+    assert describe_tool("mcp__alfred__criar_worktree") == "Criando um worktree"
+    assert describe_tool("mcp__alfred__apagar_workspace") == "Apagando um workspace"
 
 
-def test_server_is_named_alfred(sessions: Sessions) -> None:
-    assert alfred_tools(sessions)["name"] == SERVER == "alfred"
+def test_server_is_named_alfred(tools: Tools) -> None:
+    assert alfred_tools(tools.env.sessions, tools.projects)["name"] == SERVER == "alfred"

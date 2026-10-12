@@ -4,24 +4,29 @@ import asyncio
 import logging
 import sys
 import threading
+from collections.abc import Callable
 from pathlib import Path
 
 import uvicorn
 
 from api.app import create_app
 from config import Config, load_config
+from controllers.projects import Projects
 from controllers.router import Router
 from controllers.sessions import Sessions
+from controllers.settings import Settings
 from errors import ConfigError, DependencyError
 from events import EventBus
 from infra.audio import check_audio
 from infra.audio.listener import Listener, OpenWakeWord, load_vad, load_whisper
 from infra.audio.talker import Talker, load_kokoro, open_speaker
-from infra.claude.agents import DEFAULT_SESSION, KINDS, AgentKind
+from infra.claude.agents import AgentKind, SessionContext
 from infra.claude.alfred import AlfredAgent, check_cli
 from infra.claude.session import CodingSession
 from infra.claude.state import DailyState
 from infra.claude.tools import alfred_tools
+from models import settings as settings_model
+from models.db import open_db
 
 log = logging.getLogger("alfred")
 
@@ -40,32 +45,22 @@ async def serve(config: Config) -> None:
         acknowledgements=config.kokoro.acknowledgements,
     )
 
-    def new_session(kind: AgentKind, name: str, cwd: Path) -> CodingSession:
-        return CodingSession(
-            bus,
-            name,
-            kind,
-            cwd=cwd,
-            model=config.agents.default_model,
-            timeout_s=config.agents.session_timeout_s,
-        )
+    db = open_db(config.storage.db_path)
+    settings_model.seed(db, config.seed_defaults())
+    settings = Settings(db, bus)
 
-    system = new_session(KINDS["geral"], DEFAULT_SESSION, Path.home())
-    await system.start()
-    sessions = Sessions(
-        bus,
-        talker,
-        new_session,
-        max_active=config.limits.max_active_sessions,
-        home=Path.home(),
-    )
-    sessions.add(system, protected=True)
+    def new_session(kind: AgentKind, context: Callable[[], SessionContext]) -> CodingSession:
+        return CodingSession(bus, kind, context, timeout_s=config.agents.session_timeout_s)
+
+    sessions = Sessions(bus, talker, db, settings, new_session, home=Path.home())
+    sessions.load()
+    projects = Projects(db, bus)
     agent = AlfredAgent(
         bus,
         DailyState(config.storage.state_path),
-        model=config.agents.default_model,
+        model=lambda: settings.resolve("alfred", None, None),
         timeout_s=config.agents.timeout_s,
-        tools=alfred_tools(sessions),
+        tools=alfred_tools(sessions, projects),
     )
     await agent.start()
     router = Router(bus, agent, talker)
@@ -84,7 +79,7 @@ async def serve(config: Config) -> None:
         acknowledge=talker.acknowledge,
     )
 
-    workers = asyncio.create_task(sessions.run())
+    jobs = [asyncio.create_task(job()) for job in (sessions.run, sessions.watch_idle, settings.run)]
     stop = threading.Event()
     for worker in (listener.run, talker.run):
         threading.Thread(target=worker, args=(stop,), daemon=True).start()
@@ -92,6 +87,8 @@ async def serve(config: Config) -> None:
     app = create_app()
     app.state.bus = bus
     app.state.sessions = sessions
+    app.state.projects = projects
+    app.state.settings = settings
     server = uvicorn.Server(
         uvicorn.Config(app, config.api.host, config.api.port, log_level="warning")
     )
@@ -102,7 +99,8 @@ async def serve(config: Config) -> None:
         await server.serve()
     finally:
         stop.set()
-        workers.cancel()
+        for job in jobs:
+            job.cancel()
 
 
 def main(config_path: Path = Path("config.yaml")) -> int:

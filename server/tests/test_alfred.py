@@ -346,8 +346,42 @@ def test_options_install_the_url_hook() -> None:
 def test_agent_exposes_tools_server_as_alfred() -> None:
     from infra.claude.tools import alfred_tools
 
-    server = alfred_tools(None)  # type: ignore[arg-type]
+    server = alfred_tools(None, None)  # type: ignore[arg-type]
     options = AlfredAgent(None, None, "sonnet", 1, tools=server)._options(None)  # type: ignore[arg-type]
     assert options.mcp_servers == {"alfred": server}
     assert "delegar_geral" in str(options.system_prompt)
     assert "apagar_sessao" in str(options.system_prompt)
+    assert options.model == "sonnet"
+
+
+async def test_settings_change_reopens_with_the_new_model_and_same_conversation(
+    bus: EventBus, tmp_path: Path
+) -> None:
+    current: list[tuple[str, str | None]] = [("sonnet", None)]
+    connect = FakeConnect([result(session_id="s1")], [result(session_id="s1")])
+    alfred = AlfredAgent(
+        bus,
+        DailyState(tmp_path / "s.json"),
+        model=lambda: current[0],
+        timeout_s=1,
+        connect=connect,
+        today=lambda: TODAY,
+    )
+    await alfred.start()
+    await spoken_for(alfred)
+
+    current[0] = ("opus", "high")
+    await spoken_for(alfred)
+
+    assert [(o.model, o.effort, o.resume) for o in connect.options] == [
+        ("sonnet", None, None),
+        ("opus", "high", "s1"),
+    ]
+    assert connect.clients[0].closed
+
+
+def test_prompt_routes_code_to_implementation_sessions() -> None:
+    from infra.claude.alfred import SYSTEM_PROMPT
+
+    for name in ("delegar_implementacao", "criar_projeto", "criar_worktree", "apagar_workspace"):
+        assert name in SYSTEM_PROMPT
