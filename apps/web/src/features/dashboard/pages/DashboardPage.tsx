@@ -84,7 +84,10 @@ export function DashboardPage() {
 
       <main className="relative flex min-h-0 flex-1 flex-col md:flex-row">
         <section className="relative min-h-0 flex-1">
-          <Assistant caption={caption} orbRef={orbRef} />
+          {/* Above the filaments, below the agent nodes */}
+          <div className="relative z-10 h-full">
+            <Assistant caption={caption} orbRef={orbRef} />
+          </div>
           <Constellation anchor={orbRef} />
         </section>
         {showTranscript && (

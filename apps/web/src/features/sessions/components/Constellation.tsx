@@ -10,13 +10,13 @@ import type { SessionView } from '../../../api/events'
 import { useEvents } from '../../../hooks/useEvents'
 import { useSessions } from '../hooks/useSessions'
 import { filamentPath, nodePositions, pulseFor, type Point, type Stage } from '../lib/constellation'
-import { STATUS } from '../lib/status'
 import { AgentDetails } from './AgentDetails'
 import { AgentNode } from './AgentNode'
 
 // The orb's sphere fills about this share of its canvas' shorter half (camera at z 4.2, fov 45).
 const ORB_SHARE = 0.55
 const DETAILS_W = 288
+const FILAMENT = '#9ca3af' // neutral gray: the line only says who is tied to whom
 
 type Pulse = { id: number; name: string; dir: 'out' | 'in' }
 
@@ -95,21 +95,21 @@ export function Constellation({ anchor }: { anchor: RefObject<HTMLElement | null
   return (
     <div ref={box} aria-label="Sessões" className="pointer-events-none absolute inset-0">
       {stage && (
-        <svg className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
+        <svg className="absolute inset-0 z-0 h-full w-full overflow-visible" aria-hidden="true">
           {sessions.map((s, i) => {
             const busy = s.status === 'busy'
             return (
-              <g key={s.name} stroke={STATUS[s.status].color} fill="none">
-                <path d={paths[i]} strokeWidth={6} strokeOpacity={busy ? 0.12 : 0.04} />
-                <path
-                  d={paths[i]}
-                  strokeWidth={busy ? 1.5 : 1}
-                  strokeOpacity={busy ? 0.9 : 0.35}
-                  strokeDasharray={busy ? '4 8' : undefined}
-                  strokeLinecap="round"
-                  className={busy ? 'animate-filament' : undefined}
-                />
-              </g>
+              <path
+                key={s.name}
+                d={paths[i]}
+                fill="none"
+                stroke={FILAMENT}
+                strokeWidth={busy ? 1.5 : 1}
+                strokeOpacity={busy ? 0.7 : 0.3}
+                strokeDasharray={busy ? '4 8' : undefined}
+                strokeLinecap="round"
+                className={busy ? 'animate-filament' : undefined}
+              />
             )
           })}
         </svg>
@@ -118,7 +118,6 @@ export function Constellation({ anchor }: { anchor: RefObject<HTMLElement | null
         pulses.map((pulse) => {
           const i = index.get(pulse.name)
           if (i === undefined) return null
-          const color = STATUS[pulse.dir === 'out' ? 'busy' : 'idle'].color
           return (
             <span
               key={pulse.id}
@@ -126,10 +125,10 @@ export function Constellation({ anchor }: { anchor: RefObject<HTMLElement | null
               style={{
                 offsetPath: `path('${paths[i]}')`,
                 offsetRotate: '0deg',
-                background: color,
-                boxShadow: `0 0 12px 4px ${color}`,
+                background: FILAMENT,
+                boxShadow: `0 0 10px 3px ${FILAMENT}`,
               }}
-              className={`absolute top-0 left-0 size-2 rounded-full ${
+              className={`absolute top-0 left-0 z-0 size-2 rounded-full ${
                 pulse.dir === 'out' ? 'animate-pulse-out' : 'animate-pulse-in'
               }`}
             />

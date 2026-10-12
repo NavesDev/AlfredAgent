@@ -29,11 +29,10 @@ describe('nodePositions', () => {
 })
 
 describe('filamentPath', () => {
-  it('starts on the orb edge and ends at the node', () => {
+  it('runs from the orb center to the node, both hidden behind their orbs', () => {
     const d = filamentPath(stage, { x: 100, y: 300 })
-    const [, sx, sy] = /^M([\d.]+) ([\d.]+)/.exec(d)!.map(Number)
 
-    expect(Math.hypot(sx - stage.cx, sy - stage.cy)).toBeCloseTo(stage.r, 0)
+    expect(d.startsWith('M400 300 Q')).toBe(true)
     expect(d.endsWith('100 300')).toBe(true)
   })
 })

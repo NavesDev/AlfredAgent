@@ -26,17 +26,15 @@ export function nodePositions(count: number, { cx, cy, r, width, height }: Stage
   })
 }
 
-/** A gentle curve from the orb's edge to the node, bowing upward. */
-export function filamentPath({ cx, cy, r }: Stage, to: Point): string {
+/** A gentle curve from the orb's center to the node; both ends sit behind their orbs. */
+export function filamentPath({ cx, cy }: Stage, to: Point): string {
   const dx = to.x - cx
   const dy = to.y - cy
   const len = Math.hypot(dx, dy) || 1
-  const sx = cx + (dx / len) * r
-  const sy = cy + (dy / len) * r
   const bow = len * 0.18 * (dx < 0 ? 1 : -1)
-  const qx = (sx + to.x) / 2 + (-dy / len) * bow
-  const qy = (sy + to.y) / 2 + (dx / len) * bow
-  return `M${n(sx)} ${n(sy)} Q${n(qx)} ${n(qy)} ${n(to.x)} ${n(to.y)}`
+  const qx = (cx + to.x) / 2 + (-dy / len) * bow
+  const qy = (cy + to.y) / 2 + (dx / len) * bow
+  return `M${n(cx)} ${n(cy)} Q${n(qx)} ${n(qy)} ${n(to.x)} ${n(to.y)}`
 }
 
 /** Light runs Alfred → agent when a task starts and back when it ends. */

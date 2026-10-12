@@ -14,6 +14,7 @@ export function useSessions() {
   const query = useQuery({
     queryKey: SESSIONS_KEY,
     queryFn: () => api<SessionView[]>('/api/sessions'),
+    staleTime: Infinity, // the /ws keeps it current; reconnecting refetches below
   })
 
   useEvents((event) => {

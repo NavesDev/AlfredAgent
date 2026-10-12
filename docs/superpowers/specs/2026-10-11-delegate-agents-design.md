@@ -145,7 +145,7 @@ Primeira versão usou uma faixa de cartões; ficou genérica e não mostrava a l
 
 - Cada sessão é um nó em volta do orb do Alfred: mini orb (mesmos shaders, `src/lib/orb/`) na cor do status (âmbar ocupado, verde livre, vermelho erro), maior e com halo pulsando quando ocupado.
 - Rótulo flutuante sob o nó: nome e, embaixo, a atividade atual (ocupado) ou `livre · modelo`.
-- Um filamento curvo liga a borda do orb a cada nó. Livre: linha fraca. Ocupado: traço âmbar animado.
+- Um filamento cinza neutro liga o centro do orb a cada nó, desenhado atrás dos dois orbs. Livre: linha fraca. Ocupado: tracejado animado, mais claro.
 - Pulso de luz corre pelo filamento: Alfred → nó quando uma tarefa começa, nó → Alfred quando termina (derivado dos eventos `session_status`).
 - Clique no nó abre o painel de detalhes (tipo, modelo, pasta, tarefa, atividade, fila, tarefas, tokens, último resumo, Limpar, Apagar com segundo clique). Esc ou clique fora fecha.
 - Posições em elipse em volta do orb, lados primeiro, depois acima e abaixo; presas à área visível. Geometria pura em `features/sessions/lib/constellation.ts`, com testes.

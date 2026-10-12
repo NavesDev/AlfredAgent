@@ -22,7 +22,7 @@ export function AgentNode({ session, at, open, onToggle }: Props) {
       aria-expanded={open}
       aria-label={`Sessão ${session.name}, ${status.label}`}
       style={{ left: at.x, top: at.y, transition: 'left 600ms, top 600ms' }}
-      className="animate-node-in pointer-events-auto absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
+      className="animate-node-in pointer-events-auto absolute z-20 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
     >
       <span
         className={`relative block transition-[width,height] duration-500 ${busy ? 'size-16' : 'size-12'}`}
