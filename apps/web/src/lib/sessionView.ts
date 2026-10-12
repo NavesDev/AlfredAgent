@@ -21,6 +21,7 @@ export const sessionView = (name: string, over: Partial<SessionView> = {}): Sess
   tasks_done: 0,
   tokens: 0,
   last_summary: null,
+  last_error: null,
   protected: false,
   subagents: [],
   ...over,

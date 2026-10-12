@@ -113,6 +113,17 @@ export function AgentDetails({ session, style, onClose }: Props) {
           ))}
         </ul>
       )}
+      {session.last_error && (
+        <div
+          role="alert"
+          className="rounded-md border border-red-300/25 bg-red-400/10 px-2 py-1.5 text-xs text-red-200"
+        >
+          <p className="font-medium">Por que falhou</p>
+          <p className="mt-0.5 font-mono text-[11px] break-words whitespace-pre-wrap text-red-200/80">
+            {session.last_error}
+          </p>
+        </div>
+      )}
       {session.last_summary && (
         <p className="text-xs text-gray-400">último: “{session.last_summary}”</p>
       )}

@@ -51,6 +51,7 @@ class SessionView(BaseModel):
     tasks_done: int
     tokens: int
     last_summary: str | None
+    last_error: str | None  # why the last task failed, until the next one starts
     protected: bool
     subagents: list[SubagentView]
 

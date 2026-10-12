@@ -18,7 +18,7 @@ from claude_agent_sdk import (
 from errors import AgentError, DependencyError
 from events import EventBus
 from infra.claude import permissions
-from infra.claude.alfred import AlfredAgent, check_cli, setup_version, tool_detail
+from infra.claude.alfred import AlfredAgent, check_cli, failure, setup_version, tool_detail
 from infra.claude.state import DailyState
 from tests.conftest import drain
 
@@ -286,6 +286,27 @@ async def test_error_result_raises_agent_error(bus: EventBus, tmp_path: Path) ->
 
     with pytest.raises(AgentError):
         await spoken_for(alfred)
+
+
+async def test_error_result_says_why(bus: EventBus, tmp_path: Path) -> None:
+    connect = FakeConnect([result("Prompt is too long", is_error=True)])
+    alfred = await started(bus, tmp_path, connect)
+
+    with pytest.raises(AgentError, match="Prompt is too long"):
+        await spoken_for(alfred)
+
+
+def test_failure_prefers_the_cli_errors_then_its_text() -> None:
+    errored = result("x", is_error=True)
+    errored.errors = ["API Error: 529 Overloaded", " "]
+    empty = result("", is_error=True)
+    empty.subtype = "error_max_turns"
+
+    assert failure(errored) == "API Error: 529 Overloaded"
+    assert failure(result("  Credit\n balance is too low ", is_error=True)) == (
+        "Credit balance is too low"
+    )
+    assert failure(empty) == "falhou (error_max_turns)"
 
 
 async def test_timeout_raises_agent_error(bus: EventBus, tmp_path: Path) -> None:

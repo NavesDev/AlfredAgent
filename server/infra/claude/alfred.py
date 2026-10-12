@@ -197,7 +197,7 @@ class AlfredAgent:
         if result is None:
             raise AgentError("stream ended without a result")
         if result.is_error or result.result is None:
-            raise AgentError(f"agent returned error: {result.errors or result.subtype}")
+            raise AgentError(failure(result))
         if not spoken and (spoken := extract_summary(result.result)):
             on_summary(spoken)
         self._state.save(result.session_id, self._day or self._today(), self._version)
@@ -239,3 +239,13 @@ def tool_detail(tool_input: dict[str, Any]) -> str | None:
 def _text_delta(event: dict[str, Any]) -> str:
     delta = event.get("delta", {}) if event.get("type") == "content_block_delta" else {}
     return str(delta.get("text", "")) if delta.get("type") == "text_delta" else ""
+
+
+ERROR_MAX = 500
+
+
+def failure(result: sdk.ResultMessage) -> str:
+    """Why a run failed, in the CLI's own words: its errors, else its final text, else the kind."""
+    errors = [str(e) for e in result.errors or [] if str(e).strip()]
+    text = "; ".join(errors) or (result.result or "").strip() or f"falhou ({result.subtype})"
+    return " ".join(text.split())[:ERROR_MAX]

@@ -274,8 +274,26 @@ async def test_failure_marks_error_and_is_spoken(env: Env) -> None:
 
     view = env.sessions.list()[0]
     assert view.status == "error" and not view.connected
+    assert view.last_error == "boom"
     assert any(e["where"] == "sistema" for e in of_type(drain(queue), "error"))
     assert "não conseguiu" in env.talker.said[0]
+
+
+async def test_the_reason_stays_until_the_next_task_or_a_clear(env: Env) -> None:
+    env.script("sistema", AgentError("boom"))
+    env.sessions.delegate("sistema", "a")
+    await settle()
+    assert env.sessions.list()[0].last_error == "boom"
+
+    env.sessions.delegate("sistema", "b")
+    await settle()
+    assert env.sessions.list()[0].last_error is None
+
+    env.script("sistema", AgentError("boom"))
+    env.sessions.delegate("sistema", "c")
+    await settle()
+    await env.sessions.clear("sistema")
+    assert env.sessions.list()[0].last_error is None
 
 
 # --- slots -----------------------------------------------------------------------------------

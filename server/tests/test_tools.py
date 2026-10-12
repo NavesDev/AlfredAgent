@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 
 from controllers.projects import Projects
-from errors import SessionNotFound
+from errors import AgentError, SessionNotFound
 from events import EventBus
 from infra.claude import permissions
 from infra.claude.activity import describe_tool
@@ -64,6 +64,16 @@ async def test_errors_become_spoken_messages(tools: Tools) -> None:
     assert "Não existe projeto" in await tools.call(
         "criar_workspace", {"projeto": "nada", "nome": "x", "pasta": "/"}
     )
+
+
+async def test_listing_tells_why_a_session_failed(tools: Tools) -> None:
+    tools.env.script("sistema", AgentError("Prompt is too long"))
+    tools.env.sessions.delegate("sistema", "x")
+    await settle()
+
+    listed = await tools.call("listar_sessoes", {})
+
+    assert "sistema" in listed and "último erro: Prompt is too long" in listed
 
 
 async def test_lifecycle_tools(tools: Tools) -> None:

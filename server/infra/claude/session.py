@@ -14,7 +14,7 @@ import claude_agent_sdk as sdk
 from errors import AgentError
 from events import EventBus
 from infra.claude.agents import AgentKind, SessionContext
-from infra.claude.alfred import Client, Reply, connect_sdk, publish_progress
+from infra.claude.alfred import Client, Reply, connect_sdk, failure, publish_progress
 from infra.claude.summary import extract_summary
 
 
@@ -85,7 +85,7 @@ class CodingSession:
         if result is None:
             raise AgentError("stream ended without a result")
         if result.is_error or result.result is None:
-            raise AgentError(f"session returned error: {result.errors or result.subtype}")
+            raise AgentError(failure(result))
         usage = result.usage or {}
         tokens = int(usage.get("input_tokens", 0)) + int(usage.get("output_tokens", 0))
         reply = Reply(result.result, extract_summary(result.result), tokens, result.session_id)

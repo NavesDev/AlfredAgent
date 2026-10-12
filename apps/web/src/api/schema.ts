@@ -306,6 +306,8 @@ export interface components {
       tokens: number
       /** Last Summary */
       last_summary: string | null
+      /** Last Error */
+      last_error: string | null
       /** Protected */
       protected: boolean
       /** Subagents */
