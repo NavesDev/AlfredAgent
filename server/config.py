@@ -5,6 +5,8 @@ import yaml
 from pydantic import BaseModel, ValidationError
 
 from errors import ConfigError
+from infra.claude.agents import KINDS
+from models.settings import Defaults
 
 
 class Whisper(BaseModel):
@@ -35,12 +37,14 @@ class Listener(BaseModel):
 
 class Agents(BaseModel):
     default_model: str
+    models: dict[str, str] = {}  # seeds per kind ("alfred", "geral", "implementacao")
     timeout_s: int = 60
     session_timeout_s: int = 300
 
 
 class Limits(BaseModel):
     max_active_sessions: int = 3
+    idle_minutes: int = 10
 
 
 class Api(BaseModel):
@@ -50,6 +54,7 @@ class Api(BaseModel):
 
 class Storage(BaseModel):
     state_path: Path
+    db_path: Path = Path("data/alfred.sqlite3")
 
 
 class Config(BaseModel):
@@ -61,6 +66,15 @@ class Config(BaseModel):
     limits: Limits = Limits()
     api: Api = Api()
     storage: Storage
+
+    def seed_defaults(self) -> Defaults:
+        """What the settings table starts with; the panel edits them afterwards."""
+        kinds = ("alfred", *KINDS)
+        return Defaults(
+            models={k: self.agents.models.get(k, self.agents.default_model) for k in kinds},
+            max_active_sessions=self.limits.max_active_sessions,
+            idle_minutes=self.limits.idle_minutes,
+        )
 
 
 def load_config(path: Path) -> Config:

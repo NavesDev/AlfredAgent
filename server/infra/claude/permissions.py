@@ -45,6 +45,11 @@ ALLOWED = [
             "limpar_sessao",
             "apagar_sessao",
             "listar_sessoes",
+            "criar_projeto",
+            "listar_projetos",
+            "criar_workspace",
+            "criar_worktree",
+            "apagar_workspace",
         )
     ),
 ]

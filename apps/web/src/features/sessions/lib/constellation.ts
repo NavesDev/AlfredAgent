@@ -26,15 +26,74 @@ export function nodePositions(count: number, { cx, cy, r, width, height }: Stage
   })
 }
 
-/** A gentle curve from the orb's center to the node; both ends sit behind their orbs. */
-export function filamentPath({ cx, cy }: Stage, to: Point): string {
-  const dx = to.x - cx
-  const dy = to.y - cy
+/** The quadratic segment of a gentle curve from one point to another, without the move. */
+function curve(from: Point, to: Point): string {
+  const dx = to.x - from.x
+  const dy = to.y - from.y
   const len = Math.hypot(dx, dy) || 1
   const bow = len * 0.18 * (dx < 0 ? 1 : -1)
-  const qx = (cx + to.x) / 2 + (-dy / len) * bow
-  const qy = (cy + to.y) / 2 + (dx / len) * bow
-  return `M${n(cx)} ${n(cy)} Q${n(qx)} ${n(qy)} ${n(to.x)} ${n(to.y)}`
+  const qx = (from.x + to.x) / 2 + (-dy / len) * bow
+  const qy = (from.y + to.y) / 2 + (dx / len) * bow
+  return `Q${n(qx)} ${n(qy)} ${n(to.x)} ${n(to.y)}`
+}
+
+const move = (p: Point) => `M${n(p.x)} ${n(p.y)}`
+
+/** A gentle curve from the orb's center to the node; both ends sit behind their orbs. */
+export function filamentPath({ cx, cy }: Stage, to: Point): string {
+  return `${move({ x: cx, y: cy })} ${curve({ x: cx, y: cy }, to)}`
+}
+
+// Sessions of a project hang from a hub (the project's diamond) between the orb and them.
+const HUB_AT = 0.55 // share of the way from the orb to the group's slot
+const SPREAD = 0.34 // radians between sessions of the same project
+
+export type Hub = { project: string; at: Point; d: string }
+/** d: orb → (hub →) node, for the pulses. branch: hub → node, null without a project. */
+export type Node = { name: string; at: Point; d: string; branch: string | null }
+export type Layout = { hubs: Hub[]; nodes: Node[] }
+
+export function layout(sessions: SessionView[], stage: Stage): Layout {
+  const { cx, cy, width, height } = stage
+  const groups: { project: string | null; names: string[] }[] = []
+  for (const s of sessions) {
+    const group = s.project ? groups.find((g) => g.project === s.project) : undefined
+    if (group) group.names.push(s.name)
+    else groups.push({ project: s.project ?? null, names: [s.name] })
+  }
+  const slots = nodePositions(groups.length, stage)
+  const hubs: Hub[] = []
+  const nodes: Node[] = []
+  groups.forEach((group, g) => {
+    const slot = slots[g]
+    const vx = slot.x - cx
+    const vy = slot.y - cy
+    const hub = group.project
+      ? { project: group.project, at: { x: cx + vx * HUB_AT, y: cy + vy * HUB_AT }, d: '' }
+      : null
+    if (hub) {
+      hub.d = filamentPath(stage, hub.at)
+      hubs.push(hub)
+    }
+    group.names.forEach((name, i) => {
+      const a = (i - (group.names.length - 1) / 2) * SPREAD
+      const at = {
+        x: clamp(cx + vx * Math.cos(a) - vy * Math.sin(a), MARGIN_X, width - MARGIN_X),
+        y: clamp(cy + vx * Math.sin(a) + vy * Math.cos(a), MARGIN_Y, height - MARGIN_Y),
+      }
+      nodes.push(
+        hub
+          ? {
+              name,
+              at,
+              d: `${hub.d} ${curve(hub.at, at)}`,
+              branch: `${move(hub.at)} ${curve(hub.at, at)}`,
+            }
+          : { name, at, d: filamentPath(stage, at), branch: null },
+      )
+    })
+  })
+  return { hubs, nodes }
 }
 
 /** Light runs Alfred → agent when a task starts and back when it ends. */

@@ -44,20 +44,23 @@ Regras do agente principal:
 
 ## Modelo de dados
 
-Três entidades em SQLite: Projeto → Workspace (worktree) → Sessão. A sessão é o que você chama por voz; o nome dela é o "endereço" do comando.
+Três entidades em SQLite: Projeto → Workspace → Sessão. O projeto é só um agrupador; o workspace é uma pasta (com ou sem git) ou um worktree criado a partir de outro workspace. A sessão é o que você chama por voz; o nome dela é o "endereço" do comando.
 
 | Entidade | Campos principais | Exemplo |
 |---|---|---|
-| Project | id, name, aliases[], repo_path, base_branch | Recurve · aliases: "recurve", "billing" · ~/dev/recurve · main |
-| Workspace | id, project_id, name, path, branch, kind (main ou worktree) | "cancelamento" · ~/dev/recurve-wt/cancelamento · feat/cancelamento |
-| Session | id, workspace_id, name, aliases[], claude_session_id, status, allowed_tools[], system_prompt | "backend" · aliases: "bequi", "back" · status: busy |
+| Project | id, name, aliases[] | Recurve · aliases: "recurve", "billing" |
+| Workspace | id, project_id, name, path, kind (folder ou worktree), parent_id, branch | "back" · ~/dev/recurve-api · folder; "cancelamento" · ~/dev/recurve-api-wt/cancelamento · worktree de back |
+| Session | id, name, kind (geral ou implementacao), workspace_id, model, effort, claude_session_id | "backend" · implementacao · workspace back · opus |
 | Task | id, project_id (opcional), title, status, priority, session_id (opcional), created_at | "Implementar reembolso" · Recurve · high · in_progress na sessão backend |
 
 Regras:
 
 - Nome de sessão é único no sistema todo, pra você não precisar falar o projeto toda vez.
 - Apelidos existem porque o Whisper às vezes transcreve "backend" como "bequi end"; o match usa apelidos + fuzzy match (rapidfuzz, corte ~85%).
-- Criar workspace do tipo worktree roda `git worktree add <path> -b <branch>` a partir do `repo_path`; remover roda `git worktree remove`.
+- Um projeto pode ter vários workspaces (ex: um pro back e outro pro front). Cadastrar uma pasta não exige git.
+- Criar worktree roda `git worktree add <pai>-wt/<nome> -b <nome>` a partir do workspace pai; remover roda `git worktree remove` e recusa se houver mudança não commitada (a menos que force). Remover workspace de pasta comum só tira do cadastro.
+- Modelo e effort vêm da tela de configurações por tipo de agente; cada sessão pode sobrescrever.
+- O tipo `implementacao` usa o harness completo do Claude Code: CLAUDE.md, skills, plugins, hooks e MCPs ([ADR 0008](adr/0008-implementation-agent-full-harness.md)).
 - `claude_session_id` guarda o id do Agent SDK pra retomar a conversa (resume) depois de reiniciar o assistente.
 - Status de sessão: ociosa, ocupada, aguardando permissão, erro. Status de tarefa: aberta, em andamento, feita; tarefa sem projeto vale pra coisas pessoais ("pagar boleto"), e tarefa delegada vira feita sozinha quando a sessão termina.
 

@@ -26,12 +26,17 @@ listener:
 
 agents:
   default_model: sonnet
+  models:                    # seeds per agent kind; edited on the panel (/settings) afterwards
+    alfred: sonnet
+    geral: sonnet
+    implementacao: opus
   light_model: haiku         # simple questions + RESUMO fallback
   timeout_s: 60
-  session_timeout_s: 300     # tasks Alfred delegates to the "sistema" session
+  session_timeout_s: 300     # one task in a delegated session
 
-limits:
-  max_active_sessions: 3
+limits:                      # seeds; edited on the panel afterwards
+  max_active_sessions: 3     # open claude processes, not registered sessions
+  idle_minutes: 10           # an idle session closes its process and resumes on the next task
 
 permissions:
   default_confirmation: voice      # voice | key | web | voice+key

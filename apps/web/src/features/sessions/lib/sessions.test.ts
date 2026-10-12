@@ -1,23 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import type { AlfredEvent, SessionView } from '../../../api/events'
+import type { AlfredEvent } from '../../../api/events'
 import { applySessionEvent } from './sessions'
-
-const view = (name: string, over: Partial<SessionView> = {}): SessionView => ({
-  name,
-  kind: 'geral',
-  label: 'Geral',
-  model: 'sonnet',
-  cwd: '~',
-  status: 'idle',
-  task: null,
-  activity: null,
-  queue: 0,
-  tasks_done: 0,
-  tokens: 0,
-  last_summary: null,
-  protected: false,
-  ...over,
-})
+import { sessionView as view } from '../../../lib/sessionView'
 
 describe('applySessionEvent', () => {
   it('appends a created session and replaces it on status', () => {

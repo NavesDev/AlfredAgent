@@ -10,6 +10,21 @@
   --animate-pulse-in: pulse-run 900ms cubic-bezier(0.4, 0, 0.2, 1) reverse forwards;
   --animate-breathe: breathe 1.6s ease-in-out infinite;
   --animate-node-in: node-in 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-subagent: subagent 1.2s ease-out infinite;
+
+  @keyframes subagent {
+    0%,
+    100% {
+      background: #111113;
+    }
+    15% {
+      background: #e8e8ec;
+      box-shadow: 0 0 8px #fff;
+    }
+    40% {
+      background: #111113;
+    }
+  }
 
   @keyframes filament {
     to {
@@ -58,7 +73,8 @@
   .animate-activity-in,
   .animate-filament,
   .animate-breathe,
-  .animate-node-in {
+  .animate-node-in,
+  .animate-subagent {
     animation: none;
   }
 }

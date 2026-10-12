@@ -11,8 +11,8 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 | Wake word | Palavra que ativa a escuta ("Alfred", apelido "Alfredo") |
 | Agente principal | Sessão fixa `alfred`: responde, pesquisa, coordena. Não edita código |
 | Sessão nomeada | Sessão do Claude Code presa a um workspace; o nome é o "endereço" do comando |
-| Projeto | Repositório cadastrado (`repo_path`, `base_branch`, apelidos) |
-| Workspace | Diretório de trabalho de um projeto: o `main` ou um `git worktree` |
+| Projeto | Agrupador de workspaces e sessões (nome + apelidos) |
+| Workspace | Pasta de um projeto (com ou sem git) ou um `git worktree` criado a partir de outra |
 | Sessão em foco | Sessão que recebe comandos de código sem nome explícito |
 | Linha `RESUMO:` | Última linha de cada resposta, até 2 frases, a única lida em voz alta |
 | Turno contaminado | Turno em que o agente leu conteúdo externo (e-mail, web) |
@@ -120,14 +120,14 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 | RN-01 | Nome de sessão é único no sistema todo |
 | RN-02 | Existe sempre uma sessão fixa `alfred` (agente principal), não presa a repositório |
 | RN-03 | O agente principal nunca edita código; trabalho em repositório sempre via `delegar` |
-| RN-04 | Máximo de 3 sessões de código ativas simultaneamente (configurável) |
+| RN-04 | Máximo de processos `claude` abertos ao mesmo tempo (padrão 3, editável na tela de configurações). Sessão ociosa por `idle_minutes` fecha o processo e retoma a conversa na próxima tarefa; sem vaga, a tarefa espera numa fila |
 | RN-05 | Status de sessão: `idle`, `busy`, `waiting_permission`, `error` |
 | RN-06 | Status de tarefa: `open`, `in_progress`, `done`; prioridade `low`, `medium`, `high` |
 | RN-07 | Tarefa sem projeto é pessoal ("pagar boleto") |
 | RN-08 | Fechar sessão encerra a execução mas mantém o histórico |
 | RN-09 | E-mail é sempre lido resumido, nunca na íntegra |
 | RN-10 | Ler e-mail/agenda roda direto; escrever exige confirmação |
-| RN-11 | Workspace tem `kind` `main` (o próprio repo) ou `worktree` |
+| RN-11 | Workspace tem `kind` `folder` (qualquer pasta) ou `worktree` (com `parent_id` e `branch`) |
 
 ## Fora de escopo no MVP
 
@@ -156,7 +156,7 @@ Cada fase entrega algo usável sozinho.
 1. **Timeout de permissão duplicado na spec:** `permissions.timeout_s` e `limits.timeout_permissao_s`. Proposta: manter só `permissions.timeout_s`.
 2. **Chaves do config em português** (`limites`, `max_sessoes_ativas`) contrariam "config em inglês". Proposta: `limits.max_active_sessions`.
 3. **Canal `key`:** qual tecla/dispositivo? Atalho global no desktop exige Tauri (fora do MVP). Proposta: tecla no terminal do server ou botão no painel até lá.
-4. **Fila por sessão:** persistida em SQLite ou só em memória? Afeta RNF-07.
+4. ~~**Fila por sessão:** persistida em SQLite ou só em memória?~~ Resolvido: a fila fica em memória; projetos, sessões e configurações vão pro SQLite e a conversa volta pelo resume.
 5. **Rotação diária da conversa do `alfred`:** em que horário vira o dia, e o que acontece com uma conversa em andamento?
 6. **Autenticação do painel na rede local:** nenhuma no MVP? Qualquer um na LAN poderia aprovar confirmações via `web`.
 7. **Licença** do projeto.

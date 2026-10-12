@@ -1,6 +1,6 @@
 import pytest
 
-from infra.claude.activity import describe_tool
+from infra.claude.activity import describe_tool, phase_of
 
 
 @pytest.mark.parametrize(
@@ -19,3 +19,25 @@ from infra.claude.activity import describe_tool
 )
 def test_describe_tool(name: str, label: str) -> None:
     assert describe_tool(name) == label
+
+
+@pytest.mark.parametrize(
+    ("name", "phase"),
+    [
+        ("Read", "exploring"),
+        ("Grep", "exploring"),
+        ("Glob", "exploring"),
+        ("WebFetch", "exploring"),
+        ("Edit", "editing"),
+        ("MultiEdit", "editing"),
+        ("Write", "editing"),
+        ("NotebookEdit", "editing"),
+        ("Bash", "running"),
+        ("BashOutput", "running"),
+        ("TodoWrite", None),
+        ("Skill", None),
+        ("mcp__context7__query_docs", None),
+    ],
+)
+def test_phase_of(name: str, phase: str | None) -> None:
+    assert phase_of(name) == phase

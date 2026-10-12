@@ -1,18 +1,27 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import type { SessionView } from '../../../api/events'
+import { EFFORTS, field } from '../../../lib/sessionForm'
+import { ModelSelect } from '../../../components/ModelSelect'
+import { useButler } from '../hooks/useButler'
 import { useSessionActions } from '../hooks/useSessionActions'
 import { formatTokens, STATUS } from '../lib/status'
+import { Butler } from './butler/Butler'
 
 const CONFIRM_MS = 4000
+const SUBAGENT = { running: 'rodando', completed: 'feito', failed: 'falhou', stopped: 'parado' }
+
+function BigButler({ session }: { session: SessionView }) {
+  return <Butler state={useButler(session)} className="mx-auto h-24 w-28" />
+}
 
 type Props = { session: SessionView; style: CSSProperties; onClose: () => void }
 
 /** What a node opens: everything about the session, plus clear and delete. */
 export function AgentDetails({ session, style, onClose }: Props) {
-  const { clear, remove } = useSessionActions()
+  const { clear, remove, change } = useSessionActions()
   const [confirming, setConfirming] = useState(false)
   const status = STATUS[session.status]
-  const error = clear.error ?? remove.error
+  const error = clear.error ?? remove.error ?? change.error
 
   useEffect(() => {
     if (!confirming) return
@@ -46,8 +55,45 @@ export function AgentDetails({ session, style, onClose }: Props) {
           ×
         </button>
       </header>
+      {session.kind === 'implementacao' && <BigButler session={session} />}
       <p className="text-xs text-gray-400">
-        {session.label} · {session.model} · <span className="font-mono">{session.cwd}</span>
+        {session.label}
+        {session.project && (
+          <>
+            {' '}
+            · {session.project} / {session.workspace}
+            {session.branch && <span className="text-gray-500"> ⎇ {session.branch}</span>}
+          </>
+        )}
+        {' · '}
+        <span className="font-mono">{session.cwd}</span>
+      </p>
+      <div className="flex gap-1.5">
+        <div className="min-w-0 flex-1">
+          <ModelSelect
+            label="Modelo"
+            compact
+            value={session.model}
+            onChange={(model) =>
+              model !== session.model && change.mutate({ name: session.name, model })
+            }
+          />
+        </div>
+        <select
+          aria-label="Effort"
+          value={session.effort ?? ''}
+          onChange={(e) => change.mutate({ name: session.name, effort: e.target.value })}
+          className={`${field} py-1 text-xs`}
+        >
+          <option value="">effort padrão</option>
+          {EFFORTS.map((e) => (
+            <option key={e}>{e}</option>
+          ))}
+        </select>
+      </div>
+      <p className="text-[11px] text-gray-500">
+        {session.connected ? 'processo aberto' : 'dormindo (retoma na próxima tarefa)'}
+        {session.waiting && ' · esperando vaga'}
       </p>
       {session.task && <p className="text-gray-100">“{session.task}”</p>}
       {session.activity && (
@@ -56,6 +102,20 @@ export function AgentDetails({ session, style, onClose }: Props) {
       <p className="text-xs text-gray-500">
         fila {session.queue} · {session.tasks_done} tarefas · {formatTokens(session.tokens)} tokens
       </p>
+      {session.subagents.length > 0 && (
+        <ul className="flex flex-col gap-0.5 border-l border-white/10 pl-2 text-xs">
+          {session.subagents.map((sub) => (
+            <li
+              key={sub.id}
+              className={sub.status === 'running' ? 'text-gray-200' : 'text-gray-500'}
+            >
+              <span className="font-mono">{sub.type}</span> · {sub.description}
+              {sub.last_tool && <span className="font-mono text-gray-500"> · {sub.last_tool}</span>}
+              {sub.status !== 'running' && <span> · {SUBAGENT[sub.status]}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
       {session.last_summary && (
         <p className="text-xs text-gray-400">último: “{session.last_summary}”</p>
       )}

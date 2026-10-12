@@ -1,12 +1,29 @@
-"""Named sessions for the panel: list, clear, delete. Creating is by voice only (ADR 0007)."""
+"""Named sessions for the panel: list, create, change model/effort, clear, delete.
+
+Routes are async so SQLite stays on the event loop's thread.
+"""
 
 from fastapi import APIRouter, HTTPException, Request, Response
+from pydantic import BaseModel
 
 from controllers.sessions import Sessions
-from errors import SessionNotFound, SessionProtected
+from errors import SessionError, SessionNotFound, SessionProtected
 from models.session import SessionView
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
+
+
+class NewSession(BaseModel):
+    kind: str
+    name: str
+    workspace_id: int | None = None
+    model: str | None = None
+    effort: str | None = None
+
+
+class SessionChange(BaseModel):
+    model: str | None = None  # "" goes back to the kind's setting
+    effort: str | None = None
 
 
 def _sessions(request: Request) -> Sessions:
@@ -15,8 +32,28 @@ def _sessions(request: Request) -> Sessions:
 
 
 @router.get("")
-def list_sessions(request: Request) -> list[SessionView]:
+async def list_sessions(request: Request) -> list[SessionView]:
     return _sessions(request).list()
+
+
+@router.post("", status_code=201)
+async def create_session(body: NewSession, request: Request) -> SessionView:
+    try:
+        return _sessions(request).create(
+            body.kind, body.name, body.workspace_id, body.model, body.effort
+        )
+    except SessionError as e:
+        raise HTTPException(422, str(e)) from e
+
+
+@router.patch("/{name}")
+async def update_session(name: str, body: SessionChange, request: Request) -> SessionView:
+    try:
+        return _sessions(request).update(name, body.model, body.effort)
+    except SessionNotFound as e:
+        raise HTTPException(404, str(e)) from e
+    except SessionError as e:
+        raise HTTPException(422, str(e)) from e
 
 
 @router.post("/{name}/clear")

@@ -1,5 +1,6 @@
-import type { AlfredEvent, SessionView, UnstampedEvent } from '../api/events'
+import type { AlfredEvent, UnstampedEvent } from '../api/events'
 import { emit } from '../hooks/useEvents'
+import { sessionView as session } from './sessionView'
 
 type Step = { at: number; event: UnstampedEvent }
 
@@ -12,23 +13,6 @@ const wave = (from: number, to: number, everyMs: number, source: 'mic' | 'tts'):
       level: Math.max(0, 0.35 + 0.35 * Math.sin(i / 2.3) + (Math.random() - 0.5) * 0.4),
     },
   })) as Step[]
-
-const session = (name: string, over: Partial<SessionView> = {}): SessionView => ({
-  name,
-  kind: 'geral',
-  label: 'Geral',
-  model: 'sonnet',
-  cwd: '~',
-  status: 'idle',
-  task: null,
-  activity: null,
-  queue: 0,
-  tasks_done: 0,
-  tokens: 0,
-  last_summary: null,
-  protected: false,
-  ...over,
-})
 
 const SISTEMA = { protected: true, tasks_done: 3, tokens: 11800, last_summary: 'Tela girada.' }
 const TASK = 'baixa o instalador do Zoom'
@@ -72,8 +56,109 @@ const SESSIONS: Step[] = [
   },
 ]
 
+const RECURVE = {
+  kind: 'implementacao',
+  label: 'Implementação',
+  model: 'opus',
+  project: 'Recurve',
+  cwd: '~/dev/recurve-api-wt/cancel',
+}
+const BACK = { ...RECURVE, workspace: 'cancel', branch: 'cancel', connected: true }
+const IMPL_TASK = 'cria o endpoint de cancelamento'
+const busyBack = (over: Partial<Parameters<typeof session>[1]> = {}) =>
+  session('back', { ...BACK, status: 'busy', task: IMPL_TASK, ...over })
+const tool = (content: string, detail: string, phase: 'exploring' | 'editing' | 'running') =>
+  ({ type: 'agent_progress', session: 'back', kind: 'tool', content, detail, phase }) as const
+const EXPLORE = {
+  id: 'k1',
+  type: 'Explore',
+  description: 'Acha o fluxo de reembolso',
+  status: 'running' as const,
+}
+
+const IMPLEMENTATION: Step[] = [
+  { at: 200, event: { type: 'session_created', session: session('back', BACK) } },
+  {
+    at: 250,
+    event: {
+      type: 'session_created',
+      session: session('front', { ...RECURVE, workspace: 'front', cwd: '~/dev/recurve-web' }),
+    },
+  },
+  {
+    at: 1200,
+    event: {
+      type: 'session_status',
+      session: busyBack({ phase: 'exploring', activity: 'Lendo arquivos' }),
+    },
+  },
+  { at: 1300, event: tool('Grep', 'refund', 'exploring') },
+  { at: 1900, event: tool('Read', 'billing.py', 'exploring') },
+  {
+    at: 3000,
+    event: {
+      type: 'subagent_started',
+      session: 'back',
+      id: 'k1',
+      subagent_type: 'Explore',
+      description: EXPLORE.description,
+    },
+  },
+  {
+    at: 3050,
+    event: {
+      type: 'session_status',
+      session: busyBack({ phase: 'exploring', subagents: [EXPLORE] }),
+    },
+  },
+  { at: 4600, event: tool('Edit', 'billing.py', 'editing') },
+  {
+    at: 4650,
+    event: {
+      type: 'session_status',
+      session: busyBack({ phase: 'editing', activity: 'Editando arquivos', subagents: [EXPLORE] }),
+    },
+  },
+  {
+    at: 5600,
+    event: { type: 'subagent_finished', session: 'back', id: 'k1', status: 'completed' },
+  },
+  {
+    at: 5650,
+    event: {
+      type: 'session_status',
+      session: busyBack({
+        phase: 'editing',
+        activity: 'Editando arquivos',
+        subagents: [{ ...EXPLORE, status: 'completed' }],
+      }),
+    },
+  },
+  { at: 6400, event: tool('Bash', 'Roda os testes', 'running') },
+  {
+    at: 6450,
+    event: {
+      type: 'session_status',
+      session: busyBack({ phase: 'running', activity: 'Executando um comando' }),
+    },
+  },
+  {
+    at: 10200,
+    event: {
+      type: 'session_status',
+      session: session('back', {
+        ...BACK,
+        tasks_done: 1,
+        tokens: 38200,
+        last_summary: 'Endpoint criado e testes passando.',
+      }),
+    },
+  },
+]
+
 const SCRIPT: Step[] = [
   ...SESSIONS,
+  ...IMPLEMENTATION,
   { at: 0, event: { type: 'voice_state', state: 'listening' } },
   ...wave(100, 2400, 80, 'mic'),
   { at: 2500, event: { type: 'voice_state', state: 'transcribing' } },

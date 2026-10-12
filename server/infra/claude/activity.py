@@ -1,6 +1,9 @@
 """Turns tool names into what Alfred is doing, in pt-BR, for the panel and for speech."""
 
 import re
+from typing import Literal
+
+Phase = Literal["exploring", "editing", "running"]
 
 _RULES: list[tuple[re.Pattern[str], str]] = [
     (re.compile(p), label)
@@ -10,6 +13,11 @@ _RULES: list[tuple[re.Pattern[str], str]] = [
         (r"^mcp__alfred__limpar_sessao$", "Limpando uma sessão"),
         (r"^mcp__alfred__apagar_sessao$", "Apagando uma sessão"),
         (r"^mcp__alfred__listar_sessoes$", "Vendo as sessões"),
+        (r"^mcp__alfred__criar_projeto$", "Criando um projeto"),
+        (r"^mcp__alfred__listar_projetos$", "Vendo os projetos"),
+        (r"^mcp__alfred__criar_workspace$", "Criando um workspace"),
+        (r"^mcp__alfred__criar_worktree$", "Criando um worktree"),
+        (r"^mcp__alfred__apagar_workspace$", "Apagando um workspace"),
         (r"^Bash$", "Executando um comando"),
         (r"^(Read|Glob|Grep)$", "Lendo arquivos"),
         (r"^(Edit|Write)$", "Editando arquivos"),
@@ -38,3 +46,17 @@ def describe_tool(name: str) -> str:
         if pattern.search(name):
             return label
     return "Usando " + name.split("__")[-1].replace("_", " ")
+
+
+_PHASES: dict[str, Phase] = {
+    **dict.fromkeys(
+        ("Read", "Grep", "Glob", "LS", "WebSearch", "WebFetch", "NotebookRead"), "exploring"
+    ),
+    **dict.fromkeys(("Edit", "Write", "MultiEdit", "NotebookEdit"), "editing"),
+    **dict.fromkeys(("Bash", "BashOutput"), "running"),
+}
+
+
+def phase_of(name: str) -> Phase | None:
+    """What a coding session is doing, for the butler on the panel. Other tools keep the phase."""
+    return _PHASES.get(name)

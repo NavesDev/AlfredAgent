@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+import yaml
 
 from config import load_config
 from errors import ConfigError
@@ -34,3 +35,25 @@ def test_invalid_field_raises_config_error_naming_the_field(tmp_path: Path) -> N
 
 def test_session_limit_comes_from_limits() -> None:
     assert load_config(EXAMPLE).limits.max_active_sessions == 3
+
+
+def test_seeds_for_agents_limits_and_storage() -> None:
+    config = load_config(EXAMPLE)
+
+    assert config.agents.models == {"alfred": "sonnet", "geral": "sonnet", "implementacao": "opus"}
+    assert config.limits.idle_minutes == 10
+    assert config.storage.db_path == Path("data/alfred.sqlite3")
+    assert config.seed_defaults().models["implementacao"] == "opus"
+
+
+def test_models_default_to_the_default_model(tmp_path: Path) -> None:
+    raw = yaml.safe_load(EXAMPLE.read_text())
+    del raw["agents"]["models"]
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.safe_dump(raw))
+
+    assert load_config(path).seed_defaults().models == {
+        "alfred": "sonnet",
+        "geral": "sonnet",
+        "implementacao": "sonnet",
+    }
