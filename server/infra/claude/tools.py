@@ -16,14 +16,10 @@ if TYPE_CHECKING:
     from controllers.projects import Projects
     from controllers.sessions import Sessions
 
-SERVER = "alfred"
+SERVER = "alfred"  # MCP server name the main agent sees these tools under
 EFFORTS = ["low", "medium", "high", "xhigh", "max"]
 
 Result = dict[str, Any]
-
-
-def alfred_tools(sessions: "Sessions", projects: "Projects") -> sdk.McpSdkServerConfig:
-    return sdk.create_sdk_mcp_server(SERVER, tools=session_tools(sessions, projects))
 
 
 def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcpTool[Any]]:

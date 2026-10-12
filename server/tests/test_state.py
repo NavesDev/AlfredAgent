@@ -23,6 +23,14 @@ def test_new_day_drops_old_session(tmp_path: Path) -> None:
     assert state.session_for(TODAY) is None
 
 
+def test_other_setup_version_drops_session(tmp_path: Path) -> None:
+    state = DailyState(tmp_path / "s.json")
+    state.save("abc", TODAY, "v1")
+
+    assert state.session_for(TODAY, "v1") == "abc"
+    assert state.session_for(TODAY, "v2") is None
+
+
 def test_save_creates_parent_dirs(tmp_path: Path) -> None:
     DailyState(tmp_path / "data" / "s.json").save("abc", TODAY)
 

@@ -18,11 +18,12 @@ from claude_agent_sdk import (
 from errors import AgentError, DependencyError
 from events import EventBus
 from infra.claude import permissions
-from infra.claude.alfred import AlfredAgent, check_cli, tool_detail
+from infra.claude.alfred import AlfredAgent, check_cli, setup_version, tool_detail
 from infra.claude.state import DailyState
 from tests.conftest import drain
 
 TODAY = date(2026, 10, 1)
+VERSION = setup_version([])  # what an agent built without tools runs under
 REPLY = "RESUMO: JWT é stateless; sessão fica no server.\nJWT guarda o estado no token."
 Run = list[Any] | Exception
 
@@ -176,7 +177,7 @@ async def test_client_reads_only_streams_and_asks_for_resumo_first(
 
 
 async def test_start_resumes_todays_session(bus: EventBus, tmp_path: Path) -> None:
-    DailyState(tmp_path / "s.json").save("s1", TODAY)
+    DailyState(tmp_path / "s.json").save("s1", TODAY, VERSION)
     connect = FakeConnect()
 
     await started(bus, tmp_path, connect)
@@ -184,8 +185,24 @@ async def test_start_resumes_todays_session(bus: EventBus, tmp_path: Path) -> No
     assert connect.options[0].resume == "s1"
 
 
+async def test_changed_setup_starts_a_fresh_session(bus: EventBus, tmp_path: Path) -> None:
+    DailyState(tmp_path / "s.json").save("s1", TODAY, "older-setup")
+    connect = FakeConnect()
+
+    await started(bus, tmp_path, connect)
+
+    assert connect.options[0].resume is None
+
+
+def test_setup_version_follows_the_tools() -> None:
+    from infra.claude.tools import session_tools
+
+    tools = session_tools(None, None)  # type: ignore[arg-type]
+    assert setup_version(tools) == setup_version(tools) != setup_version(tools[1:])
+
+
 async def test_failed_resume_connects_fresh(bus: EventBus, tmp_path: Path) -> None:
-    DailyState(tmp_path / "s.json").save("stale", TODAY)
+    DailyState(tmp_path / "s.json").save("stale", TODAY, VERSION)
     connect = FakeConnect(fail_resume=True)
 
     await started(bus, tmp_path, connect)
@@ -220,7 +237,7 @@ async def test_saves_session_id_after_reply(bus: EventBus, tmp_path: Path) -> No
 
     await spoken_for(alfred)
 
-    assert DailyState(tmp_path / "s.json").session_for(TODAY) == "s9"
+    assert DailyState(tmp_path / "s.json").session_for(TODAY, VERSION) == "s9"
 
 
 async def test_streams_progress_and_publishes_reply(bus: EventBus, tmp_path: Path) -> None:
@@ -251,7 +268,7 @@ async def test_streams_progress_and_publishes_reply(bus: EventBus, tmp_path: Pat
 async def test_failure_raises_agent_error_and_next_ask_reconnects_fresh(
     bus: EventBus, tmp_path: Path
 ) -> None:
-    DailyState(tmp_path / "s.json").save("s1", TODAY)
+    DailyState(tmp_path / "s.json").save("s1", TODAY, VERSION)
     connect = FakeConnect(ProcessError("boom"), [result()])
     alfred = await started(bus, tmp_path, connect)
 
@@ -344,11 +361,13 @@ def test_options_install_the_url_hook() -> None:
 
 
 def test_agent_exposes_tools_server_as_alfred() -> None:
-    from infra.claude.tools import alfred_tools
+    from infra.claude.tools import session_tools
 
-    server = alfred_tools(None, None)  # type: ignore[arg-type]
-    options = AlfredAgent(None, None, "sonnet", 1, tools=server)._options(None)  # type: ignore[arg-type]
-    assert options.mcp_servers == {"alfred": server}
+    tools = session_tools(None, None)  # type: ignore[arg-type]
+    options = AlfredAgent(None, None, "sonnet", 1, tools=tools)._options(None)  # type: ignore[arg-type]
+    assert isinstance(options.mcp_servers, dict)
+    assert list(options.mcp_servers) == ["alfred"]
+    assert dict(options.mcp_servers["alfred"])["name"] == "alfred"
     assert "delegar_geral" in str(options.system_prompt)
     assert "apagar_sessao" in str(options.system_prompt)
     assert options.model == "sonnet"
