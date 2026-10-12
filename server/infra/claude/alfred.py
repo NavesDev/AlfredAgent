@@ -16,6 +16,7 @@ from errors import AgentError, DependencyError
 from events import EventBus
 from infra.claude import permissions
 from infra.claude.activity import action_of, describe_tool, phase_of
+from infra.claude.agents import MAX_BUFFER
 from infra.claude.state import DailyState
 from infra.claude.summary import extract_summary, parse_resumo
 from infra.claude.tools import SERVER
@@ -168,6 +169,7 @@ class AlfredAgent:
             mcp_servers=self._tools,
             resume=resume,
             include_partial_messages=True,
+            max_buffer_size=MAX_BUFFER,
         )
 
     async def _run(
