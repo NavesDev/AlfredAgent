@@ -19,3 +19,15 @@ class AudioError(AlfredError):
 
 class AgentError(AlfredError):
     """Agent SDK failure or timeout. Recoverable per turn."""
+
+
+class SessionError(AlfredError):
+    """Invalid request about named sessions. The message is pt-BR: Alfred speaks it."""
+
+
+class SessionNotFound(SessionError):
+    """No session with that name."""
+
+
+class SessionProtected(SessionError):
+    """The session cannot be deleted (it can still be cleared)."""

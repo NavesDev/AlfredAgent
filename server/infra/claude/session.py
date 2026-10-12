@@ -1,7 +1,8 @@
-"""Named Claude Code session that runs tasks on the computer (Bash, files) for Alfred.
+"""Named Claude Code session that runs the tasks Alfred delegates to it.
 
-It never sees mail or web: no MCP servers, no WebSearch/WebFetch, no user settings. What it
-does is decided by Claude Code's auto mode classifier (ADR 0006).
+Its kind (infra/claude/agents.py) picks the tools and prompt. It never sees mail or web: no MCP
+servers, no user settings. What it does is decided by Claude Code's auto mode classifier
+(ADR 0006, 0007).
 """
 
 import asyncio
@@ -12,18 +13,9 @@ import claude_agent_sdk as sdk
 
 from errors import AgentError, DependencyError
 from events import EventBus
+from infra.claude.agents import AgentKind
 from infra.claude.alfred import Client, Reply, connect_sdk, publish_progress
 from infra.claude.summary import extract_summary
-
-TOOLS = ["Bash", "Read", "Edit", "Write", "Glob", "Grep"]
-
-SYSTEM_PROMPT = """Você é a sessão "{name}" do Alfred, assistente por voz de um desenvolvedor.
-Você roda no computador Linux dele (diretório inicial {cwd}) e executa a tarefa recebida
-usando o terminal e os arquivos. Faça o mínimo necessário e não apague nada que a tarefa não
-peça explicitamente.
-Comece SEMPRE a resposta final com uma linha no formato:
-RESUMO: <até 2 frases em português do Brasil, sem código, sem caminhos longos, sem markdown>
-Essa linha é falada para o usuário. Depois dela, detalhes só se forem úteis."""
 
 
 class CodingSession:
@@ -31,13 +23,14 @@ class CodingSession:
         self,
         bus: EventBus,
         name: str,
+        kind: AgentKind,
         cwd: Path,
         model: str,
         timeout_s: float,
         connect: Callable[[sdk.ClaudeAgentOptions], Awaitable[Client]] = connect_sdk,
     ) -> None:
-        self.name = name
-        self._bus, self._cwd, self._model = bus, cwd, model
+        self.name, self.kind, self.cwd, self.model = name, kind, cwd, model
+        self._bus = bus
         self._timeout_s, self._connect = timeout_s, connect
         self._client: Client | None = None
 
@@ -62,13 +55,13 @@ class CodingSession:
 
     def options(self) -> sdk.ClaudeAgentOptions:
         return sdk.ClaudeAgentOptions(
-            model=self._model,
-            system_prompt=SYSTEM_PROMPT.format(name=self.name, cwd=self._cwd),
-            tools=TOOLS,
+            model=self.model,
+            system_prompt=self.kind.prompt(self.name, self.cwd),
+            tools=self.kind.tools,
             permission_mode="auto",
             strict_mcp_config=True,  # no mail, calendar, browser or other MCP servers
             setting_sources=[],  # no user hooks, plugins or permission rules
-            cwd=self._cwd,
+            cwd=self.cwd,
         )
 
     async def _run(self, client: Client, task: str) -> Reply:
@@ -83,9 +76,15 @@ class CodingSession:
             raise AgentError("stream ended without a result")
         if result.is_error or result.result is None:
             raise AgentError(f"session returned error: {result.errors or result.subtype}")
-        reply = Reply(result.result, extract_summary(result.result))
+        usage = result.usage or {}
+        tokens = int(usage.get("input_tokens", 0)) + int(usage.get("output_tokens", 0))
+        reply = Reply(result.result, extract_summary(result.result), tokens)
         self._bus.publish("alfred_reply", session=self.name, text=reply.text, summary=reply.summary)
         return reply
+
+    async def clear(self) -> None:
+        """Forget the conversation: the next task opens a fresh context."""
+        await self._close()
 
     async def _close(self) -> None:
         client, self._client = self._client, None

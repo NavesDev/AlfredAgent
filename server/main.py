@@ -17,6 +17,7 @@ from events import EventBus
 from infra.audio import check_audio
 from infra.audio.listener import Listener, OpenWakeWord, load_vad, load_whisper
 from infra.audio.talker import Talker, load_kokoro, open_speaker
+from infra.claude.agents import DEFAULT_SESSION, KINDS, AgentKind
 from infra.claude.alfred import AlfredAgent, check_cli
 from infra.claude.session import CodingSession
 from infra.claude.state import DailyState
@@ -38,21 +39,33 @@ async def serve(config: Config) -> None:
         open_speaker(),
         acknowledgements=config.kokoro.acknowledgements,
     )
-    system = CodingSession(
-        bus,
-        "sistema",
-        cwd=Path.home(),
-        model=config.agents.default_model,
-        timeout_s=config.agents.session_timeout_s,
-    )
+
+    def new_session(kind: AgentKind, name: str, cwd: Path) -> CodingSession:
+        return CodingSession(
+            bus,
+            name,
+            kind,
+            cwd=cwd,
+            model=config.agents.default_model,
+            timeout_s=config.agents.session_timeout_s,
+        )
+
+    system = new_session(KINDS["geral"], DEFAULT_SESSION, Path.home())
     await system.start()
-    sessions = Sessions(bus, talker, system)
+    sessions = Sessions(
+        bus,
+        talker,
+        new_session,
+        max_active=config.limits.max_active_sessions,
+        home=Path.home(),
+    )
+    sessions.add(system, protected=True)
     agent = AlfredAgent(
         bus,
         DailyState(config.storage.state_path),
         model=config.agents.default_model,
         timeout_s=config.agents.timeout_s,
-        tools=alfred_tools(sessions.delegate),
+        tools=alfred_tools(sessions),
     )
     await agent.start()
     router = Router(bus, agent, talker)
@@ -78,6 +91,7 @@ async def serve(config: Config) -> None:
 
     app = create_app()
     app.state.bus = bus
+    app.state.sessions = sessions
     server = uvicorn.Server(
         uvicorn.Config(app, config.api.host, config.api.port, log_level="warning")
     )

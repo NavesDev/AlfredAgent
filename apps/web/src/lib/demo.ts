@@ -1,4 +1,4 @@
-import type { AlfredEvent, UnstampedEvent } from '../api/events'
+import type { AlfredEvent, SessionView, UnstampedEvent } from '../api/events'
 import { emit } from '../hooks/useEvents'
 
 type Step = { at: number; event: UnstampedEvent }
@@ -13,7 +13,67 @@ const wave = (from: number, to: number, everyMs: number, source: 'mic' | 'tts'):
     },
   })) as Step[]
 
+const session = (name: string, over: Partial<SessionView> = {}): SessionView => ({
+  name,
+  kind: 'geral',
+  label: 'Geral',
+  model: 'sonnet',
+  cwd: '~',
+  status: 'idle',
+  task: null,
+  activity: null,
+  queue: 0,
+  tasks_done: 0,
+  tokens: 0,
+  last_summary: null,
+  protected: false,
+  ...over,
+})
+
+const SISTEMA = { protected: true, tasks_done: 3, tokens: 11800, last_summary: 'Tela girada.' }
+const TASK = 'baixa o instalador do Zoom'
+
+const SESSIONS: Step[] = [
+  { at: 0, event: { type: 'session_created', session: session('sistema', SISTEMA) } },
+  {
+    at: 300,
+    event: { type: 'session_created', session: session('downloads', { cwd: '~/Downloads' }) },
+  },
+  {
+    at: 800,
+    event: {
+      type: 'session_status',
+      session: session('downloads', { cwd: '~/Downloads', status: 'busy', task: TASK }),
+    },
+  },
+  {
+    at: 1600,
+    event: {
+      type: 'session_status',
+      session: session('downloads', {
+        cwd: '~/Downloads',
+        status: 'busy',
+        task: TASK,
+        activity: 'Executando um comando',
+      }),
+    },
+  },
+  {
+    at: 8000,
+    event: {
+      type: 'session_status',
+      session: session('downloads', {
+        cwd: '~/Downloads',
+        tasks_done: 1,
+        tokens: 4200,
+        last_summary: 'Instalador baixado.',
+      }),
+    },
+  },
+]
+
 const SCRIPT: Step[] = [
+  ...SESSIONS,
   { at: 0, event: { type: 'voice_state', state: 'listening' } },
   ...wave(100, 2400, 80, 'mic'),
   { at: 2500, event: { type: 'voice_state', state: 'transcribing' } },

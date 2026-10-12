@@ -1,5 +1,9 @@
 // Mirrors the bus events published by the server (see docs/ARCHITECTURE.md#event-bus).
 
+import type { components } from './schema'
+
+export type SessionView = components['schemas']['SessionView']
+
 export type VoiceState = 'idle' | 'listening' | 'transcribing' | 'thinking' | 'speaking'
 
 type Base = { ts: number }
@@ -21,7 +25,10 @@ export type AlfredEvent = Base &
         detail?: string | null
       }
     | { type: 'error'; where: string; message: string }
-    | { type: 'session_status'; session: string; status: 'busy' | 'idle' }
+    | { type: 'session_created'; session: SessionView }
+    | { type: 'session_status'; session: SessionView }
+    | { type: 'session_cleared'; session: SessionView }
+    | { type: 'session_deleted'; name: string }
   )
 
 export type EventOf<T extends AlfredEvent['type']> = Extract<AlfredEvent, { type: T }>

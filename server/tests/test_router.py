@@ -110,7 +110,7 @@ async def test_does_not_narrate_over_speech_or_the_delegation(bus: EventBus) -> 
     assert talker.said == []
 
     talker = FakeTalker()
-    agent = FakeAgent(Reply("x", ""), ["Mandando para a sessão sistema"])
+    agent = FakeAgent(Reply("x", ""), ["Mandando para uma sessão"])
     await Router(bus, agent, talker).handle("oi")
     assert talker.said == []
 

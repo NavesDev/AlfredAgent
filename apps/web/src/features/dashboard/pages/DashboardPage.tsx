@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useConnection } from '../../../hooks/useEvents'
 import { playDemo } from '../../../lib/demo'
 import { Assistant } from '../../assistant/components/Assistant'
+import { Constellation } from '../../sessions/components/Constellation'
 import { TranscriptPanel } from '../../transcript/components/TranscriptPanel'
 import { useTranscript } from '../../transcript/hooks/useTranscript'
 
@@ -25,6 +26,7 @@ export function DashboardPage() {
   const turns = useTranscript()
   const connection = CONNECTION[useConnection()]
   const [showTranscript, setShowTranscript] = useState(readStored)
+  const orbRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     try {
@@ -81,8 +83,12 @@ export function DashboardPage() {
       </header>
 
       <main className="relative flex min-h-0 flex-1 flex-col md:flex-row">
-        <section className="min-h-0 flex-1">
-          <Assistant caption={caption} />
+        <section className="relative min-h-0 flex-1">
+          {/* Above the filaments, below the agent nodes */}
+          <div className="relative z-10 h-full">
+            <Assistant caption={caption} orbRef={orbRef} />
+          </div>
+          <Constellation anchor={orbRef} />
         </section>
         {showTranscript && (
           <div className="h-[45%] border-t border-white/10 md:h-auto md:w-[420px] md:border-t-0">

@@ -13,7 +13,7 @@ from infra.claude.activity import describe_tool
         ("mcp__claude_ai_Google_Calendar__list_events", "Consultando sua agenda"),
         ("mcp__plugin_chrome-devtools-mcp_chrome-devtools__new_page", "Abrindo no navegador"),
         ("Bash", "Executando um comando"),
-        ("mcp__alfred__delegar", "Mandando para a sessão sistema"),
+        ("mcp__alfred__delegar_geral", "Mandando para uma sessão"),
         ("mcp__other__do_thing", "Usando do thing"),
     ],
 )

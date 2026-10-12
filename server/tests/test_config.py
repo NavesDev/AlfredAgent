@@ -30,3 +30,7 @@ def test_invalid_field_raises_config_error_naming_the_field(tmp_path: Path) -> N
 
     with pytest.raises(ConfigError, match=r"wakeword\.threshold"):
         load_config(bad)
+
+
+def test_session_limit_comes_from_limits() -> None:
+    assert load_config(EXAMPLE).limits.max_active_sessions == 3
