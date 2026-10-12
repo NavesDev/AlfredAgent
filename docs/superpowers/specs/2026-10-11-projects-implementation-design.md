@@ -1,7 +1,7 @@
 # Projetos, workspaces e agente de implementação (design)
 
 - **Data:** 2026-10-11
-- **Status:** Em revisão
+- **Status:** Implementado
 - **Branch:** `feat/projects-implementation`
 - **Requisitos cobertos:** RF-30 (criar pela tela), RF-34, RF-35, RF-36, RF-37, RF-61 (parcial: `/projects`, `/projects/:id`), RNF-07; RN-01, RN-04, RN-11
 - **Mockup das animações:** [assets/2026-10-11-butler-mockup.html](assets/2026-10-11-butler-mockup.html) (abrir no navegador; as opções escolhidas estão listadas em [Animação do mordomo](#animação-do-mordomo))

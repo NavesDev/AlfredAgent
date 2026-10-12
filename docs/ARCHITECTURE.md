@@ -170,11 +170,14 @@ Sessão ocupada não recebe dois prompts ao mesmo tempo: cada sessão tem uma fi
 
 ### Sessões nomeadas
 
-- Uma instância do Agent SDK por sessão, com `cwd` = path do workspace.
+- Uma instância do Agent SDK por sessão, com `cwd` = path do workspace (ou a home, para `geral` sem workspace).
+- Tipos: `geral` (shell e arquivos, isolada) e `implementacao` (harness completo do Claude Code, preso a um workspace; [ADR 0008](adr/0008-implementation-agent-full-harness.md)). Modelo e effort vêm de `agent_settings`, com override por sessão.
+- Subagentes nativos (`TaskStarted/Progress/NotificationMessage`) viram eventos `subagent_*`; as mensagens com `parent_tool_use_id` não contam como atividade da sessão.
+- A fase (`exploring`, `editing`, `running`) vem do nome da tool (`activity.phase_of`).
 - Auto mode do Claude Code + gate `canUseTool` do `permissions.py`.
 - `system_prompt` exige começar com `RESUMO:` (até 2 frases, sem código nem caminhos longos), falado assim que chega.
 - `claude_session_id` persistido para resume após reinício.
-- Limite de sessões ativas simultâneas (`limits.max_active_sessions`, padrão 3).
+- Vagas: `max_active_sessions` conta processos `claude` abertos. Sem vaga, a sessão ociosa há mais tempo fecha o processo; se todas trabalham, a tarefa espera. Sessão ociosa por `idle_minutes` fecha sozinha e retoma pelo `claude_session_id`.
 
 ## Modelo de dados
 
@@ -187,28 +190,27 @@ erDiagram
 
     PROJECT {
         int id PK
-        text name
+        text name UK
         json aliases
-        text repo_path
-        text base_branch
     }
     WORKSPACE {
         int id PK
         int project_id FK
-        text name
+        text name "único no projeto"
         text path
+        text kind "folder | worktree"
+        int parent_id FK "worktree"
         text branch
-        text kind "main | worktree"
     }
     SESSION {
         int id PK
-        int workspace_id FK "null para alfred"
+        int workspace_id FK "opcional para geral"
         text name UK
-        json aliases
+        text kind "geral | implementacao"
+        text model "override"
+        text effort "override"
         text claude_session_id
-        text status "idle | busy | waiting_permission | error"
-        json allowed_tools
-        text system_prompt
+        bool protected
     }
     TASK {
         int id PK
@@ -220,6 +222,8 @@ erDiagram
         datetime created_at
     }
 ```
+
+Configurações em `agent_settings` (modelo e effort por tipo: `alfred`, `geral`, `implementacao`) e `app_settings` (`max_active_sessions`, `idle_minutes`, `mcp_disabled`); o `config.yaml` só semeia na primeira vez. Status e fila das sessões ficam em memória.
 
 Tabelas auxiliares previstas: `audit_log` (toda tool call), `confirmation` (pedidos pendentes/respondidos), `session_summary` (último `RESUMO:` por sessão).
 
@@ -235,6 +239,10 @@ Tabelas auxiliares previstas: `audit_log` (toda tool call), `confirmation` (pedi
 | `session_status` | snapshot da sessão (status, tarefa, atividade, fila, tokens, último resumo) | ws |
 | `session_cleared` | snapshot da sessão | ws |
 | `session_deleted` | nome | ws |
+| `subagent_started` / `_progress` / `_finished` | sessão, id, tipo, descrição, última tool, status | ws |
+| `project_created` / `_updated` / `_deleted` | projeto com workspaces (ou id) | ws |
+| `settings_updated` | configurações | ws |
+| `mcp_servers_seen` | sessão, nomes dos MCPs carregados | settings (sugestões da tela) |
 | `task_updated` | tarefa | ws |
 | `permission_request` | id, sessão, ação, descrição, canal | talker, ws |
 | `permission_resolved` | id, aprovado, canal | ws |
@@ -286,9 +294,10 @@ flowchart TD
 
 | Rota | Uso |
 |---|---|
-| `GET/POST /api/projects`, `GET /api/projects/{id}` | Projetos e workspaces |
-| `POST /api/projects/{id}/worktrees`, `DELETE …/{ws_id}` | Criar/remover worktree |
-| `GET /api/sessions`, `POST /api/sessions/{name}/clear`, `DELETE /api/sessions/{name}` | Sessões (criar só por voz por enquanto) |
+| `GET/POST /api/projects`, `GET/PATCH/DELETE /api/projects/{id}` | Projetos e workspaces |
+| `POST /api/projects/{id}/workspaces`, `POST /api/projects/{id}/worktrees`, `DELETE /api/workspaces/{id}?force=` | Pastas e worktrees |
+| `GET/POST /api/sessions`, `PATCH /api/sessions/{name}`, `POST …/clear`, `DELETE …` | Sessões |
+| `GET/PUT /api/settings` | Modelos e effort por tipo, limites, MCPs desligados |
 | `GET/POST/PATCH /api/tasks` | Tarefas |
 | `GET /api/confirmations`, `POST /api/confirmations/{id}` | Confirmações pendentes |
 | `POST /api/commands` | Texto para o mesmo router da voz |
@@ -306,7 +315,7 @@ apps/web/src/
 ├── App.tsx                      # layout + routes + global ConfirmDialog
 ├── api/                         # client.ts, schema.ts (generated), events.ts
 ├── features/
-│   ├── sessions/  projects/  tasks/  confirmations/
+│   ├── sessions/  projects/  settings/  tasks/  confirmations/
 │   ├── activity/  command/  dashboard/
 ├── components/                  # ui/ (shadcn), layout/
 ├── hooks/useEvents.ts           # WebSocket → updates the cache
