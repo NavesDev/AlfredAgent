@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import { ChevronLeft } from '../icons'
-import { Nav } from './Nav'
+import { AppHeader } from './AppHeader'
 
 type Props = {
   title: ReactNode
@@ -17,12 +17,9 @@ type Props = {
 export function PageShell({ title, subtitle, actions, back, children }: Props) {
   return (
     <div className="flex h-full flex-col bg-[radial-gradient(ellipse_at_top,#0d1424_0%,#05070d_70%)]">
-      <header className="flex items-center justify-between px-5 py-4">
-        <h1 className="text-base font-semibold tracking-[0.3em] text-gray-200 uppercase">Alfred</h1>
-        <Nav />
-      </header>
-      <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-10 sm:px-5">
-        <div className="mx-auto flex max-w-3xl flex-col gap-6 pt-2">
+      <AppHeader />
+      <main className="min-h-0 flex-1 overflow-y-auto px-4 pt-6 pb-10 sm:px-5">
+        <div className="mx-auto flex max-w-3xl flex-col gap-6">
           <div className="flex flex-col gap-1">
             {back && (
               <Link

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Nav } from '../../../components/layout/Nav'
-import { useConnection } from '../../../hooks/useEvents'
+import { AppHeader } from '../../../components/layout/AppHeader'
 import { playDemo } from '../../../lib/demo'
 import { Assistant } from '../../assistant/components/Assistant'
 import { Constellation } from '../../sessions/components/Constellation'
@@ -8,12 +7,6 @@ import { TranscriptPanel } from '../../transcript/components/TranscriptPanel'
 import { useTranscript } from '../../transcript/hooks/useTranscript'
 
 const STORAGE_KEY = 'alfred.showTranscript'
-
-const CONNECTION = {
-  open: { label: 'conectado', dot: 'bg-emerald-400' },
-  connecting: { label: 'conectando', dot: 'bg-amber-400 animate-pulse' },
-  closed: { label: 'servidor offline', dot: 'bg-red-400' },
-}
 
 function readStored() {
   try {
@@ -25,7 +18,6 @@ function readStored() {
 
 export function DashboardPage() {
   const turns = useTranscript()
-  const connection = CONNECTION[useConnection()]
   const [showTranscript, setShowTranscript] = useState(readStored)
   const orbRef = useRef<HTMLDivElement>(null)
 
@@ -55,34 +47,30 @@ export function DashboardPage() {
 
   return (
     <div className="flex h-full flex-col bg-[radial-gradient(ellipse_at_center,#0d1424_0%,#05070d_70%)]">
-      <header className="flex items-center justify-between px-5 py-4">
-        <h1 className="text-base font-semibold tracking-[0.3em] text-gray-200 uppercase">Alfred</h1>
-        <div className="flex items-center gap-2">
-          <Nav />
-          <span className="mr-2 flex items-center gap-2 text-xs text-gray-400">
-            <span className={`size-1.5 rounded-full ${connection.dot}`} />
-            <span className="hidden sm:inline">{connection.label}</span>
-          </span>
-          <button
-            onClick={() => playDemo()}
-            title="Simula uma conversa para testar a animação sem o servidor"
-            className="rounded-md border border-white/10 px-3 py-1.5 text-xs text-gray-300 hover:bg-white/5"
-          >
-            Demo
-          </button>
-          <button
-            onClick={() => setShowTranscript((v) => !v)}
-            aria-pressed={showTranscript}
-            className={`rounded-md border px-3 py-1.5 text-xs ${
-              showTranscript
-                ? 'border-teal-300/40 bg-teal-300/10 text-teal-200'
-                : 'border-white/10 text-gray-300 hover:bg-white/5'
-            }`}
-          >
-            Transcrição <kbd className="ml-1 hidden sm:inline text-[10px] text-gray-500">T</kbd>
-          </button>
-        </div>
-      </header>
+      <AppHeader
+        actions={
+          <>
+            <button
+              onClick={() => playDemo()}
+              title="Simula uma conversa para testar a animação sem o servidor"
+              className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-gray-300 hover:bg-white/5"
+            >
+              Demo
+            </button>
+            <button
+              onClick={() => setShowTranscript((v) => !v)}
+              aria-pressed={showTranscript}
+              className={`rounded-full border px-3 py-1 text-[11px] ${
+                showTranscript
+                  ? 'border-teal-300/40 bg-teal-300/10 text-teal-200'
+                  : 'border-white/10 text-gray-300 hover:bg-white/5'
+              }`}
+            >
+              Transcrição <kbd className="ml-1 hidden text-[10px] text-gray-500 sm:inline">T</kbd>
+            </button>
+          </>
+        }
+      />
 
       <main className="relative flex min-h-0 flex-1 flex-col md:flex-row">
         <section className="relative min-h-0 flex-1">
