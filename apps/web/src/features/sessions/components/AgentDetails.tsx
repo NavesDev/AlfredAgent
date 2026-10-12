@@ -1,31 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import type { SessionView } from '../../../api/events'
-import { MiniOrb, type MiniLook } from '../../../lib/orb/MiniOrb'
 import { useSessionActions } from '../hooks/useSessionActions'
-
-const STATUS: Record<SessionView['status'], { label: string; pill: string; look: MiniLook }> = {
-  busy: {
-    label: 'ocupado',
-    pill: 'border-amber-300/30 bg-amber-300/10 text-amber-200',
-    look: { core: '#451a03', rim: '#fbbf24', active: true },
-  },
-  idle: {
-    label: 'livre',
-    pill: 'border-emerald-300/30 bg-emerald-300/10 text-emerald-200',
-    look: { core: '#052e2b', rim: '#34d399', active: false },
-  },
-  error: {
-    label: 'erro',
-    pill: 'border-red-300/30 bg-red-300/10 text-red-200',
-    look: { core: '#450a0a', rim: '#f87171', active: false },
-  },
-}
+import { formatTokens, STATUS } from '../lib/status'
 
 const CONFIRM_MS = 4000
 
-const tokens = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`)
+type Props = { session: SessionView; style: CSSProperties; onClose: () => void }
 
-export function AgentCard({ session }: { session: SessionView }) {
+/** What a node opens: everything about the session, plus clear and delete. */
+export function AgentDetails({ session, style, onClose }: Props) {
   const { clear, remove } = useSessionActions()
   const [confirming, setConfirming] = useState(false)
   const status = STATUS[session.status]
@@ -38,33 +21,43 @@ export function AgentCard({ session }: { session: SessionView }) {
   }, [confirming])
 
   const onDelete = () => {
-    if (confirming) remove.mutate(session.name)
+    if (confirming) remove.mutate(session.name, { onSuccess: onClose })
     setConfirming((v) => !v)
   }
 
   return (
-    <article className="flex flex-col gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm text-gray-300">
+    <div
+      role="dialog"
+      aria-label={`Sessão ${session.name}`}
+      style={style}
+      onPointerDown={(e) => e.stopPropagation()}
+      className="animate-activity-in pointer-events-auto absolute z-20 flex w-72 flex-col gap-1.5 rounded-xl border border-white/10 bg-[#0a0f1c]/95 p-3 text-sm text-gray-300 backdrop-blur"
+    >
       <header className="flex items-center gap-2">
-        <div className="size-8 shrink-0">
-          <MiniOrb {...status.look} />
-        </div>
         <h3 className="truncate font-medium text-gray-100">{session.name}</h3>
-        <span className={`ml-auto rounded-md border px-2 py-0.5 text-[11px] ${status.pill}`}>
+        <span className={`rounded-md border px-2 py-0.5 text-[11px] ${status.pill}`}>
           {status.label}
         </span>
+        <button
+          onClick={onClose}
+          aria-label="Fechar"
+          className="ml-auto rounded px-1.5 text-gray-500 hover:text-gray-200"
+        >
+          ×
+        </button>
       </header>
       <p className="text-xs text-gray-400">
         {session.label} · {session.model} · <span className="font-mono">{session.cwd}</span>
       </p>
-      {session.task && <p className="line-clamp-2 text-gray-100">“{session.task}”</p>}
+      {session.task && <p className="text-gray-100">“{session.task}”</p>}
       {session.activity && (
         <p className="truncate font-mono text-xs text-gray-400">{session.activity}…</p>
       )}
       <p className="text-xs text-gray-500">
-        fila {session.queue} · {session.tasks_done} tarefas · {tokens(session.tokens)} tokens
+        fila {session.queue} · {session.tasks_done} tarefas · {formatTokens(session.tokens)} tokens
       </p>
       {session.last_summary && (
-        <p className="line-clamp-2 text-xs text-gray-400">último: “{session.last_summary}”</p>
+        <p className="text-xs text-gray-400">último: “{session.last_summary}”</p>
       )}
       <footer className="mt-1 flex gap-2">
         <button
@@ -90,6 +83,6 @@ export function AgentCard({ session }: { session: SessionView }) {
         )}
       </footer>
       {error && <p className="text-xs text-red-300">{error.message}</p>}
-    </article>
+    </div>
   )
 }

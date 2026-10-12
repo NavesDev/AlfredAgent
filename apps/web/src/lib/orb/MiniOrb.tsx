@@ -45,7 +45,7 @@ function Blob({ core, rim, active }: MiniLook) {
 /** Small animated orb for an agent card; shares the shaders of Alfred's orb. */
 export function MiniOrb(look: MiniLook) {
   return (
-    <Canvas camera={{ position: [0, 0, 3], fov: 45 }} dpr={[1, 2]} gl={{ alpha: true }}>
+    <Canvas camera={{ position: [0, 0, 2.7], fov: 45 }} dpr={[1, 2]} gl={{ alpha: true }}>
       <Blob {...look} />
     </Canvas>
   )

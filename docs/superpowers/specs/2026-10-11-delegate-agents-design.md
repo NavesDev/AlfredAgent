@@ -141,20 +141,16 @@ Novo modelo `Limits` em `config.py`, opcional, com o padrão acima.
 
 ## Web
 
-Nova feature `apps/web/src/features/sessions/`:
+Primeira versão usou uma faixa de cartões; ficou genérica e não mostrava a ligação com o Alfred. Substituída pela **constelação**:
 
-| Arquivo | Papel |
-|---|---|
-| `hooks/useSessions.ts` | TanStack Query `GET /api/sessions`; assina o `/ws` e aplica `session_*` no cache |
-| `hooks/useSessionActions.ts` | Mutations `clear` e `delete` |
-| `components/AgentCard.tsx` | Cartão variante A: orb mini, nome, pill de status, tipo · modelo, pasta, tarefa atual, última atividade (mono), "fila N · N tarefas · Nk tokens", último resumo, botões Limpar e Apagar (Apagar pede segundo clique; oculto se `protected`) |
-| `components/AgentStrip.tsx` | Grade de cartões ao lado/abaixo do orb do Alfred |
-
-- Adiciona `@tanstack/react-query` e o `QueryClientProvider` em `main.tsx`.
-- Orb mini: o shader do orb sai de `features/assistant` para `src/lib/orb/` para as duas features usarem sem importar uma da outra. Cor por status: âmbar ocupado, verde livre, vermelho erro; anima só quando ocupado.
-- `DashboardPage` mostra o `AgentStrip` abaixo do orb (coluna em telas estreitas).
-- `schema.ts` gerado com `make gen-api`; `api/events.ts` ganha os eventos novos.
-- Demo (`lib/demo.ts`) emite eventos de sessão para testar sem server.
+- Cada sessão é um nó em volta do orb do Alfred: mini orb (mesmos shaders, `src/lib/orb/`) na cor do status (âmbar ocupado, verde livre, vermelho erro), maior e com halo pulsando quando ocupado.
+- Rótulo flutuante sob o nó: nome e, embaixo, a atividade atual (ocupado) ou `livre · modelo`.
+- Um filamento curvo liga a borda do orb a cada nó. Livre: linha fraca. Ocupado: traço âmbar animado.
+- Pulso de luz corre pelo filamento: Alfred → nó quando uma tarefa começa, nó → Alfred quando termina (derivado dos eventos `session_status`).
+- Clique no nó abre o painel de detalhes (tipo, modelo, pasta, tarefa, atividade, fila, tarefas, tokens, último resumo, Limpar, Apagar com segundo clique). Esc ou clique fora fecha.
+- Posições em elipse em volta do orb, lados primeiro, depois acima e abaixo; presas à área visível. Geometria pura em `features/sessions/lib/constellation.ts`, com testes.
+- O dashboard passa a ref do orb do `Assistant` para a `Constellation`; as features não se importam.
+- Dados: TanStack Query `GET /api/sessions` + eventos `session_*` do `/ws` no cache. `schema.ts` gerado do OpenAPI.
 
 ## Erros
 
