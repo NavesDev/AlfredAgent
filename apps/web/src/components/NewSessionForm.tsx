@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import type { Project } from '../api/events'
 import { EFFORTS, field, KINDS, type NewSession } from '../lib/sessionForm'
+import { ModelSelect } from './ModelSelect'
 
 // Used by the projects pages and by the project hub on the dashboard. It only renders and
 // reports; each feature passes its own data and mutation.
@@ -78,13 +79,14 @@ export function NewSessionForm({ projects, projectId, pending, error, onSubmit, 
         ))}
       </select>
       <div className="flex gap-2">
-        <input
-          aria-label="Modelo"
-          placeholder="modelo (padrão do tipo)"
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          className={`${field} min-w-0 flex-1`}
-        />
+        <div className="min-w-0 flex-1">
+          <ModelSelect
+            label="Modelo"
+            placeholder="modelo padrão do tipo"
+            value={model}
+            onChange={setModel}
+          />
+        </div>
         <select
           aria-label="Effort"
           value={effort}

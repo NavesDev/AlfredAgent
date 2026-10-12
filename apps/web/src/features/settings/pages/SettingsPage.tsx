@@ -1,19 +1,22 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { SettingsView } from '../../../api/events'
-import { button, card, PageShell } from '../../../components/layout/PageShell'
+import { Row, Section, Segmented, Switch } from '../../../components/controls'
+import { Gauge, GitBranch, Plug, Sparkle, Terminal } from '../../../components/icons'
+import { button, PageShell, primaryButton } from '../../../components/layout/PageShell'
+import { ModelSelect } from '../../../components/ModelSelect'
 import { EFFORTS, field } from '../../../lib/sessionForm'
 import { useSettings } from '../hooks/useSettings'
 
-const KIND_LABEL: Record<string, string> = {
-  alfred: 'Alfred (agente principal)',
-  geral: 'Geral',
-  implementacao: 'Implementação',
+const KINDS: Record<string, { label: string; hint: string; icon: ReactNode }> = {
+  alfred: { label: 'Alfred', hint: 'Agente principal, responde por voz', icon: <Sparkle /> },
+  geral: { label: 'Geral', hint: 'Sessões sem workspace', icon: <Terminal /> },
+  implementacao: { label: 'Implementação', hint: 'Sessões que editam código', icon: <GitBranch /> },
 }
 
 export function SettingsPage() {
   const { settings, save } = useSettings()
   return (
-    <PageShell title="Configurações">
+    <PageShell title="Configurações" subtitle="Modelos, limites e MCPs das sessões do Alfred.">
       {settings ? <Form key={JSON.stringify(settings)} settings={settings} save={save} /> : null}
     </PageShell>
   )
@@ -44,117 +47,180 @@ function Form({
     )
   const servers = [...new Set([...settings.known_mcp_servers, ...draft.mcp_disabled])].sort()
   const { known_mcp_servers: _, ...body } = draft
+  const dirty = JSON.stringify(draft) !== JSON.stringify(settings)
 
   return (
     <>
-      <section className={card}>
-        <h3 className="mb-1 text-sm font-medium text-gray-200">Modelos por tipo de agente</h3>
-        <p className="mb-3 text-xs text-gray-500">
-          Vale na próxima conexão de cada sessão. Uma sessão pode sobrescrever no painel dela.
-        </p>
-        <div className="flex flex-col gap-2">
-          {draft.agents.map((a) => (
-            <div key={a.kind} className="flex flex-wrap items-center gap-2">
-              <span className="w-48 text-sm text-gray-300">{KIND_LABEL[a.kind] ?? a.kind}</span>
-              <input
-                aria-label={`Modelo ${a.kind}`}
-                value={a.model}
-                onChange={(e) => setAgent(a.kind, { model: e.target.value })}
-                className={`${field} w-40`}
-              />
-              <select
-                aria-label={`Effort ${a.kind}`}
-                value={a.effort ?? ''}
-                onChange={(e) => setAgent(a.kind, { effort: e.target.value || null })}
-                className={field}
-              >
-                <option value="">effort padrão</option>
-                {EFFORTS.map((e) => (
-                  <option key={e}>{e}</option>
-                ))}
-              </select>
-            </div>
-          ))}
-        </div>
-      </section>
+      <Section
+        title="Modelos por tipo de agente"
+        description="Vale na próxima conexão de cada sessão. Uma sessão pode sobrescrever no painel dela."
+      >
+        {draft.agents.map((a) => {
+          const kind = KINDS[a.kind] ?? { label: a.kind, hint: '', icon: <Terminal /> }
+          return (
+            <Row key={a.kind} title={kind.label} description={kind.hint} icon={kind.icon}>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="w-44">
+                  <ModelSelect
+                    label={`Modelo ${kind.label}`}
+                    value={a.model}
+                    onChange={(model) => setAgent(a.kind, { model })}
+                  />
+                </div>
+                <Segmented
+                  label={`Effort ${kind.label}`}
+                  value={a.effort ?? ''}
+                  onChange={(effort) => setAgent(a.kind, { effort: effort || null })}
+                  options={[
+                    { value: '', label: 'padrão' },
+                    ...EFFORTS.map((e) => ({ value: e, label: e })),
+                  ]}
+                />
+              </div>
+            </Row>
+          )
+        })}
+      </Section>
 
-      <section className={`${card} flex flex-wrap gap-6`}>
-        <label className="flex flex-col gap-1 text-sm text-gray-300">
-          Sessões abertas ao mesmo tempo
-          <input
-            type="number"
-            min={1}
+      <Section title="Limites" description="Quantos processos claude ficam vivos e quando dormem.">
+        <Row
+          title="Sessões abertas ao mesmo tempo"
+          description="As demais esperam vaga."
+          icon={<Gauge />}
+        >
+          <Stepper
+            label="Sessões abertas ao mesmo tempo"
             value={draft.max_active_sessions}
-            onChange={(e) => set('max_active_sessions', Number(e.target.value))}
-            className={`${field} w-24`}
+            onChange={(v) => set('max_active_sessions', v)}
           />
-          <span className="text-xs text-gray-500">processos claude vivos</span>
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-gray-300">
-          Minutos ociosos até dormir
-          <input
-            type="number"
-            min={1}
+        </Row>
+        <Row
+          title="Minutos ociosos até dormir"
+          description="Retoma a conversa na próxima tarefa."
+          icon={<Gauge />}
+        >
+          <Stepper
+            label="Minutos ociosos até dormir"
             value={draft.idle_minutes}
-            onChange={(e) => set('idle_minutes', Number(e.target.value))}
-            className={`${field} w-24`}
+            onChange={(v) => set('idle_minutes', v)}
+            unit="min"
           />
-          <span className="text-xs text-gray-500">retoma a conversa na próxima tarefa</span>
-        </label>
-      </section>
+        </Row>
+      </Section>
 
-      <section className={card}>
-        <h3 className="mb-1 text-sm font-medium text-gray-200">
-          MCPs nas sessões de implementação
-        </h3>
-        <p className="mb-3 text-xs text-gray-500">
-          Todos ligados por padrão. Desmarque os que essas sessões não devem carregar.
-        </p>
-        <div className="mb-3 flex flex-wrap gap-2">
-          {servers.map((name) => (
-            <label
-              key={name}
-              className="flex items-center gap-1.5 rounded-md border border-white/10 px-2 py-1 font-mono text-xs text-gray-300"
-            >
-              <input
-                type="checkbox"
-                checked={!draft.mcp_disabled.includes(name)}
-                onChange={() => toggleMcp(name)}
-              />
-              {name}
-            </label>
-          ))}
-          {servers.length === 0 && (
-            <span className="text-xs text-gray-500">
-              Os nomes aparecem aqui depois que uma sessão de implementação conectar.
-            </span>
-          )}
-        </div>
+      <Section
+        title="MCPs nas sessões de implementação"
+        description="Todos ligados por padrão. Desligue os que essas sessões não devem carregar."
+      >
+        {servers.map((name) => (
+          <Row
+            key={name}
+            title={<span className="font-mono text-[13px]">{name}</span>}
+            icon={<Plug />}
+          >
+            <Switch
+              label={`MCP ${name}`}
+              checked={!draft.mcp_disabled.includes(name)}
+              onChange={() => toggleMcp(name)}
+            />
+          </Row>
+        ))}
+        {servers.length === 0 && (
+          <p className="px-4 py-3.5 text-xs text-gray-500">
+            Os nomes aparecem aqui depois que uma sessão de implementação conectar.
+          </p>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            if (mcp.trim()) toggleMcp(mcp.trim())
+            if (mcp.trim() && !draft.mcp_disabled.includes(mcp.trim())) toggleMcp(mcp.trim())
             setMcp('')
           }}
-          className="flex gap-2"
+          className="flex gap-2 px-4 py-3"
         >
           <input
             aria-label="Desligar MCP"
             placeholder="desligar outro pelo nome"
             value={mcp}
             onChange={(e) => setMcp(e.target.value)}
-            className={`${field} w-56 font-mono`}
+            className={`${field} min-w-0 flex-1 font-mono`}
           />
+          <button className={button} disabled={!mcp.trim()}>
+            Desligar
+          </button>
         </form>
-      </section>
+      </Section>
 
-      <div className="flex items-center gap-3">
-        <button onClick={() => save.mutate(body)} disabled={save.isPending} className={button}>
-          Salvar
+      <div
+        className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${dirty ? 'sticky bottom-4 z-10 border-white/15 bg-[#0b0f19] shadow-[0_-8px_40px_rgba(5,7,13,0.9)]' : 'border-transparent'}`}
+      >
+        <p className="flex-1 text-xs text-gray-400">
+          {save.error ? (
+            <span className="text-red-300">{save.error.message}</span>
+          ) : dirty ? (
+            'Alterações não salvas'
+          ) : save.isSuccess ? (
+            'Salvo.'
+          ) : null}
+        </p>
+        {dirty && (
+          <button onClick={() => setDraft(settings)} className={button}>
+            Descartar
+          </button>
+        )}
+        <button
+          onClick={() => save.mutate(body)}
+          disabled={!dirty || save.isPending}
+          className={primaryButton}
+        >
+          {save.isPending ? 'Salvando…' : 'Salvar'}
         </button>
-        {save.error && <p className="text-xs text-red-300">{save.error.message}</p>}
-        {save.isSuccess && <p className="text-xs text-gray-500">Salvo.</p>}
       </div>
     </>
+  )
+}
+
+function Stepper({
+  value,
+  onChange,
+  label,
+  unit,
+}: {
+  value: number
+  onChange: (value: number) => void
+  label: string
+  unit?: string
+}) {
+  const step =
+    'grid size-7 place-items-center text-gray-400 hover:text-gray-100 disabled:opacity-30'
+  return (
+    <div className="inline-flex items-center rounded-lg border border-white/10 bg-black/30">
+      <button
+        type="button"
+        aria-label="Diminuir"
+        className={step}
+        disabled={value <= 1}
+        onClick={() => onChange(value - 1)}
+      >
+        −
+      </button>
+      <input
+        type="number"
+        min={1}
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(Math.max(1, Number(e.target.value)))}
+        className="w-10 [appearance:textfield] bg-transparent text-center text-sm text-gray-100 outline-none [&::-webkit-inner-spin-button]:appearance-none"
+      />
+      {unit && <span className="pr-1 text-xs text-gray-500">{unit}</span>}
+      <button
+        type="button"
+        aria-label="Aumentar"
+        className={step}
+        onClick={() => onChange(value + 1)}
+      >
+        +
+      </button>
+    </div>
   )
 }

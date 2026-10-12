@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import type { SessionView } from '../../../api/events'
 import { EFFORTS, field } from '../../../lib/sessionForm'
+import { ModelSelect } from '../../../components/ModelSelect'
 import { useButler } from '../hooks/useButler'
 import { useSessionActions } from '../hooks/useSessionActions'
 import { formatTokens, STATUS } from '../lib/status'
@@ -19,7 +20,6 @@ type Props = { session: SessionView; style: CSSProperties; onClose: () => void }
 export function AgentDetails({ session, style, onClose }: Props) {
   const { clear, remove, change } = useSessionActions()
   const [confirming, setConfirming] = useState(false)
-  const [model, setModel] = useState(session.model)
   const status = STATUS[session.status]
   const error = clear.error ?? remove.error ?? change.error
 
@@ -69,14 +69,16 @@ export function AgentDetails({ session, style, onClose }: Props) {
         <span className="font-mono">{session.cwd}</span>
       </p>
       <div className="flex gap-1.5">
-        <input
-          aria-label="Modelo"
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          onBlur={() => model !== session.model && change.mutate({ name: session.name, model })}
-          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-          className={`${field} min-w-0 flex-1 py-1 text-xs`}
-        />
+        <div className="min-w-0 flex-1">
+          <ModelSelect
+            label="Modelo"
+            compact
+            value={session.model}
+            onChange={(model) =>
+              model !== session.model && change.mutate({ name: session.name, model })
+            }
+          />
+        </div>
         <select
           aria-label="Effort"
           value={session.effort ?? ''}
