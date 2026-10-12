@@ -22,6 +22,11 @@ describe('baseState', () => {
   it('shows the error face', () => {
     expect(baseState(sessionView('back', { status: 'error' }))).toBe('error')
   })
+
+  it('checks the watch while waiting for a free slot, even after an error', () => {
+    expect(baseState(sessionView('back', { waiting: true }))).toBe('queued')
+    expect(baseState(sessionView('back', { status: 'error', waiting: true }))).toBe('queued')
+  })
 })
 
 describe('flashFor', () => {
@@ -67,6 +72,11 @@ describe('butlerState', () => {
 
     expect(butlerState(failed, { state: 'done', at: 0 }, 10)).toBe('error')
     expect(butlerState(failed, { state: 'delegating', at: 0 }, 10)).toBe('error')
+  })
+
+  it('cuts the hat trick short when the next task waits for a slot', () => {
+    const queued = sessionView('back', { waiting: true })
+    expect(butlerState(queued, { state: 'done', at: 0 }, 10)).toBe('queued')
   })
 
   it('keeps the letter short', () => {

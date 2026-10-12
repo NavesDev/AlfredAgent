@@ -2,23 +2,20 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import type { SessionView } from '../../../api/events'
 import { EFFORTS, field } from '../../../lib/sessionForm'
 import { ModelSelect } from '../../../components/ModelSelect'
-import { useButler } from '../hooks/useButler'
+import { useLook } from '../hooks/useLook'
 import { useSessionActions } from '../hooks/useSessionActions'
 import { formatTokens, STATUS } from '../lib/status'
-import { Butler } from './butler/Butler'
+import { AgentFigure } from './AgentFigure'
 
 const CONFIRM_MS = 4000
 const SUBAGENT = { running: 'rodando', completed: 'feito', failed: 'falhou', stopped: 'parado' }
-
-function BigButler({ session }: { session: SessionView }) {
-  return <Butler state={useButler(session)} className="mx-auto h-24 w-28" />
-}
 
 type Props = { session: SessionView; style: CSSProperties; onClose: () => void }
 
 /** What a node opens: everything about the session, plus clear and delete. */
 export function AgentDetails({ session, style, onClose }: Props) {
   const { clear, remove, change } = useSessionActions()
+  const look = useLook(session)
   const [confirming, setConfirming] = useState(false)
   const status = STATUS[session.status]
   const error = clear.error ?? remove.error ?? change.error
@@ -55,7 +52,7 @@ export function AgentDetails({ session, style, onClose }: Props) {
           ×
         </button>
       </header>
-      {session.kind === 'implementacao' && <BigButler session={session} />}
+      <AgentFigure look={look} className="mx-auto h-24 w-28" />
       <p className="text-xs text-gray-400">
         {session.label}
         {session.project && (

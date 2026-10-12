@@ -16,7 +16,6 @@ import { useTerminal } from '../hooks/useTerminal'
 import { layout, pulseFor, type Point, type Stage } from '../lib/constellation'
 import { AgentDetails } from './AgentDetails'
 import { AgentNode } from './AgentNode'
-import { ButlerNode } from './ButlerNode'
 import { ProjectHub } from './ProjectHub'
 
 // The orb's sphere fills about this share of its canvas' shorter half (camera at z 4.2, fov 45).
@@ -157,16 +156,15 @@ export function Constellation({ anchor }: { anchor: RefObject<HTMLElement | null
       {sessions.map((s) => {
         const node = nodeOf.get(s.name)
         if (!node) return null
-        const props = {
-          session: s,
-          at: node.at,
-          open: open === `s:${s.name}`,
-          onToggle: () => toggle(`s:${s.name}`),
-        }
-        return s.kind === 'implementacao' ? (
-          <ButlerNode key={s.name} {...props} lines={terminal[s.name] ?? []} />
-        ) : (
-          <AgentNode key={s.name} {...props} />
+        return (
+          <AgentNode
+            key={s.name}
+            session={s}
+            at={node.at}
+            open={open === `s:${s.name}`}
+            lines={terminal[s.name] ?? []}
+            onToggle={() => toggle(`s:${s.name}`)}
+          />
         )
       })}
       {opened && stage && nodeOf.get(opened.name) && (
