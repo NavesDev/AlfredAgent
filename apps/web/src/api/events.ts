@@ -9,6 +9,24 @@ export type Workspace = components['schemas']['Workspace']
 export type SettingsView = components['schemas']['SettingsView']
 export type Phase = NonNullable<SessionView['phase']>
 
+/** Mirrors server/infra/claude/activity.py's Action. */
+export type ActivityAction =
+  | 'delegate'
+  | 'session'
+  | 'project'
+  | 'command'
+  | 'files_read'
+  | 'files_edit'
+  | 'web_search'
+  | 'web_page'
+  | 'email_read'
+  | 'email_send'
+  | 'calendar_read'
+  | 'calendar_write'
+  | 'drive'
+  | 'browser'
+  | 'tool'
+
 export type VoiceState = 'idle' | 'listening' | 'transcribing' | 'thinking' | 'speaking'
 
 type Base = { ts: number }
@@ -26,6 +44,8 @@ export type AlfredEvent = Base &
         content: string
         /** What Alfred is doing, in pt-BR (tools only), e.g. "Analisando seus e-mails". */
         label?: string
+        /** The kind of step, for the activity cards (tools only), e.g. "web_search". */
+        action?: ActivityAction
         /** Search query, site host or command description, tools only. */
         detail?: string | null
         /** What a coding session is doing, from the tool: exploring, editing or running. */

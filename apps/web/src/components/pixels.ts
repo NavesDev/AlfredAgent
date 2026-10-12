@@ -1,6 +1,7 @@
 import { createElement, type Key, type SVGProps } from 'react'
 
-// The staff's palette and the one-pixel-rect helper every drawing is made of.
+// The pixel-art palette (the staff and Alfred's activity cards) and the one-pixel-rect helper
+// every drawing is made of.
 
 export const C = {
   suit: '#34343e',
@@ -17,6 +18,10 @@ export const C = {
   purple2: '#8d6cff',
   black: '#0c0c0e',
   silver: '#c8c8cc',
+  amber: '#fbbf24',
+  amber2: '#fde68a',
+  blue: '#22307a',
+  blue2: '#3d56c4',
 }
 
 type RectProps = Omit<SVGProps<SVGRectElement>, 'x' | 'y' | 'width' | 'height' | 'fill' | 'key'>

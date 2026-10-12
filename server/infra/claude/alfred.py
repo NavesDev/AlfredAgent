@@ -15,7 +15,7 @@ import claude_agent_sdk as sdk
 from errors import AgentError, DependencyError
 from events import EventBus
 from infra.claude import permissions
-from infra.claude.activity import describe_tool, phase_of
+from infra.claude.activity import action_of, describe_tool, phase_of
 from infra.claude.state import DailyState
 from infra.claude.summary import extract_summary, parse_resumo
 from infra.claude.tools import SERVER
@@ -220,6 +220,7 @@ def publish_progress(bus: EventBus, session: str, message: sdk.AssistantMessage)
                 kind="tool",
                 content=block.name,
                 label=describe_tool(block.name),
+                action=action_of(block.name),
                 detail=tool_detail(block.input),
                 phase=phase_of(block.name),
             )

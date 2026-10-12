@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { AppHeader } from '../../../components/layout/AppHeader'
 import { playDemo } from '../../../lib/demo'
+import { ORB_LIFT } from '../../../lib/motion'
 import { Assistant } from '../../assistant/components/Assistant'
+import { useActivity } from '../../assistant/hooks/useActivity'
 import { Constellation } from '../../sessions/components/Constellation'
 import { TranscriptPanel } from '../../transcript/components/TranscriptPanel'
 import { useTranscript } from '../../transcript/hooks/useTranscript'
@@ -20,6 +22,8 @@ export function DashboardPage() {
   const turns = useTranscript()
   const [showTranscript, setShowTranscript] = useState(readStored)
   const orbRef = useRef<HTMLDivElement>(null)
+  const activity = useActivity()
+  const lift = activity.length ? ORB_LIFT : 0
 
   useEffect(() => {
     try {
@@ -76,9 +80,9 @@ export function DashboardPage() {
         <section className="relative min-h-0 flex-1">
           {/* Above the filaments, below the agent nodes */}
           <div className="relative z-10 h-full">
-            <Assistant caption={caption} orbRef={orbRef} />
+            <Assistant caption={caption} activity={activity} lift={lift} orbRef={orbRef} />
           </div>
-          <Constellation anchor={orbRef} />
+          <Constellation anchor={orbRef} lift={lift} />
         </section>
         {showTranscript && (
           <div className="h-[45%] border-t border-white/10 md:h-auto md:w-[420px] md:border-t-0">

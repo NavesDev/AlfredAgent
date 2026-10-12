@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { ButlerState } from '../../lib/butler'
 import { Arm, ArmForward, ArmToHat, Face, Laptop, Legs, Sparkles, Torso, type Eyes } from './parts'
-import { C, R } from './pixels'
+import { C, R } from '../../../../components/pixels'
 
 // The implementation sessions' pixel-art butler. Frames follow the approved mockup.
 

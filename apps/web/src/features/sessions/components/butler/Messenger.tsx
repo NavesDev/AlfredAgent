@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { MessengerState } from '../../lib/messenger'
 import { Arm, ArmForward, ArmToHat, Face, Laptop, Legs, Sparkles, Torso, type Eyes } from './parts'
-import { C, R } from './pixels'
+import { C, R } from '../../../../components/pixels'
 
 // The general sessions' messenger: the butler's face under a pillbox cap, without the monocle,
 // running errands with a tray instead of typing at a laptop.

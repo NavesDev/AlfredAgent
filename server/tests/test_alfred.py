@@ -256,8 +256,9 @@ async def test_streams_progress_and_publishes_reply(bus: EventBus, tmp_path: Pat
     await asyncio.sleep(0)
 
     assert activities == ["Pesquisando na web"]
-    events = [(e["type"], e.get("kind"), e.get("content"), e.get("detail")) for e in drain(queue)]
-    assert events[0][:4] == ("agent_progress", "tool", "WebSearch", "notícias de IA")
+    published = drain(queue)
+    assert published[0]["action"] == "web_search"
+    events = [(e["type"], e.get("kind"), e.get("content"), e.get("detail")) for e in published]
     assert events == [
         ("agent_progress", "tool", "WebSearch", "notícias de IA"),
         ("agent_progress", "text", "Pensando", None),

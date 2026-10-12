@@ -8,6 +8,7 @@ import {
 } from 'react'
 import type { SessionView } from '../../../api/events'
 import { useEvents } from '../../../hooks/useEvents'
+import { LIFT_TRANSITION } from '../../../lib/motion'
 import { useSessions } from '../hooks/useSessions'
 import { NewSessionForm } from '../../../components/NewSessionForm'
 import { useProjectList } from '../hooks/useProjectList'
@@ -72,8 +73,14 @@ function placement(at: Point, stage: Stage): CSSProperties {
     : { left, bottom: stage.height - at.y + 40 }
 }
 
+type Props = {
+  anchor: RefObject<HTMLElement | null>
+  /** How far the orb has risen, in px; the whole map rises with it instead of being re-laid out. */
+  lift?: number
+}
+
 /** Agent sessions around Alfred's orb, grouped under their project's diamond. */
-export function Constellation({ anchor }: { anchor: RefObject<HTMLElement | null> }) {
+export function Constellation({ anchor, lift = 0 }: Props) {
   const sessions = useSessions()
   const projects = useProjectList()
   const terminal = useTerminal()
@@ -107,7 +114,8 @@ export function Constellation({ anchor }: { anchor: RefObject<HTMLElement | null
     <div
       ref={box}
       aria-label="Sessões"
-      className="pointer-events-none absolute inset-0 overflow-hidden"
+      style={{ top: -lift, bottom: lift, transition: LIFT_TRANSITION }}
+      className="pointer-events-none absolute inset-x-0 overflow-hidden"
     >
       {stage && (
         <svg className="absolute inset-0 z-0 h-full w-full overflow-visible" aria-hidden="true">

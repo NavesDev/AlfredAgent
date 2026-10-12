@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { C, R } from './pixels'
+import { C, R } from '../../../../components/pixels'
 import './butler.css'
 
 // Pixel parts shared by the mansion staff (the butler and the messenger), on a 36×32 grid.
