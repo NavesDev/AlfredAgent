@@ -86,6 +86,7 @@ async def serve(config: Config) -> None:
 
     app = create_app()
     app.state.bus = bus
+    app.state.alfred = agent
     app.state.sessions = sessions
     app.state.projects = projects
     app.state.settings = settings

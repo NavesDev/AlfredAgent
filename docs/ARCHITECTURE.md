@@ -235,6 +235,7 @@ Tabelas auxiliares previstas: `audit_log` (toda tool call), `confirmation` (pedi
 |---|---|---|
 | `transcript` | texto, origem (voz/painel) | ws |
 | `alfred_reply` | sessão, resumo, texto completo | talker (só resumo), ws |
+| `alfred_cleared` | — (conversa do dia esquecida) | ws |
 | `session_created` | snapshot da sessão | ws |
 | `session_status` | snapshot da sessão (status, tarefa, atividade, fila, tokens, último resumo) | ws |
 | `session_cleared` | snapshot da sessão | ws |
@@ -296,6 +297,7 @@ flowchart TD
 |---|---|
 | `GET/POST /api/projects`, `GET/PATCH/DELETE /api/projects/{id}` | Projetos e workspaces |
 | `POST /api/projects/{id}/workspaces`, `POST /api/projects/{id}/worktrees`, `DELETE /api/workspaces/{id}?force=` | Pastas e worktrees |
+| `POST /api/alfred/clear` | Esquece a conversa do dia do Alfred (espera a resposta em andamento) |
 | `GET/POST /api/sessions`, `PATCH /api/sessions/{name}`, `POST …/clear`, `DELETE …` | Sessões |
 | `GET/PUT /api/settings` | Modelos e effort por tipo, limites, MCPs desligados |
 | `GET/POST/PATCH /api/tasks` | Tarefas |
