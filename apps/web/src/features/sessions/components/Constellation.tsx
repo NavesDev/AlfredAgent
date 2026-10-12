@@ -9,9 +9,15 @@ import {
 import type { SessionView } from '../../../api/events'
 import { useEvents } from '../../../hooks/useEvents'
 import { useSessions } from '../hooks/useSessions'
-import { filamentPath, nodePositions, pulseFor, type Point, type Stage } from '../lib/constellation'
+import { NewSessionForm } from '../../../components/NewSessionForm'
+import { useProjectList } from '../hooks/useProjectList'
+import { useSessionActions } from '../hooks/useSessionActions'
+import { useTerminal } from '../hooks/useTerminal'
+import { layout, pulseFor, type Point, type Stage } from '../lib/constellation'
 import { AgentDetails } from './AgentDetails'
 import { AgentNode } from './AgentNode'
+import { ButlerNode } from './ButlerNode'
+import { ProjectHub } from './ProjectHub'
 
 // The orb's sphere fills about this share of its canvas' shorter half (camera at z 4.2, fov 45).
 const ORB_SHARE = 0.55
@@ -60,19 +66,23 @@ function usePulses() {
   return { pulses, done }
 }
 
-function detailsPlacement(at: Point, stage: Stage): CSSProperties {
+function placement(at: Point, stage: Stage): CSSProperties {
   const left = Math.min(Math.max(at.x - DETAILS_W / 2, 8), stage.width - DETAILS_W - 8)
   return at.y < stage.height / 2
     ? { left, top: at.y + 56 }
     : { left, bottom: stage.height - at.y + 40 }
 }
 
-/** Agent sessions as nodes around Alfred's orb, tied to it by filaments. */
+/** Agent sessions around Alfred's orb, grouped under their project's diamond. */
 export function Constellation({ anchor }: { anchor: RefObject<HTMLElement | null> }) {
   const sessions = useSessions()
+  const projects = useProjectList()
+  const terminal = useTerminal()
+  const { create } = useSessionActions()
   const box = useRef<HTMLDivElement>(null)
   const stage = useStage(box, anchor)
   const { pulses, done } = usePulses()
+  // "s:<name>" opens a session's details, "p:<project>" a hub's menu, "n:<project>" the form
   const [open, setOpen] = useState<string | null>(null)
 
   useEffect(() => {
@@ -87,43 +97,42 @@ export function Constellation({ anchor }: { anchor: RefObject<HTMLElement | null
     }
   }, [open])
 
-  const points = stage ? nodePositions(sessions.length, stage) : []
-  const paths = stage ? points.map((p) => filamentPath(stage, p)) : []
-  const index = new Map(sessions.map((s, i) => [s.name, i]))
-  const opened = sessions.find((s) => s.name === open)
+  const { hubs, nodes } = stage ? layout(sessions, stage) : { hubs: [], nodes: [] }
+  const nodeOf = new Map(nodes.map((n) => [n.name, n]))
+  const opened = open?.startsWith('s:') ? sessions.find((s) => s.name === open.slice(2)) : undefined
+  const formFor = open?.startsWith('n:') ? hubs.find((h) => h.project === open.slice(2)) : undefined
+  const projectId = (name: string) => projects.find((p) => p.name === name)?.id
+  const toggle = (key: string) => setOpen((o) => (o === key ? null : key))
 
   return (
-    <div ref={box} aria-label="Sessões" className="pointer-events-none absolute inset-0">
+    <div
+      ref={box}
+      aria-label="Sessões"
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+    >
       {stage && (
         <svg className="absolute inset-0 z-0 h-full w-full overflow-visible" aria-hidden="true">
-          {sessions.map((s, i) => {
-            const busy = s.status === 'busy'
-            return (
-              <path
-                key={s.name}
-                d={paths[i]}
-                fill="none"
-                stroke={FILAMENT}
-                strokeWidth={busy ? 1.5 : 1}
-                strokeOpacity={busy ? 0.7 : 0.3}
-                strokeDasharray={busy ? '4 8' : undefined}
-                strokeLinecap="round"
-                className={busy ? 'animate-filament' : undefined}
-              />
-            )
+          {hubs.map((hub) => {
+            const busy = sessions.some((s) => s.project === hub.project && s.status === 'busy')
+            return <Filament key={`hub-${hub.project}`} d={hub.d} busy={busy} />
+          })}
+          {sessions.map((s) => {
+            const node = nodeOf.get(s.name)
+            if (!node) return null
+            return <Filament key={s.name} d={node.branch ?? node.d} busy={s.status === 'busy'} />
           })}
         </svg>
       )}
       {stage &&
         pulses.map((pulse) => {
-          const i = index.get(pulse.name)
-          if (i === undefined) return null
+          const node = nodeOf.get(pulse.name)
+          if (!node) return null
           return (
             <span
               key={pulse.id}
               onAnimationEnd={() => done(pulse.id)}
               style={{
-                offsetPath: `path('${paths[i]}')`,
+                offsetPath: `path('${node.d}')`,
                 offsetRotate: '0deg',
                 background: FILAMENT,
                 boxShadow: `0 0 10px 3px ${FILAMENT}`,
@@ -134,25 +143,76 @@ export function Constellation({ anchor }: { anchor: RefObject<HTMLElement | null
             />
           )
         })}
-      {sessions.map((s, i) =>
-        points[i] ? (
-          <AgentNode
-            key={s.name}
-            session={s}
-            at={points[i]}
-            open={open === s.name}
-            onToggle={() => setOpen((o) => (o === s.name ? null : s.name))}
-          />
-        ) : null,
-      )}
-      {opened && stage && points[index.get(opened.name)!] && (
+      {hubs.map((hub) => (
+        <ProjectHub
+          key={hub.project}
+          project={hub.project}
+          projectId={projectId(hub.project)}
+          at={hub.at}
+          open={open === `p:${hub.project}`}
+          onToggle={() => toggle(`p:${hub.project}`)}
+          onNewSession={() => setOpen(`n:${hub.project}`)}
+        />
+      ))}
+      {sessions.map((s) => {
+        const node = nodeOf.get(s.name)
+        if (!node) return null
+        const props = {
+          session: s,
+          at: node.at,
+          open: open === `s:${s.name}`,
+          onToggle: () => toggle(`s:${s.name}`),
+        }
+        return s.kind === 'implementacao' ? (
+          <ButlerNode key={s.name} {...props} lines={terminal[s.name] ?? []} />
+        ) : (
+          <AgentNode key={s.name} {...props} />
+        )
+      })}
+      {opened && stage && nodeOf.get(opened.name) && (
         <AgentDetails
           key={opened.name}
           session={opened}
           onClose={() => setOpen(null)}
-          style={detailsPlacement(points[index.get(opened.name)!], stage)}
+          style={placement(nodeOf.get(opened.name)!.at, stage)}
         />
       )}
+      {formFor && stage && (
+        <div
+          role="dialog"
+          aria-label={`Nova sessão em ${formFor.project}`}
+          style={placement(formFor.at, stage)}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="animate-activity-in pointer-events-auto absolute z-30 w-80 rounded-xl border border-white/10 bg-[#0a0f1c]/95 p-3 backdrop-blur"
+        >
+          <h3 className="mb-2 text-sm font-medium text-gray-100">
+            Nova sessão em {formFor.project}
+          </h3>
+          <NewSessionForm
+            projects={projects}
+            projectId={projectId(formFor.project)}
+            pending={create.isPending}
+            error={create.error?.message}
+            onCancel={() => setOpen(null)}
+            onSubmit={(body) => create.mutate(body, { onSuccess: () => setOpen(null) })}
+          />
+        </div>
+      )}
     </div>
+  )
+}
+
+function Filament({ d, busy }: { d: string; busy: boolean }) {
+  return (
+    <path
+      d={d}
+      fill="none"
+      stroke={FILAMENT}
+      strokeWidth={busy ? 1.5 : 1}
+      strokeOpacity={busy ? 0.7 : 0.3}
+      strokeDasharray={busy ? '4 8' : undefined}
+      strokeLinecap="round"
+      className={busy ? 'animate-filament' : undefined}
+    />
   )
 }

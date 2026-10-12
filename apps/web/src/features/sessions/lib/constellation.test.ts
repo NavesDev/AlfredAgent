@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { filamentPath, nodePositions, pulseFor, type Stage } from './constellation'
+import { sessionView } from '../../../lib/sessionView'
+import { filamentPath, layout, nodePositions, pulseFor, type Stage } from './constellation'
 
 const stage: Stage = { cx: 400, cy: 300, r: 100, width: 800, height: 600 }
 
@@ -45,5 +46,57 @@ describe('pulseFor', () => {
     expect(pulseFor('idle', 'idle')).toBeNull()
     expect(pulseFor(undefined, 'busy')).toBe('out')
     expect(pulseFor(undefined, 'idle')).toBeNull()
+  })
+})
+
+describe('layout', () => {
+  const sessions = [
+    sessionView('sistema'),
+    sessionView('back', { project: 'Recurve' }),
+    sessionView('front', { project: 'Recurve' }),
+    sessionView('api', { project: 'Loja' }),
+  ]
+  const round = (p: { x: number; y: number }) => `${Math.round(p.x)},${Math.round(p.y)}`
+  const dist = (p: { x: number; y: number }) => Math.hypot(p.x - stage.cx, p.y - stage.cy)
+
+  it('gives each project one hub between the orb and its sessions', () => {
+    const { hubs, nodes } = layout(sessions, stage)
+
+    expect(hubs.map((h) => h.project)).toEqual(['Recurve', 'Loja'])
+    const recurve = hubs[0]
+    for (const name of ['back', 'front']) {
+      const node = nodes.find((n) => n.name === name)!
+      expect(dist(recurve.at)).toBeLessThan(dist(node.at))
+      expect(dist(recurve.at)).toBeGreaterThan(stage.r)
+    }
+  })
+
+  it('ties sessions without a project straight to the orb', () => {
+    const sistema = layout(sessions, stage).nodes.find((n) => n.name === 'sistema')!
+
+    expect(sistema.branch).toBeNull()
+    expect(sistema.d).toBe(filamentPath(stage, sistema.at))
+  })
+
+  it('runs a grouped session path through its hub, for the pulses', () => {
+    const { hubs, nodes } = layout(sessions, stage)
+    const back = nodes.find((n) => n.name === 'back')!
+    const hub = hubs[0].at
+
+    expect(back.branch!.startsWith(`M${+hub.x.toFixed(1)} ${+hub.y.toFixed(1)} Q`)).toBe(true)
+    expect(back.d.startsWith(hubs[0].d)).toBe(true)
+    expect(back.d.endsWith(`${+back.at.x.toFixed(1)} ${+back.at.y.toFixed(1)}`)).toBe(true)
+  })
+
+  it('keeps every node distinct and inside the stage', () => {
+    const { nodes } = layout(sessions, stage)
+
+    expect(new Set(nodes.map((n) => round(n.at))).size).toBe(4)
+    for (const { at } of nodes) {
+      expect(at.x).toBeGreaterThanOrEqual(56)
+      expect(at.x).toBeLessThanOrEqual(stage.width - 56)
+      expect(at.y).toBeGreaterThanOrEqual(40)
+      expect(at.y).toBeLessThanOrEqual(stage.height - 40)
+    }
   })
 })

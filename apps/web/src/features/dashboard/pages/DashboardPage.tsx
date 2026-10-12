@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Nav } from '../../../components/layout/Nav'
 import { useConnection } from '../../../hooks/useEvents'
 import { playDemo } from '../../../lib/demo'
 import { Assistant } from '../../assistant/components/Assistant'
@@ -57,6 +58,7 @@ export function DashboardPage() {
       <header className="flex items-center justify-between px-5 py-4">
         <h1 className="text-base font-semibold tracking-[0.3em] text-gray-200 uppercase">Alfred</h1>
         <div className="flex items-center gap-2">
+          <Nav />
           <span className="mr-2 flex items-center gap-2 text-xs text-gray-400">
             <span className={`size-1.5 rounded-full ${connection.dot}`} />
             <span className="hidden sm:inline">{connection.label}</span>

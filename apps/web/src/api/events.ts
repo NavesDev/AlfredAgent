@@ -3,6 +3,11 @@
 import type { components } from './schema'
 
 export type SessionView = components['schemas']['SessionView']
+export type SubagentView = components['schemas']['SubagentView']
+export type Project = components['schemas']['Project']
+export type Workspace = components['schemas']['Workspace']
+export type SettingsView = components['schemas']['SettingsView']
+export type Phase = NonNullable<SessionView['phase']>
 
 export type VoiceState = 'idle' | 'listening' | 'transcribing' | 'thinking' | 'speaking'
 
@@ -23,12 +28,32 @@ export type AlfredEvent = Base &
         label?: string
         /** Search query, site host or command description, tools only. */
         detail?: string | null
+        /** What a coding session is doing, from the tool: exploring, editing or running. */
+        phase?: Phase | null
       }
     | { type: 'error'; where: string; message: string }
     | { type: 'session_created'; session: SessionView }
     | { type: 'session_status'; session: SessionView }
     | { type: 'session_cleared'; session: SessionView }
     | { type: 'session_deleted'; name: string }
+    | {
+        type: 'subagent_started'
+        session: string
+        id: string
+        subagent_type: string | null
+        description: string
+      }
+    | { type: 'subagent_progress'; session: string; id: string; last_tool: string | null }
+    | {
+        type: 'subagent_finished'
+        session: string
+        id: string
+        status: SubagentView['status']
+      }
+    | { type: 'project_created'; project: Project }
+    | { type: 'project_updated'; project: Project }
+    | { type: 'project_deleted'; id: number }
+    | { type: 'settings_updated'; settings: SettingsView }
   )
 
 export type EventOf<T extends AlfredEvent['type']> = Extract<AlfredEvent, { type: T }>

@@ -1,6 +1,7 @@
 import type { SessionView } from '../../../api/events'
 import type { Point } from '../lib/constellation'
 import { STATUS } from '../lib/status'
+import { SubagentDots } from './SubagentDots'
 
 type Props = { session: SessionView; at: Point; open: boolean; onToggle: () => void }
 
@@ -8,11 +9,13 @@ type Props = { session: SessionView; at: Point; open: boolean; onToggle: () => v
 export function AgentNode({ session, at, open, onToggle }: Props) {
   const status = STATUS[session.status]
   const busy = session.status === 'busy'
-  const line = busy
-    ? (session.activity ?? session.task ?? 'trabalhando')
-    : session.status === 'error'
-      ? 'falhou na última tarefa'
-      : status.label
+  const line = session.waiting
+    ? 'na fila por uma vaga'
+    : busy
+      ? (session.activity ?? session.task ?? 'trabalhando')
+      : session.status === 'error'
+        ? 'falhou na última tarefa'
+        : status.label
 
   return (
     <button
@@ -35,6 +38,7 @@ export function AgentNode({ session, at, open, onToggle }: Props) {
           open ? 'ring-4 ring-white/10' : ''
         }`}
       />
+      <SubagentDots subagents={session.subagents} />
       <span className="pointer-events-none absolute top-full flex w-36 flex-col items-center text-center">
         <span className={`text-xs tracking-wide ${status.name}`}>{session.name}</span>
         <span
