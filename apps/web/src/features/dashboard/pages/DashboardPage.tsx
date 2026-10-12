@@ -3,6 +3,7 @@ import { AppHeader } from '../../../components/layout/AppHeader'
 import { playDemo } from '../../../lib/demo'
 import { ORB_LIFT } from '../../../lib/motion'
 import { Assistant } from '../../assistant/components/Assistant'
+import { UsagePill } from '../../settings/components/UsagePill'
 import { useActivity } from '../../assistant/hooks/useActivity'
 import { Constellation } from '../../sessions/components/Constellation'
 import { TranscriptPanel } from '../../transcript/components/TranscriptPanel'
@@ -54,6 +55,7 @@ export function DashboardPage() {
       <AppHeader
         actions={
           <>
+            <UsagePill />
             <button
               onClick={() => playDemo()}
               title="Simula uma conversa para testar a animação sem o servidor"

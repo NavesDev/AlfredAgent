@@ -163,6 +163,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/usage': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get Usage */
+    get: operations['get_usage_api_usage_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/health': {
     parameters: {
       query?: never
@@ -256,12 +273,39 @@ export interface components {
       /** Aliases */
       aliases?: string[] | null
     }
+    /** RateLimit */
+    RateLimit: {
+      /** Window */
+      window: string
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'allowed' | 'allowed_warning' | 'rejected'
+      /** Utilization */
+      utilization: number | null
+      /** Resets At */
+      resets_at: number | null
+      /** Read At */
+      read_at: number
+    }
     /** SessionChange */
     SessionChange: {
       /** Model */
       model?: string | null
       /** Effort */
       effort?: string | null
+    }
+    /** SessionUsage */
+    SessionUsage: {
+      /** Name */
+      name: string
+      /** Tokens */
+      tokens: number
+      /** Context Tokens */
+      context_tokens: number | null
+      /** Context Max */
+      context_max: number | null
     }
     /** SessionView */
     SessionView: {
@@ -304,6 +348,10 @@ export interface components {
       tasks_done: number
       /** Tokens */
       tokens: number
+      /** Context Tokens */
+      context_tokens: number | null
+      /** Context Max */
+      context_max: number | null
       /** Last Summary */
       last_summary: string | null
       /** Last Error */
@@ -356,6 +404,19 @@ export interface components {
        * @enum {string}
        */
       status: 'running' | 'completed' | 'failed' | 'stopped'
+    }
+    /** UsageView */
+    UsageView: {
+      /** Limits */
+      limits: components['schemas']['RateLimit'][]
+      /** Sessions */
+      sessions: components['schemas']['SessionUsage'][]
+      /** Open Sessions */
+      open_sessions: number
+      /** Max Active Sessions */
+      max_active_sessions: number
+      /** Task Timeout S */
+      task_timeout_s: number
     }
     /** ValidationError */
     ValidationError: {
@@ -845,6 +906,26 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_usage_api_usage_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['UsageView']
         }
       }
     }

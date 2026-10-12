@@ -64,6 +64,7 @@ class Slot:
     tokens: int = 0
     last_summary: str | None = None
     last_error: str | None = None
+    context: tuple[int, int] | None = None
     last_used: float = 0.0
     subagents: dict[str, SubagentView] = field(default_factory=dict)
 
@@ -145,6 +146,7 @@ class Sessions:
         records.update_session(self._db, slot.session.name, claude_session_id=None)
         slot.status, slot.task, slot.activity, slot.phase = "idle", None, None, None
         slot.tasks_done, slot.tokens, slot.last_summary, slot.last_error = 0, 0, None, None
+        slot.context = None
         slot.subagents.clear()
         slot.worker = asyncio.create_task(self._work(slot))
         view = self._view(slot)
@@ -229,6 +231,7 @@ class Sessions:
     async def _work(self, slot: Slot) -> None:
         while True:
             task = await slot.queue.get()
+            slot.task = task  # visible while it waits for a slot, not only once it runs
             await self._acquire(slot)
             await self._process(slot, task)
             self._wake()
@@ -293,6 +296,7 @@ class Sessions:
             slot.tasks_done += 1
             slot.tokens += reply.tokens
             slot.last_summary = reply.summary or None
+            slot.context = reply.context or slot.context
             if reply.session_id:
                 records.update_session(self._db, name, claude_session_id=reply.session_id)
             self._talker.say(reply.summary or f"A sessão {name} terminou.")
@@ -365,6 +369,8 @@ class Sessions:
             connected=s.connected,
             tasks_done=slot.tasks_done,
             tokens=slot.tokens,
+            context_tokens=slot.context[0] if slot.context else None,
+            context_max=slot.context[1] if slot.context else None,
             last_summary=slot.last_summary,
             last_error=slot.last_error,
             protected=slot.protected,

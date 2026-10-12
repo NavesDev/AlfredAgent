@@ -4,11 +4,34 @@ import { EFFORTS, field } from '../../../lib/sessionForm'
 import { ModelSelect } from '../../../components/ModelSelect'
 import { useLook } from '../hooks/useLook'
 import { useSessionActions } from '../hooks/useSessionActions'
-import { formatTokens, STATUS } from '../lib/status'
+import { formatTokens } from '../../../lib/format'
+import { STATUS } from '../lib/status'
 import { AgentFigure } from './AgentFigure'
 
 const CONFIRM_MS = 4000
 const SUBAGENT = { running: 'rodando', completed: 'feito', failed: 'falhou', stopped: 'parado' }
+
+/** How full the model's context window was after the last task, in one thin line. */
+function ContextMeter({ session }: { session: SessionView }) {
+  const { context_tokens: used, context_max: max } = session
+  if (used == null || !max) return null
+  const share = Math.min(100, Math.round((used / max) * 100))
+  const fill = share >= 95 ? 'bg-red-400' : share >= 80 ? 'bg-amber-400' : 'bg-gray-400'
+  return (
+    <div
+      title="Perto de encher, a sessão compacta a conversa ou falha; limpar começa do zero"
+      className="flex items-center gap-2 text-[11px] text-gray-500"
+    >
+      <span>contexto</span>
+      <span className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
+        <span className={`block h-full rounded-full ${fill}`} style={{ width: `${share}%` }} />
+      </span>
+      <span className="tabular-nums">
+        {formatTokens(used)} / {formatTokens(max)}
+      </span>
+    </div>
+  )
+}
 
 type Props = { session: SessionView; style: CSSProperties; onClose: () => void }
 
@@ -97,8 +120,10 @@ export function AgentDetails({ session, style, onClose }: Props) {
         <p className="truncate font-mono text-xs text-gray-400">{session.activity}…</p>
       )}
       <p className="text-xs text-gray-500">
-        fila {session.queue} · {session.tasks_done} tarefas · {formatTokens(session.tokens)} tokens
+        fila {session.queue} · {session.tasks_done} tarefas · gastou {formatTokens(session.tokens)}{' '}
+        tokens
       </p>
+      <ContextMeter session={session} />
       {session.subagents.length > 0 && (
         <ul className="flex flex-col gap-0.5 border-l border-white/10 pl-2 text-xs">
           {session.subagents.map((sub) => (

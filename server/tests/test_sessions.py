@@ -328,7 +328,8 @@ async def test_when_every_slot_works_the_task_waits_its_turn(bus: EventBus, home
 
     assert "vagas" in message and "fila" in message
     assert env.made["a"].tasks == []
-    assert next(v for v in env.sessions.list() if v.name == "a").waiting
+    waiting = next(v for v in env.sessions.list() if v.name == "a")
+    assert waiting.waiting and waiting.task == "x"  # not "idle with nothing to do"
 
     await env.sessions.clear("sistema")
     await settle()

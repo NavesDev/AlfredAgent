@@ -70,12 +70,14 @@ class Reply:
     summary: str
     tokens: int = 0
     session_id: str | None = None
+    context: tuple[int, int] | None = None  # (tokens in the context window, window size)
 
 
 class Client(Protocol):
     async def query(self, prompt: str) -> None: ...
     def receive_response(self) -> AsyncIterator[Any]: ...
     async def disconnect(self) -> None: ...
+    async def get_context_usage(self) -> Any: ...
 
 
 async def connect_sdk(options: sdk.ClaudeAgentOptions) -> Client:
@@ -189,6 +191,8 @@ class AlfredAgent:
                     spoken = parse_resumo(first_line) or ""
                     if spoken:
                         on_summary(spoken)
+            elif isinstance(message, sdk.RateLimitEvent):
+                publish_rate_limit(self._bus, message)
             elif isinstance(message, sdk.AssistantMessage):
                 publish_progress(self._bus, "alfred", message)
                 for block in message.content:
@@ -226,6 +230,27 @@ def publish_progress(bus: EventBus, session: str, message: sdk.AssistantMessage)
                 detail=tool_detail(block.input),
                 phase=phase_of(block.name),
             )
+
+
+def publish_rate_limit(bus: EventBus, message: sdk.RateLimitEvent) -> None:
+    """The plan's usage windows, as the CLI reports them while it works."""
+    info = message.rate_limit_info
+    bus.publish(
+        "rate_limit",
+        window=info.rate_limit_type or "unknown",
+        status=info.status,
+        utilization=info.utilization,
+        resets_at=info.resets_at,
+    )
+
+
+async def read_context(client: Client) -> tuple[int, int] | None:
+    """How full the conversation's context window is; None when the CLI can't say."""
+    try:
+        usage = await client.get_context_usage()
+        return int(usage["totalTokens"]), int(usage["rawMaxTokens"])
+    except Exception:  # an optional readout must never fail the task
+        return None
 
 
 def tool_detail(tool_input: dict[str, Any]) -> str | None:

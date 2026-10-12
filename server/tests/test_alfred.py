@@ -73,6 +73,9 @@ class FakeClient:
     async def disconnect(self) -> None:
         self.closed = True
 
+    async def get_context_usage(self) -> dict[str, Any]:
+        return {"totalTokens": 41_000, "rawMaxTokens": 200_000}
+
 
 class FakeConnect:
     """Stands in for connecting a ClaudeSDKClient; records the options of each connection."""

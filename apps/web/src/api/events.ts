@@ -7,6 +7,8 @@ export type SubagentView = components['schemas']['SubagentView']
 export type Project = components['schemas']['Project']
 export type Workspace = components['schemas']['Workspace']
 export type SettingsView = components['schemas']['SettingsView']
+export type UsageView = components['schemas']['UsageView']
+export type RateLimit = components['schemas']['RateLimit']
 export type Phase = NonNullable<SessionView['phase']>
 
 /** Mirrors server/infra/claude/activity.py's Action. */
@@ -74,6 +76,13 @@ export type AlfredEvent = Base &
     | { type: 'project_updated'; project: Project }
     | { type: 'project_deleted'; id: number }
     | { type: 'settings_updated'; settings: SettingsView }
+    | {
+        type: 'rate_limit'
+        window: string
+        status: RateLimit['status']
+        utilization: number | null
+        resets_at: number | null
+      }
   )
 
 export type EventOf<T extends AlfredEvent['type']> = Extract<AlfredEvent, { type: T }>

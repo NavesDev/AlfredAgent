@@ -4,6 +4,7 @@ from typing import Any
 import pytest
 
 from controllers.projects import Projects
+from controllers.settings import SettingsUpdate
 from errors import AgentError, SessionNotFound
 from events import EventBus
 from infra.claude import permissions
@@ -74,6 +75,21 @@ async def test_listing_tells_why_a_session_failed(tools: Tools) -> None:
     listed = await tools.call("listar_sessoes", {})
 
     assert "sistema" in listed and "último erro: Prompt is too long" in listed
+
+
+async def test_listing_tells_a_task_waiting_for_a_slot(tools: Tools) -> None:
+    tools.env.settings.update(SettingsUpdate(max_active_sessions=1))
+    tools.env.sessions.create("geral", "downloads")
+    tools.env.script("sistema", "hang")
+    tools.env.sessions.delegate("sistema", "longa")
+    await settle()
+    tools.env.sessions.delegate("downloads", "baixar")
+    await settle()
+
+    listed = await tools.call("listar_sessoes", {})
+
+    assert "downloads (Geral, " in listed
+    assert "esperando vaga, vai fazer: baixar" in listed
 
 
 async def test_lifecycle_tools(tools: Tools) -> None:

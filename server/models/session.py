@@ -50,6 +50,8 @@ class SessionView(BaseModel):
     connected: bool  # a claude process is open
     tasks_done: int
     tokens: int
+    context_tokens: int | None  # how full its context window was after the last task
+    context_max: int | None  # the model's context window
     last_summary: str | None
     last_error: str | None  # why the last task failed, until the next one starts
     protected: bool

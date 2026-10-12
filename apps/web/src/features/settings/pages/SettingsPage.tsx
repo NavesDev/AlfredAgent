@@ -5,6 +5,7 @@ import { Gauge, GitBranch, Plug, Sparkle, Terminal } from '../../../components/i
 import { button, PageShell, primaryButton } from '../../../components/layout/PageShell'
 import { ModelSelect } from '../../../components/ModelSelect'
 import { EFFORTS, field } from '../../../lib/sessionForm'
+import { UsageSection } from '../components/UsageSection'
 import { useSettings } from '../hooks/useSettings'
 
 const KINDS: Record<string, { label: string; hint: string; icon: ReactNode }> = {
@@ -16,7 +17,8 @@ const KINDS: Record<string, { label: string; hint: string; icon: ReactNode }> = 
 export function SettingsPage() {
   const { settings, save } = useSettings()
   return (
-    <PageShell title="Configurações" subtitle="Modelos, limites e MCPs das sessões do Alfred.">
+    <PageShell title="Configurações" subtitle="Uso, modelos, limites e MCPs das sessões do Alfred.">
+      <UsageSection />
       {settings ? <Form key={JSON.stringify(settings)} settings={settings} save={save} /> : null}
     </PageShell>
   )
