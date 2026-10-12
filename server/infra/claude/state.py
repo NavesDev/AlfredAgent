@@ -28,3 +28,6 @@ class DailyState:
                 {"date": day.isoformat(), "version": version, "claude_session_id": session_id}
             )
         )
+
+    def clear(self) -> None:
+        self._path.unlink(missing_ok=True)

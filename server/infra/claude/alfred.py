@@ -112,6 +112,7 @@ class AlfredAgent:
         self._timeout_s, self._connect, self._today = timeout_s, connect, today
         self._client: Client | None = None
         self._day: date | None = None
+        self._turn = asyncio.Lock()  # one question at a time; reset waits for the current one
 
     async def start(self) -> None:
         """Connect eagerly so a missing login fails at startup, not on the first question."""
@@ -125,6 +126,22 @@ class AlfredAgent:
         text: str,
         on_summary: Callable[[str], None],
         on_activity: Callable[[str], None] = lambda _: None,
+    ) -> Reply:
+        async with self._turn:
+            return await self._ask(text, on_summary, on_activity)
+
+    async def reset(self) -> None:
+        """Forgets today's conversation; the next question starts a fresh session."""
+        async with self._turn:
+            await self._close()
+            self._state.clear()
+        self._bus.publish("alfred_cleared")
+
+    async def _ask(
+        self,
+        text: str,
+        on_summary: Callable[[str], None],
+        on_activity: Callable[[str], None],
     ) -> Reply:
         try:
             async with asyncio.timeout(self._timeout_s):

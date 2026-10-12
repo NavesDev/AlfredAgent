@@ -48,7 +48,8 @@ def delta(text: str) -> StreamEvent:
 class FakeClient:
     """Stands in for ClaudeSDKClient: each query plays the next scripted run.
 
-    A callable in a run is invoked at that point of the stream instead of being yielded.
+    A callable in a run is invoked at that point of the stream instead of being yielded;
+    "pause" suspends the stream briefly and "hang" past any timeout.
     """
 
     def __init__(self, runs: list[Run]) -> None:
@@ -65,6 +66,8 @@ class FakeClient:
         for message in run:
             if message == "hang":
                 await asyncio.sleep(10)
+            elif message == "pause":
+                await asyncio.sleep(0.01)
             elif callable(message):
                 message()
             else:
@@ -186,6 +189,34 @@ async def test_start_resumes_todays_session(bus: EventBus, tmp_path: Path) -> No
     await started(bus, tmp_path, connect)
 
     assert connect.options[0].resume == "s1"
+
+
+async def test_reset_forgets_the_conversation(bus: EventBus, tmp_path: Path) -> None:
+    queue = bus.subscribe()
+    connect = FakeConnect([result(session_id="s1")], [result(session_id="s2")])
+    alfred = await started(bus, tmp_path, connect)
+    await spoken_for(alfred)
+
+    await alfred.reset()
+    await asyncio.sleep(0)
+
+    assert connect.clients[0].closed
+    assert DailyState(tmp_path / "s.json").session_for(TODAY, VERSION) is None
+    assert [e["type"] for e in drain(queue)][-1] == "alfred_cleared"
+    await spoken_for(alfred)
+    assert connect.options[-1].resume is None
+
+
+async def test_reset_waits_for_the_current_answer(bus: EventBus, tmp_path: Path) -> None:
+    connect = FakeConnect(["pause", result()])
+    alfred = await started(bus, tmp_path, connect)
+    asking = asyncio.create_task(spoken_for(alfred))
+    await asyncio.sleep(0)  # the answer is now streaming
+
+    await alfred.reset()
+
+    assert asking.done() and await asking == ["JWT é stateless; sessão fica no server."]
+    assert connect.clients[0].closed
 
 
 async def test_changed_setup_starts_a_fresh_session(bus: EventBus, tmp_path: Path) -> None:

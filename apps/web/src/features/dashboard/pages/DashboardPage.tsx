@@ -3,8 +3,9 @@ import { AppHeader } from '../../../components/layout/AppHeader'
 import { playDemo } from '../../../lib/demo'
 import { ORB_LIFT } from '../../../lib/motion'
 import { Assistant } from '../../assistant/components/Assistant'
-import { UsagePill } from '../../settings/components/UsagePill'
 import { useActivity } from '../../assistant/hooks/useActivity'
+import { useClearAlfred } from '../../assistant/hooks/useClearAlfred'
+import { UsagePill } from '../../settings/components/UsagePill'
 import { Constellation } from '../../sessions/components/Constellation'
 import { TranscriptPanel } from '../../transcript/components/TranscriptPanel'
 import { useTranscript } from '../../transcript/hooks/useTranscript'
@@ -21,6 +22,7 @@ function readStored() {
 
 export function DashboardPage() {
   const turns = useTranscript()
+  const clearAlfred = useClearAlfred()
   const [showTranscript, setShowTranscript] = useState(readStored)
   const orbRef = useRef<HTMLDivElement>(null)
   const activity = useActivity()
@@ -62,6 +64,22 @@ export function DashboardPage() {
               className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-gray-300 hover:bg-white/5"
             >
               Demo
+            </button>
+            <button
+              onClick={() => clearAlfred.mutate()}
+              disabled={clearAlfred.isPending}
+              title={
+                clearAlfred.isError
+                  ? `Não consegui limpar: ${clearAlfred.error.message}`
+                  : 'Esquece a conversa de hoje; espera a resposta em andamento terminar'
+              }
+              className={`rounded-full border px-3 py-1 text-[11px] whitespace-nowrap disabled:opacity-50 ${
+                clearAlfred.isError
+                  ? 'border-red-400/40 text-red-300'
+                  : 'border-white/10 text-gray-300 hover:bg-white/5'
+              }`}
+            >
+              {clearAlfred.isPending ? 'Limpando…' : 'Nova conversa'}
             </button>
             <button
               onClick={() => setShowTranscript((v) => !v)}

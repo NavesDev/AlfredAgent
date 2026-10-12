@@ -39,6 +39,7 @@ export type AlfredEvent = Base &
     | { type: 'audio_level'; source: 'mic' | 'tts'; level: number }
     | { type: 'transcript'; text: string; source: 'voice' | 'web' }
     | { type: 'alfred_reply'; session: string; text: string; summary: string }
+    | { type: 'alfred_cleared' }
     | {
         type: 'agent_progress'
         session: string
