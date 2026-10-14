@@ -391,6 +391,8 @@ export interface components {
       idle_minutes?: number | null
       /** Mcp Disabled */
       mcp_disabled?: string[] | null
+      /** Figure Scale */
+      figure_scale?: number | null
     }
     /** SettingsView */
     SettingsView: {
@@ -402,6 +404,8 @@ export interface components {
       idle_minutes: number
       /** Mcp Disabled */
       mcp_disabled: string[]
+      /** Figure Scale */
+      figure_scale: number
       /** Known Mcp Servers */
       known_mcp_servers: string[]
     }

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import type { SettingsView } from '../../../api/events'
 import { Row, Section, Segmented, Switch } from '../../../components/controls'
-import { Gauge, GitBranch, Plug, Sparkle, Terminal } from '../../../components/icons'
+import { Gauge, GitBranch, LayoutGrid, Plug, Sparkle, Terminal } from '../../../components/icons'
 import { button, PageShell, primaryButton } from '../../../components/layout/PageShell'
 import { ModelSelect } from '../../../components/ModelSelect'
 import { EFFORTS, field } from '../../../lib/sessionForm'
@@ -13,6 +13,8 @@ const KINDS: Record<string, { label: string; hint: string; icon: ReactNode }> = 
   geral: { label: 'Geral', hint: 'Sessões sem workspace', icon: <Terminal /> },
   implementacao: { label: 'Implementação', hint: 'Sessões que editam código', icon: <GitBranch /> },
 }
+
+const FIGURE_SCALES = [1, 1.25, 1.5, 1.75, 2] // the server accepts the same values
 
 export function SettingsPage() {
   const { settings, save } = useSettings()
@@ -106,6 +108,24 @@ function Form({
             value={draft.idle_minutes}
             onChange={(v) => set('idle_minutes', v)}
             unit="min"
+          />
+        </Row>
+      </Section>
+
+      <Section title="Painel" description="Como o mapa de sessões aparece.">
+        <Row
+          title="Tamanho dos agentes no mapa"
+          description="1× é o tamanho original."
+          icon={<LayoutGrid />}
+        >
+          <Segmented
+            label="Tamanho dos agentes no mapa"
+            value={String(draft.figure_scale)}
+            onChange={(v) => set('figure_scale', Number(v))}
+            options={FIGURE_SCALES.map((n) => ({
+              value: String(n),
+              label: `${String(n).replace('.', ',')}×`,
+            }))}
           />
         </Row>
       </Section>

@@ -27,6 +27,7 @@ async def test_get_returns_seeded_values(bus: EventBus) -> None:
 
     assert {a.kind: a.model for a in view.agents} == DEFAULTS.models
     assert (view.max_active_sessions, view.idle_minutes, view.mcp_disabled) == (3, 10, [])
+    assert view.figure_scale == 1.5
     assert view.known_mcp_servers == []
 
 
@@ -38,6 +39,7 @@ async def test_update_saves_and_publishes(bus: EventBus) -> None:
             agents=[model.AgentSettings(kind="implementacao", model="sonnet", effort="max")],
             max_active_sessions=5,
             mcp_disabled=["gmail"],
+            figure_scale=1.75,
         )
     )
     await asyncio.sleep(0)
@@ -45,6 +47,7 @@ async def test_update_saves_and_publishes(bus: EventBus) -> None:
     impl = next(a for a in view.agents if a.kind == "implementacao")
     assert (impl.model, impl.effort) == ("sonnet", "max")
     assert (view.max_active_sessions, view.idle_minutes, view.mcp_disabled) == (5, 10, ["gmail"])
+    assert view.figure_scale == 1.75
     assert s.get() == view
     [event] = [e for e in drain(queue) if e["type"] == "settings_updated"]
     assert event["settings"] == view.model_dump()
@@ -58,6 +61,9 @@ async def test_update_saves_and_publishes(bus: EventBus) -> None:
         SettingsUpdate(agents=[model.AgentSettings(kind="geral", model="opus", effort="turbo")]),
         SettingsUpdate(max_active_sessions=0),
         SettingsUpdate(idle_minutes=0),
+        SettingsUpdate(figure_scale=0.5),
+        SettingsUpdate(figure_scale=1.3),
+        SettingsUpdate(figure_scale=3),
     ],
 )
 async def test_update_rejects_bad_values(bus: EventBus, update: SettingsUpdate) -> None:

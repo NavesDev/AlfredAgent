@@ -1,4 +1,5 @@
 import type { SessionView } from '../../../api/events'
+import { useFigureScale } from '../hooks/useFigureScale'
 import { useLook } from '../hooks/useLook'
 import type { Point } from '../lib/constellation'
 import { lineOf } from '../lib/look'
@@ -6,6 +7,8 @@ import { STATUS } from '../lib/status'
 import { AgentFigure } from './AgentFigure'
 import { QueueBadge } from './QueueBadge'
 import { SubagentDots } from './SubagentDots'
+
+const BASE = { width: 45, height: 40 } // scale 1: the characters' first size, 36:32
 
 type Props = {
   session: SessionView
@@ -19,6 +22,7 @@ type Props = {
 export function AgentNode({ session, at, open, lines, onToggle }: Props) {
   const look = useLook(session)
   const line = lineOf(look, session)
+  const scale = useFigureScale()
 
   return (
     <div
@@ -33,7 +37,11 @@ export function AgentNode({ session, at, open, lines, onToggle }: Props) {
         aria-label={`Sessão ${session.name}, ${line}`}
         className={`relative block rounded-md transition ${open ? 'ring-2 ring-white/15' : ''}`}
       >
-        <AgentFigure look={look} className="h-10 w-11 transition-transform group-hover:scale-110" />
+        <AgentFigure
+          look={look}
+          style={{ width: BASE.width * scale, height: BASE.height * scale }}
+          className="transition-transform group-hover:scale-110"
+        />
         <QueueBadge count={session.queue} />
       </button>
       <span className="pointer-events-none absolute top-full left-1/2 flex w-44 -translate-x-1/2 flex-col items-center text-center">
