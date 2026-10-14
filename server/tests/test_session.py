@@ -10,6 +10,7 @@ from claude_agent_sdk import (
     TaskProgressMessage,
     TaskStartedMessage,
     ToolUseBlock,
+    UserMessage,
 )
 
 from errors import AgentError
@@ -36,6 +37,11 @@ def session(
 def tool(name: str, parent: str | None = None, **input: str) -> AssistantMessage:
     block = ToolUseBlock(id=f"t-{name}", name=name, input=input)
     return AssistantMessage(content=[block], model="m", parent_tool_use_id=parent)
+
+
+def echo(prompt: str) -> UserMessage:
+    """The CLI's replay of the prompt that starts a turn."""
+    return UserMessage(content=prompt)
 
 
 def usage() -> dict[str, int]:
@@ -71,6 +77,42 @@ async def test_run_publishes_progress_with_phase_and_reply(bus: EventBus) -> Non
         ("agent_progress", "sistema", "Gira", "running"),
         ("alfred_reply", "sistema", None, None),
     ]
+
+
+async def test_a_turn_left_unread_is_skipped_and_the_tasks_own_turn_answers(
+    bus: EventBus,
+) -> None:
+    queue = bus.subscribe()
+    connect = FakeConnect(
+        [echo("sobe o web"), tool("Bash", description="Sobe"), result("RESUMO: subiu")],
+        [echo("troca o botão"), tool("Edit", file_path="/c.tsx"), result("RESUMO: trocado")],
+    )
+    s = session(bus, connect)
+
+    reply = await s.run("troca o botão")
+    await asyncio.sleep(0)
+
+    assert reply.summary == "trocado"
+    events = [(e["type"], e.get("detail")) for e in drain(queue)]
+    assert ("agent_progress", "Sobe") not in events
+    assert [e for e in events if e[0] == "alfred_reply"] == [("alfred_reply", None)]
+
+
+async def test_a_background_notification_turn_before_the_task_is_skipped(bus: EventBus) -> None:
+    connect = FakeConnect(
+        [echo("<task-notification>servidor parou</task-notification>"), result("RESUMO: ok")],
+        [echo("lista os arquivos"), result("RESUMO: três arquivos")],
+    )
+
+    assert (await session(bus, connect).run("lista os arquivos")).summary == "três arquivos"
+
+
+async def test_a_notification_merged_into_the_tasks_turn_still_answers(bus: EventBus) -> None:
+    connect = FakeConnect(
+        [echo("<task-notification>parou</task-notification>"), echo("a"), result("RESUMO: ok")]
+    )
+
+    assert (await session(bus, connect).run("a")).summary == "ok"
 
 
 async def test_subagents_are_published_but_their_tools_are_not_the_sessions(
