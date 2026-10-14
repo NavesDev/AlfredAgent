@@ -4,7 +4,6 @@ Its kind (infra/claude/agents.py) builds the options from a context read fresh o
 so model, effort and resume changes apply to the next connection (ADR 0006, 0007, 0008).
 """
 
-import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from typing import Any
@@ -32,13 +31,12 @@ class CodingSession:
         bus: EventBus,
         kind: AgentKind,
         context: Callable[[], SessionContext],
-        timeout_s: float,
         connect: Callable[[sdk.ClaudeAgentOptions], Awaitable[Client]] = connect_sdk,
     ) -> None:
         self.kind, self._context = kind, context
         self.name = context().name
         self._bus = bus
-        self._timeout_s, self._connect = timeout_s, connect
+        self._connect = connect
         self._client: Client | None = None
 
     @property
@@ -46,17 +44,16 @@ class CodingSession:
         return self._client is not None
 
     async def run(self, task: str) -> Reply:
+        """No time limit: a task runs until it ends or someone clears or deletes the session."""
         try:
-            async with asyncio.timeout(self._timeout_s):
-                if self._client is None:
-                    self._client = await self._open()
-                return await self._run(self._client, task)
-        except (TimeoutError, sdk.ClaudeSDKError, AgentError) as e:
+            if self._client is None:
+                self._client = await self._open()
+            return await self._run(self._client, task)
+        except (sdk.ClaudeSDKError, AgentError) as e:
             await self.disconnect()  # next task reconnects fresh
             if isinstance(e, AgentError):
                 raise
-            reason = f"timeout after {self._timeout_s}s" if isinstance(e, TimeoutError) else e
-            raise AgentError(str(reason)) from e
+            raise AgentError(str(e)) from e
 
     async def disconnect(self) -> None:
         """Ends the CLI process; the next task resumes the conversation if the context says so."""

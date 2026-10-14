@@ -16,11 +16,10 @@ class Usage:
         bus: EventBus,
         sessions: Sessions,
         settings: Settings,
-        task_timeout_s: int,
         clock: Callable[[], float] = time.time,
     ) -> None:
         self._bus, self._sessions, self._settings = bus, sessions, settings
-        self._timeout_s, self._clock = task_timeout_s, clock
+        self._clock = clock
         self._limits: dict[str, RateLimit] = {}
 
     def view(self) -> UsageView:
@@ -38,7 +37,6 @@ class Usage:
             ],
             open_sessions=sum(v.connected for v in sessions),
             max_active_sessions=self._settings.app().max_active_sessions,
-            task_timeout_s=self._timeout_s,
         )
 
     def apply(self, event: dict[str, Any]) -> None:

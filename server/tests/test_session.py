@@ -23,7 +23,6 @@ from tests.test_alfred import FakeConnect, result
 def session(
     bus: EventBus,
     connect: FakeConnect,
-    timeout_s: float = 1,
     cwd: Path = Path("/"),
     resume: str | None = None,
     kind: str = "geral",
@@ -31,7 +30,7 @@ def session(
     def context() -> SessionContext:
         return SessionContext(name="sistema", cwd=cwd, model="sonnet", resume=resume)
 
-    return CodingSession(bus, KINDS[kind], context, timeout_s, connect=connect)
+    return CodingSession(bus, KINDS[kind], context, connect=connect)
 
 
 def tool(name: str, parent: str | None = None, **input: str) -> AssistantMessage:
@@ -183,13 +182,6 @@ async def test_failure_raises_agent_error_and_reconnects_next_time(bus: EventBus
 
     assert (await s.run("b")).summary == "ok"
     assert len(connect.clients) == 2
-
-
-async def test_timeout_raises_agent_error(bus: EventBus) -> None:
-    s = session(bus, FakeConnect(["hang"]), timeout_s=0.05)
-
-    with pytest.raises(AgentError, match="timeout"):
-        await s.run("a")
 
 
 async def test_disconnect_closes_and_the_next_task_reconnects(bus: EventBus) -> None:

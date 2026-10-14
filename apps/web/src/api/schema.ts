@@ -432,8 +432,6 @@ export interface components {
       open_sessions: number
       /** Max Active Sessions */
       max_active_sessions: number
-      /** Task Timeout S */
-      task_timeout_s: number
     }
     /** ValidationError */
     ValidationError: {

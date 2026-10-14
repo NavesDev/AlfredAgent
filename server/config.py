@@ -39,7 +39,6 @@ class Agents(BaseModel):
     default_model: str
     models: dict[str, str] = {}  # seeds per kind ("alfred", "geral", "implementacao")
     timeout_s: int = 60
-    session_timeout_s: int = 300
 
 
 class Limits(BaseModel):

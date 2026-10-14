@@ -27,4 +27,3 @@ class UsageView(BaseModel):
     sessions: list[SessionUsage]
     open_sessions: int  # claude processes open for sessions
     max_active_sessions: int
-    task_timeout_s: int

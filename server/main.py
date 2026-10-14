@@ -51,11 +51,11 @@ async def serve(config: Config) -> None:
     settings = Settings(db, bus)
 
     def new_session(kind: AgentKind, context: Callable[[], SessionContext]) -> CodingSession:
-        return CodingSession(bus, kind, context, timeout_s=config.agents.session_timeout_s)
+        return CodingSession(bus, kind, context)
 
     sessions = Sessions(bus, talker, db, settings, new_session, home=Path.home())
     sessions.load()
-    usage = Usage(bus, sessions, settings, config.agents.session_timeout_s)
+    usage = Usage(bus, sessions, settings)
     projects = Projects(db, bus)
     agent = AlfredAgent(
         bus,

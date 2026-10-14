@@ -63,7 +63,7 @@ export function UsageSection() {
       <Section title="Sessões" description="Processos claude abertos e o gasto de cada sessão.">
         <Row
           title="Vagas em uso"
-          description={`Tempo máximo por tarefa: ${Math.round(usage.task_timeout_s / 60)} min`}
+          description="Sem limite de tempo: a tarefa roda até terminar ou a sessão ser limpa."
           icon={<Sparkle />}
         >
           <span className="text-xs text-gray-300 tabular-nums">
