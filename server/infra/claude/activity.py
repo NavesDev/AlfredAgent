@@ -35,6 +35,7 @@ _TABLE: list[tuple[str, str, Action]] = [
     (r"^mcp__alfred__criar_workspace$", "Criando um workspace", "project"),
     (r"^mcp__alfred__criar_worktree$", "Criando um worktree", "project"),
     (r"^mcp__alfred__apagar_workspace$", "Apagando um workspace", "project"),
+    (r"^mcp__alfred__definir_apelidos$", "Ajustando apelidos", "session"),
     (r"^Bash$", "Executando um comando", "command"),
     (r"^(Read|Glob|Grep)$", "Lendo arquivos", "files_read"),
     (r"^(Edit|Write)$", "Editando arquivos", "files_edit"),

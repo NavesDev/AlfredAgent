@@ -61,11 +61,11 @@ export function ActivityCards({ items: live }: { items: Activity[] }) {
             className="absolute top-1 left-1/2 -ml-[92px] w-[184px] transition-[transform,opacity] duration-600 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
           >
             <div
-              className={`animate-card-in rounded-xl border bg-[#0c1120]/90 p-1.5 text-[11px] backdrop-blur ${
+              className={`animate-card-in rounded-xl border bg-[#111113]/90 p-1.5 text-[11px] backdrop-blur ${
                 current ? 'border-amber-300/40' : 'border-white/10'
               }`}
             >
-              <div className="rounded-lg bg-[#0a0e1a] px-2 py-1">
+              <div className="rounded-lg bg-[#0c0c0e] px-2 py-1">
                 <ActivityScene action={item.action} still={!current} className="h-[72px] w-full" />
               </div>
               <p

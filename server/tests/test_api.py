@@ -86,6 +86,18 @@ def test_sessions_list_create_update(api: Api) -> None:
     assert body[0]["protected"] and body[0]["kind"] == "geral"
 
 
+def test_session_aliases(api: Api) -> None:
+    created = api.post(
+        "/api/sessions", json={"kind": "geral", "name": "Site Sales", "aliases": ["seils"]}
+    )
+    updated = api.patch("/api/sessions/seils", json={"aliases": ["saite seils"]})
+    taken = api.post("/api/sessions", json={"kind": "geral", "name": "x", "aliases": ["sistema"]})
+
+    assert created.json()["aliases"] == ["seils"]
+    assert updated.json()["aliases"] == ["saite seils"]
+    assert taken.status_code == 422
+
+
 def test_clear_and_delete_session(api: Api) -> None:
     api.post("/api/sessions", json={"kind": "geral", "name": "downloads"})
 

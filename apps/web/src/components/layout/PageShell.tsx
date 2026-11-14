@@ -16,7 +16,7 @@ type Props = {
 /** Header with the app name and navigation, then a scrolling content column. */
 export function PageShell({ title, subtitle, actions, back, children }: Props) {
   return (
-    <div className="flex h-full flex-col bg-[radial-gradient(ellipse_at_top,#0d1424_0%,#05070d_70%)]">
+    <div className="flex h-full flex-col bg-[radial-gradient(ellipse_at_top,#161618_0%,#09090b_65%)]">
       <AppHeader />
       <main className="min-h-0 flex-1 overflow-y-auto px-4 pt-6 pb-10 sm:px-5">
         <div className="mx-auto flex max-w-3xl flex-col gap-6">

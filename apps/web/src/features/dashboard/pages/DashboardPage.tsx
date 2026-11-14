@@ -53,7 +53,7 @@ export function DashboardPage() {
   const caption = turns.at(-1)?.summary ?? null
 
   return (
-    <div className="flex h-full flex-col bg-[radial-gradient(ellipse_at_center,#0d1424_0%,#05070d_70%)]">
+    <div className="flex h-full flex-col bg-[radial-gradient(ellipse_at_center,#161618_0%,#09090b_65%)]">
       <AppHeader
         actions={
           <>

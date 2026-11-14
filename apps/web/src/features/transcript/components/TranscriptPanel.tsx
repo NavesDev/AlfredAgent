@@ -18,7 +18,7 @@ export function TranscriptPanel({ turns, onClose }: { turns: Turn[]; onClose: ()
   }
 
   return (
-    <aside className="flex h-full flex-col border-white/10 bg-[#0a0d16]/95 backdrop-blur md:border-l">
+    <aside className="flex h-full flex-col border-white/10 bg-[#111113]/95 backdrop-blur md:border-l">
       <header className="flex items-center justify-between border-b border-white/10 px-5 py-3">
         <h2 className="text-sm font-medium tracking-wide">Transcrição</h2>
         <div className="flex gap-2">

@@ -50,6 +50,7 @@ ALLOWED = [
             "criar_workspace",
             "criar_worktree",
             "apagar_workspace",
+            "definir_apelidos",
         )
     ),
 ]

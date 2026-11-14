@@ -41,12 +41,15 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
         "Cria uma sessão nomeada que fica disponível para delegar tarefas. "
         f"Tipos: {', '.join(f'{k} ({v.label})' for k, v in KINDS.items())}. "
         "Implementação precisa de 'projeto' e 'workspace'; geral aceita os dois opcionais "
-        "(sem eles, roda na home). 'modelo' e 'effort' só quando o usuário pedir.",
+        "(sem eles, roda na home). 'modelo' e 'effort' só quando o usuário pedir. "
+        "'apelidos': jeitos de falar o nome que o reconhecimento de voz entende, úteis para "
+        'nomes em inglês ("saite seils" para Site Sales).',
         {
             "type": "object",
             "properties": {
                 "tipo": {"type": "string", "enum": list(KINDS)},
                 "nome": {"type": "string"},
+                "apelidos": {"type": "array", "items": {"type": "string"}},
                 "projeto": {"type": "string"},
                 "workspace": {"type": "string"},
                 "modelo": {"type": "string"},
@@ -61,7 +64,12 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
             if args.get("projeto") or args.get("workspace"):
                 ws = workspace_id(str(args.get("projeto", "")), str(args.get("workspace", "")))
             view = sessions.create(
-                str(args["tipo"]), str(args["nome"]), ws, args.get("modelo"), args.get("effort")
+                str(args["tipo"]),
+                str(args["nome"]),
+                ws,
+                args.get("modelo"),
+                args.get("effort"),
+                aliases=[str(a) for a in args.get("apelidos", [])],
             )
             where = f"{view.project}, workspace {view.workspace}" if view.project else view.cwd
             return f"Sessão {view.name} criada, tipo {view.label}, em {where}."
@@ -208,6 +216,60 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
 
         return await _speak(run)
 
+    @sdk.tool(
+        "definir_apelidos",
+        "Troca os apelidos de uma sessão ou projeto: jeitos de falar o nome que o "
+        "reconhecimento de voz entende. Use quando um nome vive sendo mal entendido ou o "
+        "usuário pedir. A lista substitui a anterior; vazia apaga todos.",
+        {
+            "type": "object",
+            "properties": {
+                "alvo": {"type": "string", "enum": ["sessao", "projeto"]},
+                "nome": {"type": "string"},
+                "apelidos": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["alvo", "nome", "apelidos"],
+        },
+    )
+    async def definir_apelidos(args: Result) -> Result:
+        async def run() -> str:
+            aliases = [str(a) for a in args["apelidos"]]
+            if args["alvo"] == "projeto":
+                found = projects.find(str(args["nome"]))
+                updated = projects.update(found.id, aliases=aliases)
+                what, name, saved = "do projeto", updated.name, updated.aliases
+            else:
+                view = sessions.set_aliases(str(args["nome"]), aliases)
+                what, name, saved = "da sessão", view.name, view.aliases
+            return f"Apelidos {what} {name}: {', '.join(saved) or 'nenhum'}."
+
+        return await _speak(run)
+
+    @sdk.tool(
+        "definir_descricao",
+        "Troca a descrição curta (até 200 caracteres) de um projeto ou, com 'ambiente', de um "
+        "ambiente dele. Vazia apaga.",
+        {
+            "type": "object",
+            "properties": {
+                "projeto": {"type": "string"},
+                "workspace": {"type": "string"},
+                "descricao": {"type": "string"},
+            },
+            "required": ["projeto", "descricao"],
+        },
+    )
+    async def definir_descricao(args: Result) -> Result:
+        async def run() -> str:
+            text = str(args["descricao"])
+            if name := str(args.get("workspace") or "").strip():
+                ws = projects.update_workspace(workspace_id(str(args["projeto"]), name), text)
+                return f"Descrição do ambiente {ws.name}: {ws.description or 'nenhuma'}."
+            updated = projects.update(projects.find(str(args["projeto"])).id, description=text)
+            return f"Descrição do projeto {updated.name}: {updated.description or 'nenhuma'}."
+
+        return await _speak(run)
+
     delegates = [kind.delegate_tool(delegate) for kind in KINDS.values()]
     return [
         *delegates,
@@ -220,6 +282,7 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
         criar_workspace,
         criar_worktree,
         apagar_workspace,
+        definir_apelidos,
     ]
 
 

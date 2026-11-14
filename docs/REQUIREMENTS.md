@@ -25,12 +25,12 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 | ID | Requisito | Fase |
 |---|---|---|
 | RF-01 | Escutar continuamente e ativar com a wake word configurável (`alfred.onnx`, treinado com `server/wakeword/train/`) | F1 |
-| RF-02 | Detectar fim de fala com VAD e transcrever localmente com Whisper (pt, `initial_prompt` com jargão) | F1 |
+| RF-02 | Detectar fim de fala com VAD e transcrever localmente com Whisper (pt, `initial_prompt` com jargão, `hotwords` com os nomes e apelidos atuais de sessões e projetos) | F1 |
 | RF-03 | Falar respostas com Kokoro (voz e velocidade configuráveis) | F1 |
 | RF-04 | Ler em voz alta apenas a linha `RESUMO:`, que abre a resposta e é falada assim que chega (streaming); nunca output bruto, código ou caminhos longos | F1 |
 | RF-05 | Se a resposta não trouxer `RESUMO:`, gerar resumo com Haiku | F7 |
 | RF-06 | Barge-in: wake word durante a fala interrompe o áudio imediatamente | F5 |
-| RF-07 | Fila de fala: notificações não atropelam o usuário falando nem outro áudio | F5 |
+| RF-07 | Fila de fala: notificações não atropelam o usuário falando nem outro áudio; aviso de sessão que chega durante um turno do Alfred espera o turno acabar, e cada aviso abre com o nome da sessão ("Recurve terminou: …") | F5 |
 | RF-08 | Bip curto ao detectar a wake word e outro ao parar de gravar | F1 |
 
 ### Roteamento
@@ -39,7 +39,7 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 |---|---|---|
 | RF-10 | Interrupções por regex, mesmo com o Alfred ocupado: "para" (cala e cancela o Alfred), "<sessão>, para", "para tudo" | F3 |
 | RF-11 | Atalho explícito: frase começando com `<nome>:` ou `<nome>,` de sessão conhecida vai direto para a sessão | F3 |
-| RF-12 | Resolução de nome por apelidos + fuzzy match (rapidfuzz, corte ~85%) | F3 |
+| RF-12 | Resolução de nome por apelidos + fuzzy match (rapidfuzz, corte ~85%). Sessões e projetos têm apelidos falados; apelido na transcrição vira o nome real antes de ir ao Alfred, e cada comando leva a lista de nomes conhecidos para o Alfred corrigir nome mal transcrito | F3 |
 | RF-13 | Todo o resto vai para o agente principal | F1 |
 | RF-14 | Comando para sessão ocupada entra na fila da sessão e o Alfred avisa ("backend tá ocupado, coloquei na fila") | F3 |
 | RF-15 | Comandos digitados no painel (`POST /api/commands`) passam pelo mesmo roteador da voz | F6 |

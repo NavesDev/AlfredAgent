@@ -78,6 +78,34 @@ def test_session_records(db: sqlite3.Connection) -> None:
     assert [r.name for r in session.list_sessions(db)] == ["sistema"]
 
 
+def test_session_aliases(db: sqlite3.Connection) -> None:
+    session.insert_session(db, "Site Sales", "geral", aliases=["saite seils"])
+    assert session.get_session(db, "site sales").aliases == ["saite seils"]  # type: ignore[union-attr]
+
+    session.update_session(db, "Site Sales", aliases=["vendas"])
+
+    assert session.get_session(db, "Site Sales").aliases == ["vendas"]  # type: ignore[union-attr]
+    assert session.get_session(db, "sistema") is None
+
+
+def test_opening_an_old_database_adds_session_aliases(tmp_path: Path) -> None:
+    path = tmp_path / "old.sqlite3"
+    old = sqlite3.connect(path)
+    old.execute(
+        "CREATE TABLE session (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE,"
+        " kind TEXT NOT NULL, workspace_id INTEGER, model TEXT, effort TEXT,"
+        " claude_session_id TEXT, protected INTEGER NOT NULL DEFAULT 0,"
+        " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+    )
+    old.execute("INSERT INTO session (name, kind) VALUES ('sistema', 'geral')")
+    old.commit()
+    old.close()
+
+    [record] = session.list_sessions(open_db(path))
+
+    assert record.aliases == []
+
+
 def test_seed_writes_defaults_only_once(db: sqlite3.Connection) -> None:
     defaults = settings.Defaults(
         models={"alfred": "sonnet", "geral": "sonnet", "implementacao": "opus"},

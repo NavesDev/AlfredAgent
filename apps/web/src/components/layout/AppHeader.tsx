@@ -16,11 +16,11 @@ const CONNECTION = {
 export function AppHeader({ actions }: { actions?: ReactNode }) {
   const connection = CONNECTION[useConnection()]
   return (
-    <header className="relative z-30 grid h-14 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-white/[0.06] bg-[#05070d]/60 px-4 backdrop-blur-md sm:px-5">
+    <header className="relative z-30 grid h-14 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-white/[0.06] bg-[#09090b]/60 px-4 backdrop-blur-md sm:px-5">
       <Link to="/" className="group flex w-fit items-center gap-2.5" aria-label="Alfred, painel">
         <span
           aria-hidden
-          className="size-5 rounded-full bg-[radial-gradient(circle_at_35%_30%,#e6fbff_0%,#7dd3fc_30%,#1e3a8a_75%,#0b1020_100%)] shadow-[0_0_14px_rgba(125,211,252,0.45)] transition group-hover:shadow-[0_0_20px_rgba(125,211,252,0.7)]"
+          className="size-5 rounded-full bg-[radial-gradient(circle_at_35%_30%,#ffffff_0%,#e4e4e7_30%,#52525b_75%,#18181b_100%)] shadow-[0_0_14px_rgba(228,228,231,0.45)] transition group-hover:shadow-[0_0_20px_rgba(228,228,231,0.7)]"
         />
         <span className="hidden text-sm font-semibold tracking-[0.3em] text-gray-200 uppercase sm:inline">
           Alfred

@@ -61,7 +61,7 @@ class FakeTalker:
     def __init__(self) -> None:
         self.said: list[str] = []
 
-    def say(self, text: str) -> None:
+    def notify(self, text: str) -> None:
         self.said.append(text)
 
 
@@ -208,6 +208,30 @@ async def test_update_overrides_model_and_effort(env: Env) -> None:
     assert env.sessions.update("downloads", model="").model == "sonnet"
 
 
+async def test_aliases_are_cleaned_listed_and_find_the_session(env: Env) -> None:
+    env.sessions.create("geral", "Site Sales", aliases=[" saite seils ", "", "vendas"])
+
+    assert env.sessions.list()[1].aliases == ["saite seils", "vendas"]
+    assert "Site Sales" in env.sessions.delegate("Saite Seils", "a")
+
+    view = env.sessions.set_aliases("site sales", ["seils"])
+
+    assert view.aliases == ["seils"]
+    with pytest.raises(SessionNotFound):
+        env.sessions.delegate("vendas", "b")
+
+
+async def test_an_alias_cannot_be_another_sessions_name_or_alias(env: Env) -> None:
+    env.sessions.create("geral", "Developer", aliases=["dev"])
+
+    with pytest.raises(SessionError, match="Developer"):
+        env.sessions.create("geral", "Design", aliases=["Dev"])
+    with pytest.raises(SessionError, match="sistema"):
+        env.sessions.set_aliases("Developer", ["Sistema"])
+    with pytest.raises(SessionError, match="Developer"):
+        env.sessions.create("geral", "dev")
+
+
 async def test_update_rejects_a_bad_effort(env: Env) -> None:
     with pytest.raises(SessionError, match="Effort"):
         env.sessions.update("sistema", effort="turbo")
@@ -225,7 +249,7 @@ async def test_delegate_runs_the_task_speaks_and_saves_the_conversation(env: Env
 
     assert "sistema" in message and "fila" not in message
     assert session.tasks == ["gira a tela"]
-    assert env.talker.said == ["Tela girada."]
+    assert env.talker.said == ["sistema terminou: Tela girada."]
     [view] = env.sessions.list()
     assert (view.tasks_done, view.tokens, view.last_summary) == (1, 500, "Tela girada.")
     assert view.connected
@@ -408,7 +432,7 @@ async def test_clear_cancels_the_task_drops_the_queue_and_forgets(env: Env) -> N
     assert records.get_session(env.db, "sistema").claude_session_id is None  # type: ignore[union-attr]
     assert session.tasks == ["a", "b"]
     assert of_type(drain(queue), "session_cleared")
-    assert env.talker.said == ["a"]
+    assert env.talker.said == ["sistema terminou: a"]
 
 
 async def test_delete_removes_and_protects_sistema(env: Env) -> None:

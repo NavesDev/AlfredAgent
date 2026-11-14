@@ -16,6 +16,7 @@ from controllers.router import Router
 from controllers.sessions import Sessions
 from controllers.settings import Settings
 from controllers.usage import Usage
+from controllers.vocabulary import Vocabulary
 from errors import ConfigError, DependencyError
 from events import EventBus
 from infra.audio import check_audio
@@ -65,14 +66,15 @@ async def serve(config: Config) -> None:
         tools=session_tools(sessions, projects),
     )
     await agent.start()
-    router = Router(bus, agent, talker)
+    vocabulary = Vocabulary(db, bus)
+    router = Router(bus, agent, talker, vocabulary=vocabulary)
     listener = Listener(
         bus,
         config.listener,
         config.wakeword.threshold,
         wake=OpenWakeWord(config.wakeword.model),
         is_speech=load_vad(),
-        transcribe=load_whisper(config.whisper),
+        transcribe=load_whisper(config.whisper, lambda: vocabulary.whisper_words),
         on_transcript=lambda text: asyncio.run_coroutine_threadsafe(
             router.handle(text), loop
         ).result(),
@@ -83,7 +85,7 @@ async def serve(config: Config) -> None:
 
     jobs = [
         asyncio.create_task(job())
-        for job in (sessions.run, sessions.watch_idle, settings.run, usage.run)
+        for job in (sessions.run, sessions.watch_idle, settings.run, usage.run, vocabulary.run)
     ]
     stop = threading.Event()
     for worker in (listener.run, talker.run):

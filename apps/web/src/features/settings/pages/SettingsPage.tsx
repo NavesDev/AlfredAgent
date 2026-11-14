@@ -174,7 +174,7 @@ function Form({
       </Section>
 
       <div
-        className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${dirty ? 'sticky bottom-4 z-10 border-white/15 bg-[#0b0f19] shadow-[0_-8px_40px_rgba(5,7,13,0.9)]' : 'border-transparent'}`}
+        className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${dirty ? 'sticky bottom-4 z-10 border-white/15 bg-[#111113] shadow-[0_-8px_40px_rgba(9,9,11,0.9)]' : 'border-transparent'}`}
       >
         <p className="flex-1 text-xs text-gray-400">
           {save.error ? (

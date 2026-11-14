@@ -47,6 +47,7 @@ def test_every_tool_is_allowed_without_asking(tools: Tools) -> None:
         "criar_workspace",
         "criar_worktree",
         "apagar_workspace",
+        "definir_apelidos",
     }
     assert {f"mcp__{SERVER}__{n}" for n in names} <= set(permissions.ALLOWED)
     assert not {"Bash", "Edit", "Write"} & set(permissions.ALLOWED)
@@ -170,6 +171,26 @@ async def test_delete_workspace(tools: Tools) -> None:
 
     assert "apagado" in text
     assert tools.projects.find("Recurve").workspaces == []
+
+
+async def test_aliases_for_sessions_and_projects(tools: Tools) -> None:
+    await tools.call("criar_sessao", {"tipo": "geral", "nome": "Site Sales", "apelidos": ["seils"]})
+    tools.projects.create("Vrummy", [])
+
+    said = await tools.call(
+        "definir_apelidos", {"alvo": "sessao", "nome": "seils", "apelidos": ["saite seils"]}
+    )
+    assert said == "Apelidos da sessão Site Sales: saite seils."
+    assert tools.env.sessions.list()[1].aliases == ["saite seils"]
+
+    said = await tools.call(
+        "definir_apelidos", {"alvo": "projeto", "nome": "vrummy", "apelidos": ["vrumi"]}
+    )
+    assert said == "Apelidos do projeto Vrummy: vrumi."
+    assert tools.projects.find("vrumi").name == "Vrummy"
+
+    said = await tools.call("definir_apelidos", {"alvo": "sessao", "nome": "x", "apelidos": []})
+    assert said == "Não existe sessão chamada x."
 
 
 def test_activity_labels() -> None:

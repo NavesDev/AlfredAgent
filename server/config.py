@@ -31,8 +31,8 @@ class Wakeword(BaseModel):
 
 class Listener(BaseModel):
     sample_rate: int = 16000
-    silence_ms: int = 1200
-    max_record_s: int = 15
+    silence_ms: int = 1800
+    max_record_s: int = 60
 
 
 class Agents(BaseModel):

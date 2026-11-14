@@ -60,7 +60,7 @@ export function AgentDetails({ session, style, onClose }: Props) {
       aria-label={`Sessão ${session.name}`}
       style={style}
       onPointerDown={(e) => e.stopPropagation()}
-      className="animate-activity-in pointer-events-auto absolute z-30 flex w-72 flex-col gap-1.5 rounded-xl border border-white/10 bg-[#0a0f1c]/95 p-3 text-sm text-gray-300 backdrop-blur"
+      className="animate-activity-in pointer-events-auto absolute z-30 flex w-72 flex-col gap-1.5 rounded-xl border border-white/10 bg-[#111113]/95 p-3 text-sm text-gray-300 backdrop-blur"
     >
       <header className="flex items-center gap-2">
         <h3 className="truncate font-medium text-gray-100">{session.name}</h3>

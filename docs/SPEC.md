@@ -50,13 +50,14 @@ Três entidades em SQLite: Projeto → Workspace → Sessão. O projeto é só u
 |---|---|---|
 | Project | id, name, aliases[] | Recurve · aliases: "recurve", "billing" |
 | Workspace | id, project_id, name, path, kind (folder ou worktree), parent_id, branch | "back" · ~/dev/recurve-api · folder; "cancelamento" · ~/dev/recurve-api-wt/cancelamento · worktree de back |
-| Session | id, name, kind (geral ou implementacao), workspace_id, model, effort, claude_session_id | "backend" · implementacao · workspace back · opus |
+| Session | id, name, aliases, kind (geral ou implementacao), workspace_id, model, effort, claude_session_id | "backend" · implementacao · workspace back · opus |
 | Task | id, project_id (opcional), title, status, priority, session_id (opcional), created_at | "Implementar reembolso" · Recurve · high · in_progress na sessão backend |
 
 Regras:
 
 - Nome de sessão é único no sistema todo, pra você não precisar falar o projeto toda vez.
 - Apelidos existem porque o Whisper às vezes transcreve "backend" como "bequi end"; o match usa apelidos + fuzzy match (rapidfuzz, corte ~85%).
+- Nome em inglês num comando em português é o caso mais difícil. Três defesas, nesta ordem: o Whisper recebe os nomes atuais como `hotwords`; apelido de sessão ou projeto achado na transcrição vira o nome real; e o comando chega ao Alfred com uma linha "Nomes conhecidos" para ele escolher o nome mais parecido pelo som, ou perguntar.
 - Um projeto pode ter vários workspaces (ex: um pro back e outro pro front). Cadastrar uma pasta não exige git.
 - Criar worktree roda `git worktree add <pai>-wt/<nome> -b <nome>` a partir do workspace pai; remover roda `git worktree remove` e recusa se houver mudança não commitada (a menos que force). Remover workspace de pasta comum só tira do cadastro.
 - Modelo e effort vêm da tela de configurações por tipo de agente; cada sessão pode sobrescrever.

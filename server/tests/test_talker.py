@@ -6,7 +6,7 @@ import numpy as np
 
 from errors import AudioError
 from events import EventBus
-from infra.audio.talker import Talker
+from infra.audio.talker import PAUSE_S, Talker
 from tests.conftest import drain
 
 RATE = 24000
@@ -135,3 +135,33 @@ async def test_rests_in_the_given_state_after_speaking(bus: EventBus) -> None:
 
     states = [e["state"] for e in drain(queue) if e["type"] == "voice_state"]
     assert states == ["speaking", "thinking"]
+
+
+async def test_notify_during_a_turn_waits_for_the_turn_to_end(bus: EventBus) -> None:
+    talker, _ = make(bus)
+    talker.set_resting("thinking")
+
+    talker.notify("Recurve terminou: testes passaram.")
+    assert not talker.is_speaking
+
+    talker.set_resting("idle")
+    assert talker.is_speaking
+
+
+async def test_notify_outside_a_turn_speaks_right_away(bus: EventBus) -> None:
+    talker, _ = make(bus)
+
+    talker.notify("Recurve terminou.")
+
+    assert talker.is_speaking
+
+
+async def test_back_to_back_lines_get_a_short_pause_between_them(bus: EventBus) -> None:
+    talker, played = make(bus)
+    talker.say("primeira")
+    talker.say("segunda")
+
+    talker.process_one()
+
+    gap = played[-1]
+    assert not gap.any() and len(gap) == int(RATE * PAUSE_S)

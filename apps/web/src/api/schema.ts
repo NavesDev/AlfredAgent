@@ -254,6 +254,11 @@ export interface components {
       model?: string | null
       /** Effort */
       effort?: string | null
+      /**
+       * Aliases
+       * @default []
+       */
+      aliases: string[]
     }
     /** NewWorkspace */
     NewWorkspace: {
@@ -312,6 +317,8 @@ export interface components {
       model?: string | null
       /** Effort */
       effort?: string | null
+      /** Aliases */
+      aliases?: string[] | null
     }
     /** SessionUsage */
     SessionUsage: {
@@ -328,6 +335,8 @@ export interface components {
     SessionView: {
       /** Name */
       name: string
+      /** Aliases */
+      aliases: string[]
       /** Kind */
       kind: string
       /** Label */

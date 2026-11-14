@@ -11,7 +11,7 @@ from infra.audio.listener import FRAME, Listener, load_vad
 from tests.conftest import drain
 
 WAKE, SPEECH, SILENCE = (np.full(FRAME, v, dtype=np.int16) for v in (2, 1, 0))
-SILENCE_FRAMES = 15  # 1200 ms / 80 ms
+SILENCE_FRAMES = 23  # 1800 ms / 80 ms, rounded up
 chimes: list[str] = []
 
 
@@ -101,7 +101,7 @@ async def test_only_chimes_when_recording_ends_without_speech(bus: EventBus) -> 
     acks: list[str] = []
     listener, _, _ = make(bus, acknowledge=lambda: acks.append("ack"))
 
-    feed(listener, WAKE, *[SILENCE] * 200)  # hits max duration
+    feed(listener, WAKE, *[SILENCE] * 800)  # hits max duration
 
     assert acks == [] and chimes == ["start", "end"]
 
@@ -143,10 +143,10 @@ async def test_waits_for_speech_before_counting_silence(bus: EventBus) -> None:
 async def test_stops_recording_at_max_duration(bus: EventBus) -> None:
     listener, heard, recorded = make(bus)
 
-    feed(listener, WAKE, *[SPEECH] * 200)
+    feed(listener, WAKE, *[SPEECH] * 800)
 
     assert heard == ["oi alfred"]
-    assert len(recorded[0]) == 16000 * 15
+    assert len(recorded[0]) == 16000 * 60
 
 
 async def test_publishes_mic_level_while_listening(bus: EventBus) -> None:

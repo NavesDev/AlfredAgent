@@ -19,11 +19,13 @@ class NewSession(BaseModel):
     workspace_id: int | None = None
     model: str | None = None
     effort: str | None = None
+    aliases: list[str] = []
 
 
 class SessionChange(BaseModel):
     model: str | None = None  # "" goes back to the kind's setting
     effort: str | None = None
+    aliases: list[str] | None = None  # replaces the list
 
 
 def _sessions(request: Request) -> Sessions:
@@ -40,7 +42,7 @@ async def list_sessions(request: Request) -> list[SessionView]:
 async def create_session(body: NewSession, request: Request) -> SessionView:
     try:
         return _sessions(request).create(
-            body.kind, body.name, body.workspace_id, body.model, body.effort
+            body.kind, body.name, body.workspace_id, body.model, body.effort, body.aliases
         )
     except SessionError as e:
         raise HTTPException(422, str(e)) from e
@@ -49,7 +51,10 @@ async def create_session(body: NewSession, request: Request) -> SessionView:
 @router.patch("/{name}")
 async def update_session(name: str, body: SessionChange, request: Request) -> SessionView:
     try:
-        return _sessions(request).update(name, body.model, body.effort)
+        sessions = _sessions(request)
+        if body.aliases is not None:
+            name = sessions.set_aliases(name, body.aliases).name  # may have been an old alias
+        return sessions.update(name, body.model, body.effort)
     except SessionNotFound as e:
         raise HTTPException(404, str(e)) from e
     except SessionError as e:

@@ -89,7 +89,7 @@ export function ModelSelect({ value, onChange, placeholder, label, compact }: Pr
       </button>
 
       {open && (
-        <div className="absolute right-0 left-0 z-20 mt-1.5 min-w-64 rounded-xl border border-white/10 bg-[#0b0f19]/95 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur">
+        <div className="absolute right-0 left-0 z-20 mt-1.5 min-w-64 rounded-xl border border-white/10 bg-[#111113]/95 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur">
           <ul
             id={listId}
             role="listbox"

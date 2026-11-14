@@ -3,7 +3,7 @@
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS project (
@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS workspace (
 CREATE TABLE IF NOT EXISTS session (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    aliases TEXT NOT NULL DEFAULT '[]',
     kind TEXT NOT NULL,
     workspace_id INTEGER REFERENCES workspace(id),
     model TEXT,
@@ -53,5 +54,13 @@ def open_db(path: Path | str) -> sqlite3.Connection:
     db.row_factory = sqlite3.Row
     db.execute("PRAGMA foreign_keys = ON")
     db.executescript(_SCHEMA)
+    _migrate(db)
     db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     return db
+
+
+def _migrate(db: sqlite3.Connection) -> None:
+    """Columns added after a table first shipped; CREATE TABLE IF NOT EXISTS skips them."""
+    columns = {row["name"] for row in db.execute("PRAGMA table_info(session)")}
+    if "aliases" not in columns:  # version 2
+        db.execute("ALTER TABLE session ADD COLUMN aliases TEXT NOT NULL DEFAULT '[]'")

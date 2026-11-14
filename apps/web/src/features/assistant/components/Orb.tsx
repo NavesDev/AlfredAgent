@@ -22,8 +22,8 @@ type Look = {
 
 const LOOKS: Record<VoiceState, Look> = {
   idle: {
-    core: '#14213d',
-    rim: '#5b7cfa',
+    core: '#27272a',
+    rim: '#e4e4e7',
     amp: 0.06,
     react: 0,
     speed: 0.25,

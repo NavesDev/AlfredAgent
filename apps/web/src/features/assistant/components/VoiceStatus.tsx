@@ -1,7 +1,7 @@
 import type { VoiceState } from '../../../api/events'
 
 const LABELS: Record<VoiceState, { text: string; dot: string }> = {
-  idle: { text: 'Em espera · diga “Alfred”', dot: 'bg-indigo-400/60' },
+  idle: { text: 'Em espera · diga “Alfred”', dot: 'bg-white/60' },
   listening: { text: 'Ouvindo', dot: 'bg-teal-300' },
   transcribing: { text: 'Transcrevendo', dot: 'bg-purple-400' },
   thinking: { text: 'Pensando', dot: 'bg-amber-400' },

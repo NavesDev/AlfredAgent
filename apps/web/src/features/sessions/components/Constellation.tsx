@@ -189,7 +189,7 @@ export function Constellation({ anchor, lift = 0 }: Props) {
           aria-label={`Nova sessão em ${formFor.project}`}
           style={placement(formFor.at, stage)}
           onPointerDown={(e) => e.stopPropagation()}
-          className="animate-activity-in pointer-events-auto absolute z-30 w-80 rounded-xl border border-white/10 bg-[#0a0f1c]/95 p-3 backdrop-blur"
+          className="animate-activity-in pointer-events-auto absolute z-30 w-80 rounded-xl border border-white/10 bg-[#111113]/95 p-3 backdrop-blur"
         >
           <h3 className="mb-2 text-sm font-medium text-gray-100">
             Nova sessão em {formFor.project}

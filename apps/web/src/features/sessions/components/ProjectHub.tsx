@@ -25,12 +25,12 @@ export function ProjectHub({ project, projectId, at, open, onToggle, onNewSessio
         onClick={onToggle}
         aria-expanded={open}
         aria-label={`Projeto ${project}`}
-        className={`block size-3 rotate-45 border bg-[#0a0f1c] transition hover:scale-125 ${
+        className={`block size-3 rotate-45 border bg-[#111113] transition hover:scale-125 ${
           open ? 'border-gray-100' : 'border-gray-400'
         }`}
       />
       {open && (
-        <div className="animate-activity-in absolute top-full left-1/2 z-30 mt-2 flex w-44 -translate-x-1/2 flex-col rounded-lg border border-white/10 bg-[#0a0f1c]/95 p-1 text-xs text-gray-300 backdrop-blur">
+        <div className="animate-activity-in absolute top-full left-1/2 z-30 mt-2 flex w-44 -translate-x-1/2 flex-col rounded-lg border border-white/10 bg-[#111113]/95 p-1 text-xs text-gray-300 backdrop-blur">
           <button onClick={onNewSession} className="rounded px-2 py-1.5 text-left hover:bg-white/5">
             Nova sessão aqui
           </button>

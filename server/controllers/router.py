@@ -29,6 +29,19 @@ class Speaker(Protocol):
     def set_resting(self, state: str) -> None: ...
 
 
+class Vocabulary(Protocol):
+    def canonicalize(self, text: str) -> str: ...
+    def hint(self) -> str: ...
+
+
+class _NoVocabulary:
+    def canonicalize(self, text: str) -> str:
+        return text
+
+    def hint(self) -> str:
+        return ""
+
+
 class Router:
     def __init__(
         self,
@@ -36,8 +49,10 @@ class Router:
         agent: Agent,
         talker: Speaker,
         clock: Callable[[], float] = time.monotonic,
+        vocabulary: Vocabulary | None = None,
     ) -> None:
         self._bus, self._agent, self._talker, self._clock = bus, agent, talker, clock
+        self._vocabulary = vocabulary or _NoVocabulary()
         self._last_label: str | None = None
         self._last_at = float("-inf")
 
@@ -47,7 +62,7 @@ class Router:
         self._bus.publish("voice_state", state="thinking")
         try:
             # Speaks the RESUMO as soon as it streams, and what it is doing meanwhile.
-            await self._agent.ask(text, self._talker.say, self._narrate)
+            await self._agent.ask(self._prompt(text), self._talker.say, self._narrate)
         except AgentError as e:
             self._bus.publish("error", where="alfred", message=str(e))
             self._talker.say(FAILURE_MESSAGE)
@@ -55,6 +70,12 @@ class Router:
             self._talker.set_resting("idle")
             if not self._talker.is_speaking:
                 self._bus.publish("voice_state", state="idle")
+
+    def _prompt(self, text: str) -> str:
+        """Aliases become real names; the known names go first so Alfred can fix the rest."""
+        text = self._vocabulary.canonicalize(text)
+        hint = self._vocabulary.hint()
+        return f"{hint}\n{text}" if hint else text
 
     def _narrate(self, label: str) -> None:
         """Say what Alfred is doing when it changes, without piling up speech."""
