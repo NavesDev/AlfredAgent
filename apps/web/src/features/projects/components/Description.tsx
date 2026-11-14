@@ -27,11 +27,11 @@ export function Description({ value, label, onSave, pending, error }: Props) {
           type="button"
           onClick={() => setDraft(value)}
           aria-label={`Editar ${label}`}
-          className={`w-fit text-left text-xs transition hover:text-gray-200 ${value ? 'text-gray-400' : 'text-gray-600 italic'}`}
+          className={`w-fit text-left text-xs transition hover:text-ink ${value ? 'text-ink-2' : 'text-apple-blue'}`}
         >
           {pending ? 'Salvando…' : value || 'Adicionar descrição'}
         </button>
-        {error && <span className="text-xs text-red-300">{error}</span>}
+        {error && <span className="text-xs text-[#ff9a92]">{error}</span>}
       </span>
     )
 
@@ -51,7 +51,7 @@ export function Description({ value, label, onSave, pending, error }: Props) {
         className={`${field} min-w-0 flex-1 text-xs`}
         autoFocus
       />
-      <span className="text-[11px] text-gray-600 tabular-nums">
+      <span className="text-[11px] text-ink-3 tabular-nums">
         {draft.length}/{MAX_DESCRIPTION}
       </span>
     </span>

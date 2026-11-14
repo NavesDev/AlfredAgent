@@ -15,7 +15,7 @@ export const KINDS = [
 export const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max']
 
 export const field =
-  'rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-gray-100 outline-none focus:border-white/30'
+  'rounded-xl bg-well px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-3 focus:ring-2 focus:ring-apple-blue/60'
 
 /** Values passed to `claude --model`: the CLI aliases track the newest release of each family. */
 export const MODELS = [

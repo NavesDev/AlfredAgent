@@ -72,7 +72,7 @@ export function ModelSelect({ value, onChange, placeholder, label, compact }: Pr
         aria-expanded={open}
         aria-controls={listId}
         onClick={toggle}
-        className={`flex w-full items-center gap-2 rounded-lg border border-white/10 bg-black/30 text-left text-gray-100 outline-none hover:border-white/20 focus-visible:border-white/40 aria-expanded:border-white/30 ${compact ? 'px-2 py-1 text-xs' : 'px-2.5 py-1.5 text-sm'}`}
+        className={`flex w-full items-center gap-2 rounded-xl bg-well text-left text-ink outline-none hover:bg-fill focus-visible:ring-2 focus-visible:ring-apple-blue/60 aria-expanded:bg-fill ${compact ? 'px-2 py-1 text-xs' : 'px-2.5 py-1.5 text-sm'}`}
       >
         <span className="min-w-0 flex-1 truncate">
           {current ? (
@@ -80,16 +80,16 @@ export function ModelSelect({ value, onChange, placeholder, label, compact }: Pr
           ) : value ? (
             <span className="font-mono">{value}</span>
           ) : (
-            <span className="text-gray-500">{placeholder}</span>
+            <span className="text-ink-3">{placeholder}</span>
           )}
         </span>
         <ChevronDown
-          className={`size-3.5 shrink-0 text-gray-500 transition ${open ? 'rotate-180' : ''}`}
+          className={`size-3.5 shrink-0 text-ink-3 transition ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
       {open && (
-        <div className="absolute right-0 left-0 z-20 mt-1.5 min-w-64 rounded-xl border border-white/10 bg-[#111113]/95 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur">
+        <div className="absolute right-0 left-0 z-20 mt-1.5 min-w-64 glass rounded-2xl p-1.5">
           <ul
             id={listId}
             role="listbox"
@@ -99,7 +99,7 @@ export function ModelSelect({ value, onChange, placeholder, label, compact }: Pr
             {options.map((o, i) => (
               <li key={o.id || 'default'} role="presentation">
                 {o.group && o.group !== options[i - 1]?.group && (
-                  <p className="px-2.5 pt-2 pb-1 text-[10px] font-medium tracking-wider text-gray-500 uppercase">
+                  <p className="px-2.5 pt-2 pb-1 text-[10px] font-medium tracking-wider text-ink-3 uppercase">
                     {o.group}
                   </p>
                 )}
@@ -109,20 +109,18 @@ export function ModelSelect({ value, onChange, placeholder, label, compact }: Pr
                   aria-selected={o.id === value}
                   onMouseEnter={() => setActive(i)}
                   onClick={() => pick(o.id)}
-                  className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm ${i === active ? 'bg-white/[0.07]' : ''}`}
+                  className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm ${i === active ? 'bg-fill' : ''}`}
                 >
                   <span className="min-w-0 flex-1">
-                    <span className={o.id ? 'text-gray-100' : 'text-gray-400'}>{o.label}</span>
-                    {o.hint && (
-                      <span className="block truncate text-xs text-gray-500">{o.hint}</span>
-                    )}
+                    <span className={o.id ? 'text-ink' : 'text-ink-2'}>{o.label}</span>
+                    {o.hint && <span className="block truncate text-xs text-ink-3">{o.hint}</span>}
                   </span>
-                  {o.id === value && <Check className="size-3.5 text-gray-200" />}
+                  {o.id === value && <Check className="size-3.5 text-ink" />}
                 </button>
               </li>
             ))}
           </ul>
-          <div className="mt-1 border-t border-white/5 px-1 pt-1.5">
+          <div className="mt-1 border-t border-hairline px-1 pt-1.5">
             <input
               aria-label="Outro modelo"
               placeholder="outro id (Enter)"
@@ -136,7 +134,7 @@ export function ModelSelect({ value, onChange, placeholder, label, compact }: Pr
                 if (custom.trim()) pick(custom.trim())
                 setCustom('')
               }}
-              className="w-full rounded-md bg-transparent px-1.5 py-1 font-mono text-xs text-gray-200 outline-none placeholder:text-gray-600 focus:bg-white/[0.04]"
+              className="w-full rounded-md bg-transparent px-1.5 py-1 font-mono text-xs text-ink outline-none placeholder:text-ink-3 focus:bg-white/[0.04]"
             />
           </div>
         </div>

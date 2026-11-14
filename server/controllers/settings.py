@@ -15,7 +15,6 @@ from models import settings as model
 
 AGENT_KINDS = ("alfred", *KINDS)
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
-FIGURE_SCALES = (1, 1.25, 1.5, 1.75, 2)
 
 
 class SettingsView(BaseModel):
@@ -23,7 +22,6 @@ class SettingsView(BaseModel):
     max_active_sessions: int
     idle_minutes: int
     mcp_disabled: list[str]
-    figure_scale: float
     known_mcp_servers: list[str]
 
 
@@ -32,7 +30,6 @@ class SettingsUpdate(BaseModel):
     max_active_sessions: int | None = None
     idle_minutes: int | None = None
     mcp_disabled: list[str] | None = None
-    figure_scale: float | None = None
 
 
 class Settings:
@@ -48,7 +45,6 @@ class Settings:
             max_active_sessions=app.max_active_sessions,
             idle_minutes=app.idle_minutes,
             mcp_disabled=app.mcp_disabled,
-            figure_scale=app.figure_scale,
             known_mcp_servers=sorted(self._known_mcp),
         )
 
@@ -65,8 +61,6 @@ class Settings:
             raise SettingsError("O limite de sessões precisa ser pelo menos 1.")
         if app.idle_minutes < 1:
             raise SettingsError("O tempo ocioso precisa ser pelo menos 1 minuto.")
-        if app.figure_scale not in FIGURE_SCALES:
-            raise SettingsError("O tamanho dos agentes é 1, 1,25, 1,5, 1,75 ou 2 vezes.")
         for agent in update.agents:
             model.save_agent(self._db, agent.model_copy(update={"model": agent.model.strip()}))
         model.save_app(self._db, app)

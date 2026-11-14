@@ -99,13 +99,13 @@ export function NewSessionForm({ projects, projectId, pending, error, onSubmit, 
           ))}
         </select>
       </div>
-      {error && <p className="text-xs text-red-300">{error}</p>}
+      {error && <p className="text-xs text-[#ff9a92]">{error}</p>}
       <div className="flex justify-end gap-2">
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-md px-3 py-1.5 text-xs text-gray-400 hover:text-gray-200"
+            className="rounded-md px-3 py-1.5 text-xs text-ink-2 hover:text-ink"
           >
             Cancelar
           </button>
@@ -113,7 +113,7 @@ export function NewSessionForm({ projects, projectId, pending, error, onSubmit, 
         <button
           type="submit"
           disabled={pending || !name.trim() || (needsWorkspace && workspace === null)}
-          className="rounded-md border border-white/20 bg-white/10 px-3 py-1.5 text-xs text-gray-100 hover:bg-white/15 disabled:opacity-40"
+          className="rounded-full bg-ink px-4 py-2 text-[13px] font-medium text-[#111] hover:bg-white disabled:opacity-40"
         >
           Criar sessão
         </button>

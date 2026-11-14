@@ -22,7 +22,6 @@ class AppSettings(BaseModel):
     max_active_sessions: int = 3
     idle_minutes: int = 10
     mcp_disabled: list[str] = []
-    figure_scale: float = 1.5  # session characters drawn at this multiple of their first size
 
 
 class Defaults(BaseModel):

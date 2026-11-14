@@ -13,5 +13,5 @@ export default defineConfig({
       '/ws': { target: server.replace(/^http/, 'ws'), ws: true },
     },
   },
-  test: { environment: 'node' },
+  test: { environment: 'node', setupFiles: ['./src/test/setup.ts'] },
 })

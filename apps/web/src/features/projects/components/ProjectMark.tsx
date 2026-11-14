@@ -1,17 +1,17 @@
-/** Monogram tile; the hue comes from the name so each project keeps its color. */
-export function ProjectMark({ name, size = 'md' }: { name: string; size?: 'md' | 'lg' }) {
-  const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
+const SIZE = { sm: 'size-8 text-sm', md: 'size-11 text-lg', lg: 'size-16 text-[28px]' }
+
+/** App-icon tile with the project's initial; the hue comes from the name so it never changes. */
+export function ProjectMark({ name, size = 'md' }: { name: string; size?: keyof typeof SIZE }) {
+  const hue = [...name.toLowerCase()].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
   return (
     <span
       aria-hidden
       style={{
-        background: `linear-gradient(135deg, hsl(${hue} 70% 55% / 0.28), hsl(${(hue + 40) % 360} 70% 40% / 0.12))`,
-        borderColor: `hsl(${hue} 70% 65% / 0.3)`,
-        color: `hsl(${hue} 80% 82%)`,
+        background: `linear-gradient(160deg, hsl(${hue} 85% 62%), hsl(${(hue + 28) % 360} 80% 48%))`,
       }}
-      className={`grid shrink-0 place-items-center rounded-xl border font-semibold ${size === 'lg' ? 'size-12 text-lg' : 'size-10 text-sm'}`}
+      className={`grid shrink-0 place-items-center rounded-[28%] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] ${SIZE[size]}`}
     >
-      {name.slice(0, 2).toUpperCase()}
+      {name.trim()[0]?.toUpperCase()}
     </span>
   )
 }

@@ -1,6 +1,6 @@
 import type { Tone } from '../lib/usage'
 
-const FILL: Record<Tone, string> = { ok: 'bg-gray-400', warn: 'bg-amber-400', bad: 'bg-red-400' }
+const FILL: Record<Tone, string> = { ok: 'bg-ink-2', warn: 'bg-apple-orange', bad: 'bg-apple-red' }
 
 /** A thin meter; an unknown share draws an empty track. */
 export function UsageBar({
@@ -13,7 +13,7 @@ export function UsageBar({
   className?: string
 }) {
   return (
-    <span className={`block overflow-hidden rounded-full bg-white/10 ${className}`}>
+    <span className={`block overflow-hidden rounded-full bg-fill ${className}`}>
       <span
         className={`block h-full rounded-full transition-[width] duration-700 ${FILL[tone]}`}
         style={{ width: `${percent ?? 0}%` }}

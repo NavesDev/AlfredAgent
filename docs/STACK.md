@@ -21,11 +21,11 @@ Tecnologias do Alfred e o motivo de cada escolha. Mudanças relevantes viram um 
 | Persistência | SQLite |
 | API | FastAPI + Uvicorn, WebSocket nativo |
 | Front | React + TypeScript + Vite |
-| UI | Tailwind CSS + shadcn/ui |
+| UI | Tailwind CSS + shadcn/ui; esfera do Alfred: Strands (React Bits, WebGL2) com versão em CSS |
 | Estado do servidor no front | TanStack Query |
 | Cliente tipado | openapi-typescript + openapi-fetch (tipos gerados do OpenAPI do FastAPI) |
 | Rotas | React Router |
-| Testes | pytest + pytest-asyncio (server), Vitest (web) |
+| Testes | pytest + pytest-asyncio (server), Vitest + Testing Library (web) |
 | Lint/format | ruff + mypy (server), ESLint + Prettier (web) |
 | Gerenciador de pacotes (Node) | pnpm |
 | Desktop (futuro) | Tauri |
@@ -63,6 +63,7 @@ Tecnologias do Alfred e o motivo de cada escolha. Mudanças relevantes viram um 
 - **TanStack Query:** todo estado do servidor; o WebSocket só atualiza o cache. Sem Redux/Zustand.
 - **openapi-typescript + openapi-fetch:** `api/schema.ts` gerado do FastAPI; contrato único entre server e front, sem tipos duplicados à mão.
 - **shadcn/ui + Tailwind:** componentes copiados para o repo, sem dependência de biblioteca de UI fechada.
+- **Strands (React Bits):** a esfera do Alfred, copiada para o repo (MIT + Commons Clause). WebGL2 puro, sem three.js; onde não há WebGL2 entra a versão em CSS. Direção visual em [DESIGN.md](DESIGN.md).
 
 ## Versões mínimas
 

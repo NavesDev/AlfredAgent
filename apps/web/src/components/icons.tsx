@@ -92,3 +92,44 @@ export const Settings = (p: Props) => (
     <circle cx="12" cy="12" r="3" />
   </Icon>
 )
+export const Mic = (p: Props) => (
+  <Icon {...p}>
+    <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM19 11a7 7 0 0 1-14 0M12 18v3" />
+  </Icon>
+)
+export const Stop = (p: Props) => (
+  <Icon {...p}>
+    <rect x="7" y="7" width="10" height="10" rx="2" />
+  </Icon>
+)
+export const Search = (p: Props) => (
+  <Icon {...p}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-4-4" />
+  </Icon>
+)
+export const X = (p: Props) => (
+  <Icon {...p}>
+    <path d="M18 6 6 18M6 6l12 12" />
+  </Icon>
+)
+export const RotateCcw = (p: Props) => (
+  <Icon {...p}>
+    <path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" />
+  </Icon>
+)
+export const Transcript = (p: Props) => (
+  <Icon {...p}>
+    <path d="M4 6h16M4 12h16M4 18h10" />
+  </Icon>
+)
+export const ChevronRight = (p: Props) => (
+  <Icon {...p}>
+    <path d="m9 18 6-6-6-6" />
+  </Icon>
+)
+export const BarChart = (p: Props) => (
+  <Icon {...p}>
+    <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+  </Icon>
+)
