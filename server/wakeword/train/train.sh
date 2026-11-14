@@ -35,6 +35,8 @@ CONFIG="$HERE/alfred.yml"
 "$PY" -m openwakeword.train --training_config "$CONFIG" --generate_clips
 # Kokoro runs from the server venv, which already has it and its voices
 (cd "$HERE/../.." && PYTHONPATH=. uv run python wakeword/train/kokoro_positives.py "$WORK/output/alfred/positive_train")
+# The user's own voice (record_voice.py), if recorded
+[ -d "$HERE/voice" ] && "$PY" "$HERE/add_voice.py" "$HERE/voice" "$WORK/output/alfred"
 "$PY" -m openwakeword.train --training_config "$CONFIG" --augment_clips --overwrite --train_model \
   || [ -s output/alfred.onnx ]  # the final tflite export needs TensorFlow; the onnx is written before it
 
