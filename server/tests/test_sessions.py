@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 
+from controllers.portraits import Portraits
 from controllers.sessions import Sessions
 from controllers.settings import Settings, SettingsUpdate
 from errors import AgentError, SessionError, SessionNotFound, SessionProtected
@@ -17,6 +18,7 @@ from models import session as records
 from models import settings as model
 from models.db import open_db
 from tests.conftest import drain
+from tests.test_portraits import FakePaint
 
 DEFAULTS = model.Defaults(
     models={"alfred": "sonnet", "geral": "sonnet", "implementacao": "opus"},
@@ -81,8 +83,16 @@ class Env:
         self.settings.update(SettingsUpdate(max_active_sessions=max_active))
         self.talker, self.clock = FakeTalker(), Clock()
         self.made: dict[str, FakeSession] = {}
+        self.portraits = Portraits(self.db, bus, self.settings, home / ".portraits", FakePaint())
         self.sessions = Sessions(
-            bus, self.talker, self.db, self.settings, self.factory, home, clock=self.clock
+            bus,
+            self.talker,
+            self.db,
+            self.settings,
+            self.factory,
+            home,
+            clock=self.clock,
+            portrait=self.portraits.url,
         )
         self.sessions.load()
 
@@ -508,3 +518,21 @@ async def test_a_new_task_resets_phase_and_subagents(env: Env) -> None:
 
     view = env.sessions.list()[0]
     assert (view.phase, view.subagents) == (None, [])
+
+
+# --- portraits -------------------------------------------------------------------------------
+
+
+async def test_a_new_portrait_republishes_the_session_with_its_url(env: Env, bus: EventBus) -> None:
+    assert env.sessions.list()[0].portrait is None
+    queue = bus.subscribe()
+    task = asyncio.create_task(env.sessions.run())
+    env.portraits.request("sistema")
+    worker = asyncio.create_task(env.portraits.run())
+    for _ in range(10):
+        await asyncio.sleep(0.01)
+    task.cancel()
+    worker.cancel()
+
+    [status] = [e for e in of_type(drain(queue), "session_status")]
+    assert status["session"]["portrait"].startswith("/api/sessions/sistema/portrait?v=")

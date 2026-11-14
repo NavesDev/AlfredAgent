@@ -11,6 +11,7 @@ import uvicorn
 
 from api.app import create_app
 from config import Config, load_config
+from controllers.portraits import Portraits
 from controllers.projects import Projects
 from controllers.router import Router
 from controllers.sessions import Sessions
@@ -24,6 +25,7 @@ from infra.audio.listener import Listener, OpenWakeWord, load_vad, load_whisper
 from infra.audio.talker import Talker, load_kokoro, open_speaker
 from infra.claude.agents import AgentKind, SessionContext
 from infra.claude.alfred import AlfredAgent, check_cli
+from infra.claude.portrait import paint, user_mcp_servers
 from infra.claude.session import CodingSession
 from infra.claude.state import DailyState
 from infra.claude.tools import session_tools
@@ -49,12 +51,15 @@ async def serve(config: Config) -> None:
 
     db = open_db(config.storage.db_path)
     settings_model.seed(db, config.seed_defaults())
-    settings = Settings(db, bus)
+    settings = Settings(db, bus, image_servers=lambda: list(user_mcp_servers()))
 
     def new_session(kind: AgentKind, context: Callable[[], SessionContext]) -> CodingSession:
         return CodingSession(bus, kind, context)
 
-    sessions = Sessions(bus, talker, db, settings, new_session, home=Path.home())
+    portraits = Portraits(db, bus, settings, config.storage.db_path.parent / "portraits", paint)
+    sessions = Sessions(
+        bus, talker, db, settings, new_session, home=Path.home(), portrait=portraits.url
+    )
     sessions.load()
     usage = Usage(bus, sessions, settings)
     projects = Projects(db, bus)
@@ -85,7 +90,14 @@ async def serve(config: Config) -> None:
 
     jobs = [
         asyncio.create_task(job())
-        for job in (sessions.run, sessions.watch_idle, settings.run, usage.run, vocabulary.run)
+        for job in (
+            sessions.run,
+            sessions.watch_idle,
+            settings.run,
+            usage.run,
+            vocabulary.run,
+            portraits.run,
+        )
     ]
     stop = threading.Event()
     for worker in (listener.run, talker.run):
@@ -97,6 +109,7 @@ async def serve(config: Config) -> None:
     app.state.sessions = sessions
     app.state.projects = projects
     app.state.settings = settings
+    app.state.portraits = portraits
     app.state.usage = usage
     server = uvicorn.Server(
         uvicorn.Config(app, config.api.host, config.api.port, log_level="warning")

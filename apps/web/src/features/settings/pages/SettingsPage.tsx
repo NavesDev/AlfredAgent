@@ -1,9 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { SettingsView } from '../../../api/events'
 import { Row, Section, Segmented, Switch } from '../../../components/controls'
-import { Gauge, GitBranch, Plug, Sparkle, Terminal } from '../../../components/icons'
+import { Gauge, GitBranch, Image, Plug, Sparkle, Terminal } from '../../../components/icons'
 import { button, PageShell, primaryButton } from '../../../components/layout/PageShell'
 import { ModelSelect } from '../../../components/ModelSelect'
+import { Picker } from '../../../components/Picker'
 import { EFFORTS, field } from '../../../lib/sessionForm'
 import { SettingsNav } from '../components/SettingsNav'
 import { UsageSection } from '../components/UsageSection'
@@ -72,7 +73,8 @@ function Form({
     )
   const servers = [...new Set([...settings.known_mcp_servers, ...draft.mcp_disabled])].sort()
   const allMcpOn = draft.mcp_disabled.length === 0
-  const { known_mcp_servers: _, ...body } = draft
+  const { known_mcp_servers: _, image_mcp_servers: generators, image_mcp, ...rest } = draft
+  const body = { ...rest, image_mcp: image_mcp ?? '' } // '' goes back to automatic
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings)
 
   return (
@@ -145,6 +147,27 @@ function Form({
       )}
       {section === 'mcps' && (
         <>
+          <Section
+            title="Gerador de imagens"
+            description="Desenha o retrato de cada sessão. No automático, o Alfred escolhe entre os MCPs e guarda o que funcionou."
+          >
+            <Row title="MCP favorito" icon={<Image />}>
+              <div className="w-48">
+                <Picker
+                  label="Gerador de imagens"
+                  mono
+                  value={draft.image_mcp ?? ''}
+                  onChange={(name) => set('image_mcp', name || null)}
+                  options={[
+                    { id: '', label: 'Automático', hint: 'escolhe e guarda o que funcionar' },
+                    ...[...new Set([...generators, ...(draft.image_mcp ? [draft.image_mcp] : [])])]
+                      .sort()
+                      .map((name) => ({ id: name, label: name })),
+                  ]}
+                />
+              </div>
+            </Row>
+          </Section>
           <Section
             title="MCPs nas sessões de implementação"
             description="Todos ligados por padrão. Desligue os que essas sessões não devem carregar."

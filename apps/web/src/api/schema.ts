@@ -74,6 +74,27 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/sessions/{name}/portrait': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get Portrait */
+    get: operations['get_portrait_api_sessions__name__portrait_get']
+    put?: never
+    /**
+     * Repaint
+     * @description Paints the portrait again in the background.
+     */
+    post: operations['repaint_api_sessions__name__portrait_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/projects': {
     parameters: {
       query?: never
@@ -409,6 +430,8 @@ export interface components {
       protected: boolean
       /** Subagents */
       subagents: components['schemas']['SubagentView'][]
+      /** Portrait */
+      portrait: string | null
     }
     /** SettingsUpdate */
     SettingsUpdate: {
@@ -423,6 +446,8 @@ export interface components {
       idle_minutes?: number | null
       /** Mcp Disabled */
       mcp_disabled?: string[] | null
+      /** Image Mcp */
+      image_mcp?: string | null
     }
     /** SettingsView */
     SettingsView: {
@@ -434,6 +459,10 @@ export interface components {
       idle_minutes: number
       /** Mcp Disabled */
       mcp_disabled: string[]
+      /** Image Mcp */
+      image_mcp: string | null
+      /** Image Mcp Servers */
+      image_mcp_servers: string[]
       /** Known Mcp Servers */
       known_mcp_servers: string[]
     }
@@ -670,6 +699,66 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['SessionView']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_portrait_api_sessions__name__portrait_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        name: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  repaint_api_sessions__name__portrait_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        name: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': unknown
         }
       }
       /** @description Validation Error */

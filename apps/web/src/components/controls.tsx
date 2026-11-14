@@ -102,9 +102,8 @@ export function Section({
         <h3 className="text-[13px] font-semibold tracking-wide text-ink-2 uppercase">{title}</h3>
         {description && <p className="mt-0.5 text-xs text-ink-3">{description}</p>}
       </div>
-      <div className="divide-y divide-hairline overflow-hidden rounded-[18px] bg-well">
-        {children}
-      </div>
+      {/* no overflow-hidden: dropdowns in a row must spill out of the group */}
+      <div className="divide-y divide-hairline rounded-[18px] bg-well">{children}</div>
     </section>
   )
 }

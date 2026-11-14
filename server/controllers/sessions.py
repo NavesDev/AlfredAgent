@@ -49,6 +49,9 @@ class Speaker(Protocol):
 # (kind, context read on every connect) -> a session that connects on its first task
 SessionFactory = Callable[[AgentKind, Callable[[], SessionContext]], Session]
 
+# (session id, name) -> portrait URL, or None while there is none (controllers/portraits.py)
+PortraitUrl = Callable[[int, str], str | None]
+
 
 @dataclass
 class Slot:
@@ -80,9 +83,11 @@ class Sessions:
         factory: SessionFactory,
         home: Path,
         clock: Callable[[], float] = time.monotonic,
+        portrait: PortraitUrl = lambda _id, _name: None,
     ) -> None:
         self._bus, self._talker, self._db = bus, talker, db
         self._settings, self._factory, self._home, self._clock = settings, factory, home, clock
+        self._portrait = portrait
         self._slots: dict[str, Slot] = {}
         self._waiters: list[asyncio.Future[None]] = []
 
@@ -177,12 +182,15 @@ class Sessions:
         return [self._view(slot) for slot in self._slots.values()]
 
     async def run(self) -> None:
-        """Keeps each busy session's activity, phase and subagents from the bus."""
+        """Keeps each busy session's activity, phase and subagents from the bus, and shows new
+        portraits."""
         queue = self._bus.subscribe()
         try:
             while True:
                 event = await queue.get()
                 slot = self._slots.get(str(event.get("session", "")).lower())
+                if slot is not None and event["type"] == "portrait_updated":
+                    self._publish_status(slot)
                 if slot is None or slot.status != "busy":
                     continue
                 if self._apply(slot, event):
@@ -405,6 +413,7 @@ class Sessions:
             last_error=slot.last_error,
             protected=slot.protected,
             subagents=list(slot.subagents.values()),
+            portrait=self._portrait(record.id, record.name),
         )
 
 

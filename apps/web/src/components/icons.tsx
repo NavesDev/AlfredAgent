@@ -68,6 +68,13 @@ export const Terminal = (p: Props) => (
     <path d="m4 17 6-6-6-6M12 19h8" />
   </Icon>
 )
+export const Image = (p: Props) => (
+  <Icon {...p}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <circle cx="9" cy="9" r="2" />
+    <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
+  </Icon>
+)
 export const Plug = (p: Props) => (
   <Icon {...p}>
     <path d="M12 22v-5M9 8V2M15 8V2M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z" />

@@ -27,5 +27,6 @@ export const sessionView = (name: string, over: Partial<SessionView> = {}): Sess
   context_max: null,
   protected: false,
   subagents: [],
+  portrait: null,
   ...over,
 })

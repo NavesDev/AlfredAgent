@@ -25,8 +25,6 @@ const SUBAGENT = {
 
 type Props = {
   session: SessionView
-  /** Generated portrait, when there is one. */
-  portrait?: string | null
   onClose: () => void
   onClear: () => void
   onDelete: () => void
@@ -35,15 +33,7 @@ type Props = {
 }
 
 /** Everything about one session, in the spirit of the "Now Playing" card. */
-export function SessionCard({
-  session: s,
-  portrait,
-  onClose,
-  onClear,
-  onDelete,
-  onChange,
-  error,
-}: Props) {
+export function SessionCard({ session: s, onClose, onClear, onDelete, onChange, error }: Props) {
   const [confirming, setConfirming] = useState(false)
   const state = presence(s)
   const context = contextLevel(s.context_tokens, s.context_max)
@@ -75,8 +65,8 @@ export function SessionCard({
       </header>
 
       <div className="aspect-square w-[min(100%,34vh)] shrink-0 self-center overflow-hidden rounded-[22px] bg-well">
-        {portrait ? (
-          <img src={portrait} alt={`Retrato de ${s.name}`} className="size-full object-cover" />
+        {s.portrait ? (
+          <img src={s.portrait} alt={`Retrato de ${s.name}`} className="size-full object-cover" />
         ) : (
           <span
             aria-hidden

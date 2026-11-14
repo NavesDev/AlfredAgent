@@ -1,11 +1,13 @@
-"""Named sessions for the panel: list, create, change model/effort, clear, delete.
+"""Named sessions for the panel: list, create, change model/effort, clear, delete, portrait.
 
 Routes are async so SQLite stays on the event loop's thread.
 """
 
 from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from controllers.portraits import Portraits
 from controllers.sessions import Sessions
 from errors import SessionError, SessionNotFound, SessionProtected
 from models.session import SessionView
@@ -78,3 +80,26 @@ async def delete_session(name: str, request: Request) -> Response:
     except SessionProtected as e:
         raise HTTPException(409, str(e)) from e
     return Response(status_code=204)
+
+
+def _portraits(request: Request) -> Portraits:
+    portraits: Portraits = request.app.state.portraits
+    return portraits
+
+
+@router.get("/{name}/portrait", response_class=FileResponse)
+async def get_portrait(name: str, request: Request) -> FileResponse:
+    path = _portraits(request).file(name)
+    if path is None:
+        raise HTTPException(404, f"A sessão {name} ainda não tem retrato.")
+    return FileResponse(path, headers={"Cache-Control": "max-age=31536000, immutable"})
+
+
+@router.post("/{name}/portrait", status_code=202)
+async def repaint(name: str, request: Request) -> Response:
+    """Paints the portrait again in the background."""
+    try:
+        _portraits(request).request(name)
+    except SessionNotFound as e:
+        raise HTTPException(404, str(e)) from e
+    return Response(status_code=202)

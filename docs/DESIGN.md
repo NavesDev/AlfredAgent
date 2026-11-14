@@ -101,10 +101,6 @@ Remodelação do painel web no estilo de vidro da Apple (visionOS). Este documen
 
 ## Decisões
 
-- **Foto das sessões:** retrato 3D. Enquanto o retrato não existe, a sessão mostra o monograma (iniciais num degradê estável pelo nome).
+- **Foto das sessões:** retrato 3D. Enquanto o retrato não existe, a sessão mostra o monograma (iniciais num degradê estável pelo nome). Geração: [ADR 0009](adr/0009-session-portraits-via-mcp.md).
 - **Bonecos do mapa:** saíram, junto com a opção "Tamanho dos agentes no mapa" (`figure_scale`).
 - **Permissões:** o cartão não tem Negar/Permitir; a confirmação continua por voz, como manda a SPEC.
-
-## Pontos em aberto
-
-- Como o Alfred gera os retratos (serviço de imagens local, quando gerar, onde guardar e servir).

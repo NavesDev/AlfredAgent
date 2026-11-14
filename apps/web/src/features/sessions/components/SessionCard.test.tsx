@@ -34,6 +34,14 @@ describe('SessionCard', () => {
     expect(screen.getByText('142k / 200k')).toBeInTheDocument()
   })
 
+  it('shows the generated portrait in place of the monogram', () => {
+    setup({ ...dev, portrait: '/api/sessions/Developer/portrait?v=1' })
+    expect(screen.getByRole('img', { name: 'Retrato de Developer' })).toHaveAttribute(
+      'src',
+      '/api/sessions/Developer/portrait?v=1',
+    )
+  })
+
   it('clears right away but asks before deleting', async () => {
     const { onClear, onDelete, user } = setup()
     await user.click(screen.getByRole('button', { name: 'Limpar conversa' }))

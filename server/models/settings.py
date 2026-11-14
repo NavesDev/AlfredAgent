@@ -22,6 +22,7 @@ class AppSettings(BaseModel):
     max_active_sessions: int = 3
     idle_minutes: int = 10
     mcp_disabled: list[str] = []
+    image_mcp: str | None = None  # favorite image generator; None lets the model pick
 
 
 class Defaults(BaseModel):

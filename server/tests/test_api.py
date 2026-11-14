@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from api.app import create_app
 from controllers.projects import Projects
 from events import EventBus
+from tests.test_portrait import PNG
 from tests.test_projects import FakeGit
 from tests.test_sessions import Env
 
@@ -57,6 +58,7 @@ class Api:
         app.state.bus = env.sessions._bus
         app.state.sessions = env.sessions
         app.state.settings = env.settings
+        app.state.portraits = env.portraits
         app.state.projects = Projects(env.db, env.sessions._bus, FakeGit())
 
     def __getattr__(self, method: str) -> Any:
@@ -169,6 +171,21 @@ def test_settings(api: Api) -> None:
     assert {a["kind"] for a in current["agents"]} == {"alfred", "geral", "implementacao"}
     assert saved["max_active_sessions"] == 4 and saved["mcp_disabled"] == ["gmail"]
     assert bad.status_code == 422
+
+
+def test_session_portrait(api: Api) -> None:
+    missing = api.get("/api/sessions/sistema/portrait")
+    asked = api.post("/api/sessions/sistema/portrait")
+    unknown = api.post("/api/sessions/ninguem/portrait")
+    folder = api.home / ".portraits"
+    folder.mkdir()
+    (folder / "1.png").write_bytes(PNG)
+    found = api.get("/api/sessions/sistema/portrait")
+
+    assert (missing.status_code, asked.status_code, unknown.status_code) == (404, 202, 404)
+    assert (found.status_code, found.content) == (200, PNG)
+    assert found.headers["content-type"] == "image/png"
+    assert api.get("/api/sessions").json()[0]["portrait"].startswith("/api/sessions/sistema/")
 
 
 def test_project_and_workspace_descriptions(api: Api) -> None:

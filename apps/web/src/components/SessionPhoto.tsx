@@ -9,16 +9,13 @@ const RING: Record<Tone, string> = {
   sleep: 'after:border-transparent',
 }
 
-type Props = {
-  session: SessionView
-  size: number
-  /** Generated portrait; until it exists the session shows its initials. */
-  src?: string | null
-}
+type Props = { session: SessionView; size: number }
 
-/** A session's photo: portrait or monogram, ringed by what it is doing. */
-export function SessionPhoto({ session, size, src }: Props) {
+/** A session's photo: its generated portrait or, until it exists, its monogram, ringed by what
+ * it is doing. */
+export function SessionPhoto({ session, size }: Props) {
   const { tone } = presence(session)
+  const src = session.portrait
   const [from, to] = gradientFor(session.name)
   return (
     <span

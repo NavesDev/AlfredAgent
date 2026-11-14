@@ -12,7 +12,12 @@ describe('SessionPhoto', () => {
   })
 
   it('shows the portrait when there is one', () => {
-    render(<SessionPhoto session={sessionView('Design')} src="/portraits/design.jpg" size={36} />)
+    render(
+      <SessionPhoto
+        session={sessionView('Design', { portrait: '/portraits/design.jpg' })}
+        size={36}
+      />,
+    )
     expect(screen.getByRole('img', { name: 'Retrato de Design' })).toHaveAttribute(
       'src',
       '/portraits/design.jpg',

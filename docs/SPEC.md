@@ -64,6 +64,7 @@ Regras:
 - Modelo e effort vêm da tela de configurações por tipo de agente; cada sessão pode sobrescrever.
 - O tipo `implementacao` usa o harness completo do Claude Code: CLAUDE.md, skills, plugins, hooks e MCPs ([ADR 0008](adr/0008-implementation-agent-full-harness.md)).
 - Na tela de configurações, os MCPs dessas sessões ligam e desligam um a um ou todos de uma vez (botão "Desligar todos" / "Ligar todos").
+- Cada sessão ganha um retrato 3D gerado em segundo plano pelo gerador de imagem dos MCPs do usuário; até ele existir (ou se a geração falhar), o painel mostra o monograma. Na tela de configurações, "Gerador de imagens" escolhe o MCP favorito ou "Automático" ([ADR 0009](adr/0009-session-portraits-via-mcp.md)).
 - `claude_session_id` guarda o id do Agent SDK pra retomar a conversa (resume) depois de reiniciar o assistente.
 - Status de sessão: ociosa, ocupada, aguardando permissão, erro. Status de tarefa: aberta, em andamento, feita; tarefa sem projeto vale pra coisas pessoais ("pagar boleto"), e tarefa delegada vira feita sozinha quando a sessão termina.
 

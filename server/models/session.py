@@ -59,6 +59,7 @@ class SessionView(BaseModel):
     last_error: str | None  # why the last task failed, until the next one starts
     protected: bool
     subagents: list[SubagentView]
+    portrait: str | None  # generated portrait URL; the panel shows a monogram until then
 
 
 def _record(row: sqlite3.Row) -> SessionRecord:

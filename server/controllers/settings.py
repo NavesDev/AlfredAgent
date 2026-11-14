@@ -1,10 +1,12 @@
-"""Settings edited on the panel: model and effort per agent kind, limits, disabled MCP servers.
+"""Settings edited on the panel: model and effort per agent kind, limits, disabled MCP servers
+and the favorite image generator.
 
 Sessions read them on every connect, so changes apply to the next connection.
 """
 
 import asyncio
 import sqlite3
+from collections.abc import Callable
 
 from pydantic import BaseModel
 
@@ -22,6 +24,8 @@ class SettingsView(BaseModel):
     max_active_sessions: int
     idle_minutes: int
     mcp_disabled: list[str]
+    image_mcp: str | None
+    image_mcp_servers: list[str]  # user-scope MCP servers that can be the image generator
     known_mcp_servers: list[str]
 
 
@@ -30,11 +34,17 @@ class SettingsUpdate(BaseModel):
     max_active_sessions: int | None = None
     idle_minutes: int | None = None
     mcp_disabled: list[str] | None = None
+    image_mcp: str | None = None  # "" goes back to automatic
 
 
 class Settings:
-    def __init__(self, db: sqlite3.Connection, bus: EventBus) -> None:
-        self._db, self._bus = db, bus
+    def __init__(
+        self,
+        db: sqlite3.Connection,
+        bus: EventBus,
+        image_servers: Callable[[], list[str]] = list,
+    ) -> None:
+        self._db, self._bus, self._image_servers = db, bus, image_servers
         self._known_mcp: set[str] = set()
 
     def get(self) -> SettingsView:
@@ -45,6 +55,8 @@ class Settings:
             max_active_sessions=app.max_active_sessions,
             idle_minutes=app.idle_minutes,
             mcp_disabled=app.mcp_disabled,
+            image_mcp=app.image_mcp,
+            image_mcp_servers=sorted(self._image_servers()),
             known_mcp_servers=sorted(self._known_mcp),
         )
 
@@ -57,6 +69,7 @@ class Settings:
         app = self.app().model_copy(
             update={k: v for k, v in update.model_dump(exclude={"agents"}).items() if v is not None}
         )
+        app.image_mcp = (app.image_mcp or "").strip() or None
         if app.max_active_sessions < 1:
             raise SettingsError("O limite de sessões precisa ser pelo menos 1.")
         if app.idle_minutes < 1:
