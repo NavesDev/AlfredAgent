@@ -62,6 +62,7 @@ Regras:
 - Criar worktree roda `git worktree add <pai>-wt/<nome> -b <nome>` a partir do ambiente pai; remover roda `git worktree remove` e recusa se houver mudança não commitada (a menos que force). Remover ambiente de pasta comum só tira do cadastro.
 - Modelo e effort vêm da tela de configurações por tipo de agente; cada sessão pode sobrescrever.
 - O tipo `implementacao` usa o harness completo do Claude Code: CLAUDE.md, skills, plugins, hooks e MCPs ([ADR 0008](adr/0008-implementation-agent-full-harness.md)).
+- Na tela de configurações, os MCPs dessas sessões ligam e desligam um a um ou todos de uma vez (botão "Desligar todos" / "Ligar todos").
 - `claude_session_id` guarda o id do Agent SDK pra retomar a conversa (resume) depois de reiniciar o assistente.
 - Status de sessão: ociosa, ocupada, aguardando permissão, erro. Status de tarefa: aberta, em andamento, feita; tarefa sem projeto vale pra coisas pessoais ("pagar boleto"), e tarefa delegada vira feita sozinha quando a sessão termina.
 

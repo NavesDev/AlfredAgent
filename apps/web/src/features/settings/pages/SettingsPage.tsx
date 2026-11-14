@@ -50,6 +50,7 @@ function Form({
         : [...draft.mcp_disabled, name],
     )
   const servers = [...new Set([...settings.known_mcp_servers, ...draft.mcp_disabled])].sort()
+  const allMcpOn = draft.mcp_disabled.length === 0
   const { known_mcp_servers: _, ...body } = draft
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings)
 
@@ -134,6 +135,17 @@ function Form({
         title="MCPs nas sessões de implementação"
         description="Todos ligados por padrão. Desligue os que essas sessões não devem carregar."
       >
+        {servers.length > 1 && (
+          <Row title="Todos os MCPs" icon={<Plug />}>
+            <button
+              type="button"
+              onClick={() => set('mcp_disabled', allMcpOn ? servers : [])}
+              className={button}
+            >
+              {allMcpOn ? 'Desligar todos' : 'Ligar todos'}
+            </button>
+          </Row>
+        )}
         {servers.map((name) => (
           <Row
             key={name}
