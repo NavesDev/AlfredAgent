@@ -12,6 +12,7 @@ import {
 } from '../../../components/layout/PageShell'
 import { NewSessionForm } from '../../../components/NewSessionForm'
 import { field } from '../../../lib/sessionForm'
+import { Description, MAX_DESCRIPTION } from '../components/Description'
 import { ProjectMark } from '../components/ProjectMark'
 import { useProjectActions, useProjects, useSessionList } from '../hooks/useProjects'
 
@@ -62,6 +63,15 @@ export function ProjectPage() {
                 {project.workspaces.length}{' '}
                 {project.workspaces.length === 1 ? 'ambiente' : 'ambientes'} · {mine.length} sessões
               </span>
+            </span>
+            <span className="pt-1 text-sm font-normal">
+              <Description
+                value={project.description}
+                label="Descrição do projeto"
+                pending={actions.update.isPending}
+                error={actions.update.error?.message}
+                onSave={(description) => actions.update.mutate({ id: project.id, description })}
+              />
             </span>
           </span>
         </span>
@@ -184,7 +194,7 @@ function WorkspaceRow({
   workspaces: Workspace[]
   sessions: string[]
 }) {
-  const { removeWorkspace } = useProjectActions()
+  const { removeWorkspace, updateWorkspace } = useProjectActions()
   const [confirm, setConfirm] = useState<'no' | 'yes' | 'force'>('no')
   const parent = workspaces.find((p) => p.id === w.parent_id)
   const dirty = removeWorkspace.error?.message.includes('não commitadas')
@@ -213,6 +223,13 @@ function WorkspaceRow({
           {parent && <span className="text-xs text-gray-500">worktree de {parent.name}</span>}
         </p>
         <p className="truncate font-mono text-xs text-gray-500">{w.path}</p>
+        <Description
+          value={w.description}
+          label={`Descrição do ambiente ${w.name}`}
+          pending={updateWorkspace.isPending}
+          error={updateWorkspace.error?.message}
+          onSave={(description) => updateWorkspace.mutate({ id: w.id, description })}
+        />
       </div>
       {sessions.length > 0 && (
         <span className="text-xs text-gray-400" title={sessions.join(', ')}>
@@ -255,22 +272,23 @@ function AddWorkspace({ projectId, workspaces }: { projectId: number; workspaces
   const [mode, setMode] = useState<'folder' | 'worktree'>('folder')
   const [name, setName] = useState('')
   const [path, setPath] = useState('')
+  const [description, setDescription] = useState('')
   const [picked, setParent] = useState<number | null>(null)
   const parent = picked ?? workspaces[0]?.id ?? null
   const pending = addWorkspace.isPending || addWorktree.isPending
   const error = addWorkspace.error ?? addWorktree.error
-  const done = () => (setName(''), setPath(''))
+  const done = () => (setName(''), setPath(''), setDescription(''))
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     if (mode === 'folder')
       addWorkspace.mutate(
-        { id: projectId, name: name.trim(), path: path.trim() },
+        { id: projectId, name: name.trim(), path: path.trim(), description: description.trim() },
         { onSuccess: done },
       )
     else if (parent !== null)
       addWorktree.mutate(
-        { id: projectId, parent_id: parent, name: name.trim() },
+        { id: projectId, parent_id: parent, name: name.trim(), description: description.trim() },
         { onSuccess: done },
       )
   }
@@ -319,6 +337,14 @@ function AddWorkspace({ projectId, workspaces }: { projectId: number; workspaces
             ))}
           </select>
         )}
+        <input
+          aria-label="Descrição do ambiente"
+          placeholder="descrição curta (opcional)"
+          value={description}
+          maxLength={MAX_DESCRIPTION}
+          onChange={(e) => setDescription(e.target.value)}
+          className={`${field} w-full`}
+        />
         <button
           className={primaryButton}
           disabled={pending || !name.trim() || (mode === 'folder' ? !path.trim() : parent === null)}

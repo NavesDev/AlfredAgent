@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 import type { Project } from '../../../api/events'
 import { applyProjectEvent } from './projects'
 
-const project = (id: number, name: string): Project => ({ id, name, aliases: [], workspaces: [] })
+const project = (id: number, name: string): Project => ({
+  id,
+  name,
+  aliases: [],
+  description: '',
+  workspaces: [],
+})
 
 describe('applyProjectEvent', () => {
   it('adds, replaces and removes projects', () => {

@@ -39,13 +39,19 @@ class Projects:
             raise ProjectNotFound(f"Não existe projeto chamado {name}.")
         return found
 
-    def create(self, name: str, aliases: list[str]) -> Project:
+    def create(self, name: str, aliases: list[str], description: str = "") -> Project:
         name = self._free_name(name)
-        created = project.insert_project(self._db, name, _clean(aliases))
+        created = project.insert_project(self._db, name, _clean(aliases), _description(description))
         self._bus.publish("project_created", project=created.model_dump())
         return created
 
-    def update(self, id: int, name: str | None = None, aliases: list[str] | None = None) -> Project:
+    def update(
+        self,
+        id: int,
+        name: str | None = None,
+        aliases: list[str] | None = None,
+        description: str | None = None,
+    ) -> Project:
         current = self.get(id)
         if name is not None and name.strip().lower() != current.name.lower():
             name = self._free_name(name)
@@ -54,6 +60,7 @@ class Projects:
             id,
             name.strip() if name else None,
             _clean(aliases) if aliases is not None else None,
+            _description(description) if description is not None else None,
         )
         return self._publish_updated(id)
 
@@ -64,28 +71,45 @@ class Projects:
         project.delete_project(self._db, id)
         self._bus.publish("project_deleted", id=id)
 
-    def add_workspace(self, project_id: int, name: str, path: str) -> Workspace:
+    def add_workspace(
+        self, project_id: int, name: str, path: str, description: str = ""
+    ) -> Workspace:
         current = self.get(project_id)
         name = self._free_workspace_name(current, name)
+        description = _description(description)
         folder = Path(path).expanduser()
         if not folder.is_dir():
             raise ProjectError(f"A pasta {path} não existe.")
-        ws = project.insert_workspace(self._db, project_id, name, str(folder), "folder")
+        ws = project.insert_workspace(
+            self._db, project_id, name, str(folder), "folder", description=description
+        )
         self._publish_updated(project_id)
         return ws
 
-    async def add_worktree(self, project_id: int, parent_id: int, name: str) -> Workspace:
+    async def add_worktree(
+        self, project_id: int, parent_id: int, name: str, description: str = ""
+    ) -> Workspace:
         current = self.get(project_id)
         name = self._free_workspace_name(current, name)
+        description = _description(description)
         parent = next((w for w in current.workspaces if w.id == parent_id), None)
         if parent is None:
             raise ProjectNotFound(f"O ambiente de origem não existe no projeto {current.name}.")
         path, branch = await self._git.add_worktree(Path(parent.path), name)
         ws = project.insert_workspace(
-            self._db, project_id, name, str(path), "worktree", parent.id, branch
+            self._db, project_id, name, str(path), "worktree", parent.id, branch, description
         )
         self._publish_updated(project_id)
         return ws
+
+    def update_workspace(self, id: int, description: str) -> Workspace:
+        if project.get_workspace(self._db, id) is None:
+            raise ProjectNotFound("Esse ambiente não existe.")
+        project.update_workspace(self._db, id, _description(description))
+        updated = project.get_workspace(self._db, id)
+        assert updated is not None
+        self._publish_updated(updated.project_id)
+        return updated
 
     async def delete_workspace(self, id: int, force: bool = False) -> None:
         ws = project.get_workspace(self._db, id)
@@ -126,6 +150,16 @@ class Projects:
         updated = self.get(id)
         self._bus.publish("project_updated", project=updated.model_dump())
         return updated
+
+
+MAX_DESCRIPTION = 200
+
+
+def _description(text: str) -> str:
+    text = " ".join(text.split())
+    if len(text) > MAX_DESCRIPTION:
+        raise ProjectError(f"A descrição passa de {MAX_DESCRIPTION} caracteres; encurte.")
+    return text
 
 
 def _clean(aliases: list[str]) -> list[str]:

@@ -169,3 +169,24 @@ def test_settings(api: Api) -> None:
     assert {a["kind"] for a in current["agents"]} == {"alfred", "geral", "implementacao"}
     assert saved["max_active_sessions"] == 4 and saved["mcp_disabled"] == ["gmail"]
     assert bad.status_code == 422
+
+
+def test_project_and_workspace_descriptions(api: Api) -> None:
+    (api.home / "api").mkdir()
+    pid = api.post("/api/projects", json={"name": "Recurve", "description": "Cobrança"}).json()[
+        "id"
+    ]
+    wid = api.post(
+        f"/api/projects/{pid}/workspaces",
+        json={"name": "back", "path": str(api.home / "api"), "description": "API"},
+    ).json()["id"]
+
+    changed = api.patch(f"/api/workspaces/{wid}", json={"description": "API em Spring"})
+    too_long = api.patch(f"/api/projects/{pid}", json={"description": "x" * 201})
+    missing = api.patch("/api/workspaces/99", json={"description": "nada"})
+    [listed] = api.get("/api/projects").json()
+
+    assert changed.status_code == 200 and changed.json()["description"] == "API em Spring"
+    assert too_long.status_code == 422 and missing.status_code == 404
+    assert listed["description"] == "Cobrança"
+    assert listed["workspaces"][0]["description"] == "API em Spring"

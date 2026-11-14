@@ -124,24 +124,35 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
     @sdk.tool(
         "criar_projeto",
         "Cadastra um projeto: um nome que agrupa ambientes (pastas) e sessões. "
-        "'apelidos' ajudam a reconhecer o nome falado.",
+        "'apelidos' ajudam a reconhecer o nome falado; 'descricao' diz em uma frase do que o "
+        "projeto trata.",
         {
             "type": "object",
             "properties": {
                 "nome": {"type": "string"},
                 "apelidos": {"type": "array", "items": {"type": "string"}},
+                "descricao": {"type": "string"},
             },
             "required": ["nome"],
         },
     )
     async def criar_projeto(args: Result) -> Result:
         async def run() -> str:
-            created = projects.create(str(args["nome"]), [str(a) for a in args.get("apelidos", [])])
+            created = projects.create(
+                str(args["nome"]),
+                [str(a) for a in args.get("apelidos", [])],
+                str(args.get("descricao", "")),
+            )
             return f"Projeto {created.name} criado."
 
         return await _speak(run)
 
-    @sdk.tool("listar_projetos", "Lista os projetos com seus ambientes e sessões.", {})
+    @sdk.tool(
+        "listar_projetos",
+        "Lista os projetos com descrição, ambientes (com descrição) e sessões. Use para saber do "
+        "que cada projeto trata e escolher o ambiente certo.",
+        {},
+    )
     async def listar_projetos(args: Result) -> Result:
         async def run() -> str:
             by_workspace: dict[tuple[str | None, str | None], list[str]] = {}
@@ -153,6 +164,7 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
                     f"{w.name} ({w.path}"
                     + (f", branch {w.branch}" if w.branch else "")
                     + ")"
+                    + (f" — {w.description}" if w.description else "")
                     + (
                         f": sessões {', '.join(names)}"
                         if (names := by_workspace.get((p.name, w.name)))
@@ -160,20 +172,33 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
                     )
                     for w in p.workspaces
                 ]
-                lines.append(f"{p.name}: " + ("; ".join(parts) or "sem ambientes"))
+                about = f" — {p.description}" if p.description else ""
+                lines.append(f"{p.name}{about}: " + ("; ".join(parts) or "sem ambientes"))
             return "\n".join(lines) or "Nenhum projeto cadastrado."
 
         return await _speak(run)
 
     @sdk.tool(
         "criar_ambiente",
-        "Cadastra uma pasta existente como ambiente de um projeto (ex: back e front).",
-        {"projeto": str, "nome": str, "pasta": str},
+        "Cadastra uma pasta existente como ambiente de um projeto (ex: back e front), com uma "
+        "'descricao' curta opcional.",
+        {
+            "type": "object",
+            "properties": {
+                "projeto": {"type": "string"},
+                "nome": {"type": "string"},
+                "pasta": {"type": "string"},
+                "descricao": {"type": "string"},
+            },
+            "required": ["projeto", "nome", "pasta"],
+        },
     )
     async def criar_ambiente(args: Result) -> Result:
         async def run() -> str:
             found = projects.find(str(args["projeto"]))
-            ws = projects.add_workspace(found.id, str(args["nome"]), str(args["pasta"]))
+            ws = projects.add_workspace(
+                found.id, str(args["nome"]), str(args["pasta"]), str(args.get("descricao", ""))
+            )
             return f"Ambiente {ws.name} cadastrado no projeto {found.name}."
 
         return await _speak(run)
@@ -181,14 +206,25 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
     @sdk.tool(
         "criar_worktree",
         "Cria um git worktree a partir de um ambiente do projeto, numa branch com o nome dado, "
-        "e cadastra como ambiente novo.",
-        {"projeto": str, "ambiente_pai": str, "nome": str},
+        "e cadastra como ambiente novo, com uma 'descricao' curta opcional.",
+        {
+            "type": "object",
+            "properties": {
+                "projeto": {"type": "string"},
+                "ambiente_pai": {"type": "string"},
+                "nome": {"type": "string"},
+                "descricao": {"type": "string"},
+            },
+            "required": ["projeto", "ambiente_pai", "nome"],
+        },
     )
     async def criar_worktree(args: Result) -> Result:
         async def run() -> str:
             found = projects.find(str(args["projeto"]))
             parent = workspace_id(found.name, str(args["ambiente_pai"]))
-            ws = await projects.add_worktree(found.id, parent, str(args["nome"]))
+            ws = await projects.add_worktree(
+                found.id, parent, str(args["nome"]), str(args.get("descricao", ""))
+            )
             return f"Worktree {ws.name} criado no projeto {found.name}, branch {ws.branch}."
 
         return await _speak(run)
@@ -283,6 +319,7 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
         criar_worktree,
         apagar_ambiente,
         definir_apelidos,
+        definir_descricao,
     ]
 
 

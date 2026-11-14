@@ -48,6 +48,7 @@ def test_every_tool_is_allowed_without_asking(tools: Tools) -> None:
         "criar_worktree",
         "apagar_ambiente",
         "definir_apelidos",
+        "definir_descricao",
     }
     assert {f"mcp__{SERVER}__{n}" for n in names} <= set(permissions.ALLOWED)
     assert not {"Bash", "Edit", "Write"} & set(permissions.ALLOWED)
@@ -209,3 +210,32 @@ def test_server_is_named_alfred(tools: Tools) -> None:
     servers = agent._options(None).mcp_servers
     assert isinstance(servers, dict)
     assert dict(servers[SERVER])["name"] == SERVER == "alfred"
+
+
+async def test_descriptions_by_voice_show_up_when_listing_projects(tools: Tools) -> None:
+    (tools.home / "api").mkdir()
+    await tools.call("criar_projeto", {"nome": "Recurve", "descricao": "Cobrança recorrente"})
+    await tools.call(
+        "criar_ambiente",
+        {
+            "projeto": "Recurve",
+            "nome": "back",
+            "pasta": str(tools.home / "api"),
+            "descricao": "API",
+        },
+    )
+
+    project = await tools.call(
+        "definir_descricao", {"projeto": "Recurve", "descricao": "SaaS de cobrança recorrente"}
+    )
+    workspace = await tools.call(
+        "definir_descricao",
+        {"projeto": "Recurve", "ambiente": "back", "descricao": "API em Spring Boot"},
+    )
+    too_long = await tools.call("definir_descricao", {"projeto": "Recurve", "descricao": "x" * 201})
+    listed = await tools.call("listar_projetos", {})
+
+    assert "Recurve" in project and "back" in workspace
+    assert "200" in too_long
+    assert "SaaS de cobrança recorrente" in listed and "API em Spring Boot" in listed
+    assert describe_tool("mcp__alfred__definir_descricao") == "Ajustando uma descrição"

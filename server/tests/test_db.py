@@ -124,3 +124,29 @@ def test_seed_writes_defaults_only_once(db: sqlite3.Connection) -> None:
     assert settings.load_app(db) == settings.AppSettings(
         max_active_sessions=5, idle_minutes=2, mcp_disabled=[]
     )
+
+
+def test_descriptions_persist_and_old_databases_gain_the_columns(tmp_path: Path) -> None:
+    path = tmp_path / "old.sqlite3"
+    old = sqlite3.connect(path)
+    old.executescript(
+        "CREATE TABLE project (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE,"
+        " aliases TEXT NOT NULL DEFAULT '[]');"
+        "CREATE TABLE workspace (id INTEGER PRIMARY KEY, project_id INTEGER NOT NULL,"
+        " name TEXT NOT NULL, path TEXT NOT NULL, kind TEXT NOT NULL, parent_id INTEGER,"
+        " branch TEXT);"
+        "INSERT INTO project (name) VALUES ('Recurve');"
+    )
+    old.close()
+    db = open_db(path)
+
+    [legacy] = project.list_projects(db)
+    p = project.insert_project(db, "Vrummy", [], "App de aluguel de carros")
+    ws = project.insert_workspace(db, p.id, "back", "/dev/api", "folder", description="API")
+    project.update_project(db, legacy.id, description="Cobrança recorrente")
+    project.update_workspace(db, ws.id, description="API em Spring")
+
+    assert legacy.description == ""
+    assert project.get_project(db, legacy.id).description == "Cobrança recorrente"  # type: ignore[union-attr]
+    assert project.get_workspace(db, ws.id).description == "API em Spring"  # type: ignore[union-attr]
+    assert project.get_project(db, p.id).description == "App de aluguel de carros"  # type: ignore[union-attr]

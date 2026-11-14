@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { Folder, GitBranch, Plus } from '../../../components/icons'
 import { button, card, PageShell, primaryButton } from '../../../components/layout/PageShell'
 import { field } from '../../../lib/sessionForm'
+import { MAX_DESCRIPTION } from '../components/Description'
 import { ProjectMark } from '../components/ProjectMark'
 import { useProjectActions, useProjects, useSessionList } from '../hooks/useProjects'
 
@@ -55,6 +56,9 @@ export function ProjectsPage() {
                     <p className="truncate text-xs text-gray-500">
                       {p.aliases.length ? p.aliases.join(', ') : 'sem apelidos'}
                     </p>
+                    {p.description && (
+                      <p className="mt-1 line-clamp-2 text-xs text-gray-400">{p.description}</p>
+                    )}
                   </div>
                   {busy > 0 && (
                     <span className="flex items-center gap-1.5 rounded-full bg-emerald-400/10 px-2 py-0.5 text-[11px] text-emerald-300">
@@ -108,6 +112,7 @@ function CreateProject({ onDone, cancelable }: { onDone: () => void; cancelable:
   const { create } = useProjectActions()
   const [name, setName] = useState('')
   const [aliases, setAliases] = useState('')
+  const [description, setDescription] = useState('')
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -118,8 +123,9 @@ function CreateProject({ onDone, cancelable }: { onDone: () => void; cancelable:
           .split(',')
           .map((a) => a.trim())
           .filter(Boolean),
+        description: description.trim(),
       },
-      { onSuccess: () => (setName(''), setAliases(''), onDone()) },
+      { onSuccess: () => (setName(''), setAliases(''), setDescription(''), onDone()) },
     )
   }
 
@@ -149,6 +155,14 @@ function CreateProject({ onDone, cancelable }: { onDone: () => void; cancelable:
           value={aliases}
           onChange={(e) => setAliases(e.target.value)}
           className={field}
+        />
+        <input
+          aria-label="Descrição do projeto"
+          placeholder="descrição curta (opcional): do que o projeto trata"
+          value={description}
+          maxLength={MAX_DESCRIPTION}
+          onChange={(e) => setDescription(e.target.value)}
+          className={`${field} sm:col-span-2`}
         />
       </div>
       {create.error && <p className="text-xs text-red-300">{create.error.message}</p>}

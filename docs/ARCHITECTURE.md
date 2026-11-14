@@ -295,8 +295,8 @@ flowchart TD
 
 | Rota | Uso |
 |---|---|
-| `GET/POST /api/projects`, `GET/PATCH/DELETE /api/projects/{id}` | Projetos e workspaces |
-| `POST /api/projects/{id}/workspaces`, `POST /api/projects/{id}/worktrees`, `DELETE /api/workspaces/{id}?force=` | Pastas e worktrees |
+| `GET/POST /api/projects`, `GET/PATCH/DELETE /api/projects/{id}` | Projetos e ambientes |
+| `POST /api/projects/{id}/workspaces`, `POST /api/projects/{id}/worktrees`, `PATCH /api/workspaces/{id}`, `DELETE /api/workspaces/{id}?force=` | Pastas e worktrees (PATCH muda a descrição) |
 | `POST /api/alfred/clear` | Esquece a conversa do dia do Alfred (espera a resposta em andamento) |
 | `GET/POST /api/sessions`, `PATCH /api/sessions/{name}`, `POST …/clear`, `DELETE …` | Sessões |
 | `GET/PUT /api/settings` | Modelos e effort por tipo, limites, MCPs desligados |

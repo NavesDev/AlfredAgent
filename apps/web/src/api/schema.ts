@@ -159,7 +159,8 @@ export interface paths {
     delete: operations['delete_workspace_api_workspaces__id__delete']
     options?: never
     head?: never
-    patch?: never
+    /** Update Workspace */
+    patch: operations['update_workspace_api_workspaces__id__patch']
     trace?: never
   }
   '/api/settings': {
@@ -241,6 +242,11 @@ export interface components {
        * @default []
        */
       aliases: string[]
+      /**
+       * Description
+       * @default
+       */
+      description: string
     }
     /** NewSession */
     NewSession: {
@@ -266,6 +272,11 @@ export interface components {
       name: string
       /** Path */
       path: string
+      /**
+       * Description
+       * @default
+       */
+      description: string
     }
     /** NewWorktree */
     NewWorktree: {
@@ -273,6 +284,11 @@ export interface components {
       parent_id: number
       /** Name */
       name: string
+      /**
+       * Description
+       * @default
+       */
+      description: string
     }
     /** Project */
     Project: {
@@ -282,6 +298,11 @@ export interface components {
       name: string
       /** Aliases */
       aliases: string[]
+      /**
+       * Description
+       * @default
+       */
+      description: string
       /**
        * Workspaces
        * @default []
@@ -294,6 +315,8 @@ export interface components {
       name?: string | null
       /** Aliases */
       aliases?: string[] | null
+      /** Description */
+      description?: string | null
     }
     /** RateLimit */
     RateLimit: {
@@ -478,6 +501,16 @@ export interface components {
       parent_id?: number | null
       /** Branch */
       branch?: string | null
+      /**
+       * Description
+       * @default
+       */
+      description: string
+    }
+    /** WorkspaceChange */
+    WorkspaceChange: {
+      /** Description */
+      description: string
     }
   }
   responses: never
@@ -891,6 +924,41 @@ export interface operations {
           [name: string]: unknown
         }
         content?: never
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  update_workspace_api_workspaces__id__patch: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: number
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['WorkspaceChange']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Workspace']
+        }
       }
       /** @description Validation Error */
       422: {

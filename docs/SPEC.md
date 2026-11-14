@@ -48,8 +48,8 @@ Três entidades em SQLite: Projeto → Ambiente → Sessão. O projeto é só um
 
 | Entidade | Campos principais | Exemplo |
 |---|---|---|
-| Project | id, name, aliases[] | Recurve · aliases: "recurve", "billing" |
-| Ambiente (`workspace`) | id, project_id, name, path, kind (folder ou worktree), parent_id, branch | "back" · ~/dev/recurve-api · folder; "cancelamento" · ~/dev/recurve-api-wt/cancelamento · worktree de back |
+| Project | id, name, aliases[], description | Recurve · aliases: "recurve", "billing" · "SaaS de cobrança recorrente" |
+| Ambiente (`workspace`) | id, project_id, name, path, kind (folder ou worktree), parent_id, branch, description | "back" · ~/dev/recurve-api · folder · "API em Spring Boot"; "cancelamento" · ~/dev/recurve-api-wt/cancelamento · worktree de back |
 | Session | id, name, aliases, kind (geral ou implementacao), workspace_id, model, effort, claude_session_id | "backend" · implementacao · ambiente back · opus |
 | Task | id, project_id (opcional), title, status, priority, session_id (opcional), created_at | "Implementar reembolso" · Recurve · high · in_progress na sessão backend |
 
@@ -58,6 +58,7 @@ Regras:
 - Nome de sessão é único no sistema todo, pra você não precisar falar o projeto toda vez.
 - Apelidos existem porque o Whisper às vezes transcreve "backend" como "bequi end"; o match usa apelidos + fuzzy match (rapidfuzz, corte ~85%).
 - Nome em inglês num comando em português é o caso mais difícil. Três defesas, nesta ordem: o Whisper recebe os nomes atuais como `hotwords`; apelido de sessão ou projeto achado na transcrição vira o nome real; e o comando chega ao Alfred com uma linha "Nomes conhecidos" para ele escolher o nome mais parecido pelo som, ou perguntar.
+- Projeto e ambiente têm uma descrição curta opcional (até 200 caracteres), editável no painel e por voz. O Alfred lê as descrições ao listar projetos, para saber do que cada um trata e escolher o ambiente certo.
 - Um projeto pode ter vários ambientes (ex: um pro back e outro pro front). Cadastrar uma pasta não exige git.
 - Criar worktree roda `git worktree add <pai>-wt/<nome> -b <nome>` a partir do ambiente pai; remover roda `git worktree remove` e recusa se houver mudança não commitada (a menos que force). Remover ambiente de pasta comum só tira do cadastro.
 - Modelo e effort vêm da tela de configurações por tipo de agente; cada sessão pode sobrescrever.

@@ -51,6 +51,7 @@ ALLOWED = [
             "criar_worktree",
             "apagar_ambiente",
             "definir_apelidos",
+            "definir_descricao",
         )
     ),
 ]

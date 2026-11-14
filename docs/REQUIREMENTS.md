@@ -67,7 +67,8 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 | RF-32 | Ler o último resumo de uma sessão ("backend, o que você fez?") | F3 |
 | RF-33 | Interromper a execução de uma sessão ou de todas | F3 |
 | RF-34 | Cadastrar e listar projetos com apelidos | F4 |
-| RF-35 | Criar worktree (`git worktree add <path> -b <branch>`) e cadastrar o workspace; remover com `git worktree remove` | F4 |
+| RF-34a | Projeto e ambiente têm descrição curta, editável no painel e por voz; o Alfred a recebe ao listar projetos | F4 |
+| RF-35 | Criar worktree (`git worktree add <path> -b <branch>`) e cadastrar o ambiente; remover com `git worktree remove` | F4 |
 | RF-36 | "Nova sessão X no projeto Y, worktree Z" cria o worktree se não existir e a sessão | F4 |
 | RF-37 | Retomar sessões após reiniciar o assistente via `claude_session_id` (resume) | F4 |
 | RF-38 | Criar, listar, concluir e priorizar tarefas, com ou sem projeto | F4 |
@@ -127,7 +128,8 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 | RN-08 | Fechar sessão encerra a execução mas mantém o histórico |
 | RN-09 | E-mail é sempre lido resumido, nunca na íntegra |
 | RN-10 | Ler e-mail/agenda roda direto; escrever exige confirmação |
-| RN-11 | Workspace tem `kind` `folder` (qualquer pasta) ou `worktree` (com `parent_id` e `branch`) |
+| RN-11 | Ambiente tem `kind` `folder` (qualquer pasta) ou `worktree` (com `parent_id` e `branch`) |
+| RN-11a | Descrição de projeto e ambiente é opcional, com no máximo 200 caracteres |
 
 ## Fora de escopo no MVP
 
