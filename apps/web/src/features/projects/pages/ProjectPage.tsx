@@ -59,7 +59,8 @@ export function ProjectPage() {
                 </span>
               ))}
               <span className="py-0.5 text-gray-500">
-                {project.workspaces.length} workspaces · {mine.length} sessões
+                {project.workspaces.length}{' '}
+                {project.workspaces.length === 1 ? 'ambiente' : 'ambientes'} · {mine.length} sessões
               </span>
             </span>
           </span>
@@ -67,7 +68,7 @@ export function ProjectPage() {
       }
     >
       <section className="flex flex-col gap-2.5">
-        <h3 className="text-sm font-medium text-gray-200">Workspaces</h3>
+        <h3 className="text-sm font-medium text-gray-200">Ambientes</h3>
         <ul className="divide-y divide-white/5 rounded-xl border border-white/10 bg-white/[0.02]">
           {project.workspaces.map((w) => (
             <WorkspaceRow
@@ -79,7 +80,7 @@ export function ProjectPage() {
           ))}
           {project.workspaces.length === 0 && (
             <li className="px-4 py-3.5 text-xs text-gray-500">
-              Nenhum workspace. Adicione a pasta do repositório abaixo.
+              Nenhum ambiente. Adicione a pasta do repositório abaixo.
             </li>
           )}
           <li className="px-4 py-3.5">
@@ -138,7 +139,7 @@ export function ProjectPage() {
             <li className="px-4 py-3.5 text-xs text-gray-500">
               {project.workspaces.length
                 ? 'Nenhuma sessão ainda.'
-                : 'Crie um workspace antes de abrir sessões.'}
+                : 'Crie um ambiente antes de abrir sessões.'}
             </li>
           )}
         </ul>
@@ -148,7 +149,7 @@ export function ProjectPage() {
         <div className="flex-1">
           <p className="text-sm text-gray-100">Apagar projeto</p>
           <p className="text-xs text-gray-500">
-            Remove o projeto e seus workspaces do Alfred. As pastas no disco ficam.
+            Remove o projeto e seus ambientes do Alfred. As pastas no disco ficam.
           </p>
           {actions.remove.error && (
             <p className="mt-1 text-xs text-red-300">{actions.remove.error.message}</p>
@@ -226,7 +227,7 @@ function WorkspaceRow({
         )}
         <button
           onClick={onDelete}
-          aria-label={`Apagar workspace ${w.name}`}
+          aria-label={`Apagar ambiente ${w.name}`}
           className={
             confirm === 'no'
               ? 'grid size-7 place-items-center rounded-lg text-gray-500 opacity-60 transition group-hover:opacity-100 hover:bg-red-400/10 hover:text-red-300'
@@ -277,9 +278,9 @@ function AddWorkspace({ projectId, workspaces }: { projectId: number; workspaces
   return (
     <form onSubmit={submit} className="flex flex-col gap-2.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-gray-400">Adicionar workspace</p>
+        <p className="text-xs text-gray-400">Adicionar ambiente</p>
         <Segmented
-          label="Tipo de workspace"
+          label="Tipo de ambiente"
           value={mode}
           onChange={setMode}
           options={[
@@ -290,7 +291,7 @@ function AddWorkspace({ projectId, workspaces }: { projectId: number; workspaces
       </div>
       <div className="flex flex-wrap gap-2">
         <input
-          aria-label="Nome do workspace"
+          aria-label="Nome do ambiente"
           placeholder="nome (ex: back)"
           value={name}
           onChange={(e) => setName(e.target.value)}

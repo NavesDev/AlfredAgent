@@ -10,9 +10,9 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 |---|---|
 | Wake word | Palavra que ativa a escuta ("Alfred", apelido "Alfredo") |
 | Agente principal | Sessão fixa `alfred`: responde, pesquisa, coordena. Não edita código |
-| Sessão nomeada | Sessão do Claude Code presa a um workspace; o nome é o "endereço" do comando |
-| Projeto | Agrupador de workspaces e sessões (nome + apelidos) |
-| Workspace | Pasta de um projeto (com ou sem git) ou um `git worktree` criado a partir de outra |
+| Sessão nomeada | Sessão do Claude Code presa a um ambiente; o nome é o "endereço" do comando |
+| Projeto | Agrupador de ambientes e sessões (nome + apelidos) |
+| Ambiente | Pasta de um projeto (com ou sem git) ou um `git worktree` criado a partir de outra. No código, `workspace` |
 | Sessão em foco | Sessão que recebe comandos de código sem nome explícito |
 | Linha `RESUMO:` | Última linha de cada resposta, até 2 frases, a única lida em voz alta |
 | Turno contaminado | Turno em que o agente leu conteúdo externo (e-mail, web) |
@@ -78,7 +78,7 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 
 | ID | Requisito | Fase |
 |---|---|---|
-| RF-50 | Denylist sempre negada: `sudo`, `rm -rf` fora do worktree, escrita fora do workspace | F5 |
+| RF-50 | Denylist sempre negada: `sudo`, `rm -rf` fora do worktree, escrita fora do ambiente | F5 |
 | RF-51 | Ações sensíveis (push, apagar arquivo, instalar dependência, enviar e-mail, mexer na agenda) pedem confirmação | F5 |
 | RF-52 | Canal de confirmação configurável por ação: `voice`, `key`, `web`, `voice+key` | F5 |
 | RF-53 | Turno contaminado: qualquer ação com efeito colateral exige confirmação | F5 |

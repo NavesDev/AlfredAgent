@@ -61,12 +61,12 @@ export function NewSessionForm({ projects, projectId, pending, error, onSubmit, 
         />
       </div>
       <select
-        aria-label="Workspace"
+        aria-label="Ambiente"
         value={workspace ?? ''}
         onChange={(e) => setWorkspace(e.target.value ? Number(e.target.value) : null)}
         className={field}
       >
-        {!needsWorkspace && <option value="">sem workspace (home)</option>}
+        {!needsWorkspace && <option value="">sem ambiente (home)</option>}
         {scoped.map((p) => (
           <optgroup key={p.id} label={p.name}>
             {p.workspaces.map((w) => (

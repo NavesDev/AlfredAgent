@@ -10,7 +10,7 @@ import { useSettings } from '../hooks/useSettings'
 
 const KINDS: Record<string, { label: string; hint: string; icon: ReactNode }> = {
   alfred: { label: 'Alfred', hint: 'Agente principal, responde por voz', icon: <Sparkle /> },
-  geral: { label: 'Geral', hint: 'Sessões sem workspace', icon: <Terminal /> },
+  geral: { label: 'Geral', hint: 'Sessões sem ambiente', icon: <Terminal /> },
   implementacao: { label: 'Implementação', hint: 'Sessões que editam código', icon: <GitBranch /> },
 }
 

@@ -33,14 +33,14 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
         found = projects.find(project_name)
         ws = next((w for w in found.workspaces if w.name.lower() == name.strip().lower()), None)
         if ws is None:
-            raise ProjectError(f"O projeto {found.name} não tem o workspace {name}.")
+            raise ProjectError(f"O projeto {found.name} não tem o ambiente {name}.")
         return ws.id
 
     @sdk.tool(
         "criar_sessao",
         "Cria uma sessão nomeada que fica disponível para delegar tarefas. "
         f"Tipos: {', '.join(f'{k} ({v.label})' for k, v in KINDS.items())}. "
-        "Implementação precisa de 'projeto' e 'workspace'; geral aceita os dois opcionais "
+        "Implementação precisa de 'projeto' e 'ambiente'; geral aceita os dois opcionais "
         "(sem eles, roda na home). 'modelo' e 'effort' só quando o usuário pedir. "
         "'apelidos': jeitos de falar o nome que o reconhecimento de voz entende, úteis para "
         'nomes em inglês ("saite seils" para Site Sales).',
@@ -51,7 +51,7 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
                 "nome": {"type": "string"},
                 "apelidos": {"type": "array", "items": {"type": "string"}},
                 "projeto": {"type": "string"},
-                "workspace": {"type": "string"},
+                "ambiente": {"type": "string"},
                 "modelo": {"type": "string"},
                 "effort": {"type": "string", "enum": EFFORTS},
             },
@@ -61,8 +61,8 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
     async def criar_sessao(args: Result) -> Result:
         async def run() -> str:
             ws = None
-            if args.get("projeto") or args.get("workspace"):
-                ws = workspace_id(str(args.get("projeto", "")), str(args.get("workspace", "")))
+            if args.get("projeto") or args.get("ambiente"):
+                ws = workspace_id(str(args.get("projeto", "")), str(args.get("ambiente", "")))
             view = sessions.create(
                 str(args["tipo"]),
                 str(args["nome"]),
@@ -71,7 +71,7 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
                 args.get("effort"),
                 aliases=[str(a) for a in args.get("apelidos", [])],
             )
-            where = f"{view.project}, workspace {view.workspace}" if view.project else view.cwd
+            where = f"{view.project}, ambiente {view.workspace}" if view.project else view.cwd
             return f"Sessão {view.name} criada, tipo {view.label}, em {where}."
 
         return await _speak(run)
@@ -103,7 +103,7 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
 
     @sdk.tool(
         "listar_sessoes",
-        "Lista as sessões com tipo, projeto, workspace, status, tarefa atual e, quando a "
+        "Lista as sessões com tipo, projeto, ambiente, status, tarefa atual e, quando a "
         "última tarefa falhou, o motivo do erro.",
         {},
     )
@@ -123,7 +123,7 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
 
     @sdk.tool(
         "criar_projeto",
-        "Cadastra um projeto: um nome que agrupa workspaces (pastas) e sessões. "
+        "Cadastra um projeto: um nome que agrupa ambientes (pastas) e sessões. "
         "'apelidos' ajudam a reconhecer o nome falado.",
         {
             "type": "object",
@@ -141,7 +141,7 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
 
         return await _speak(run)
 
-    @sdk.tool("listar_projetos", "Lista os projetos com seus workspaces e sessões.", {})
+    @sdk.tool("listar_projetos", "Lista os projetos com seus ambientes e sessões.", {})
     async def listar_projetos(args: Result) -> Result:
         async def run() -> str:
             by_workspace: dict[tuple[str | None, str | None], list[str]] = {}
@@ -160,42 +160,42 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
                     )
                     for w in p.workspaces
                 ]
-                lines.append(f"{p.name}: " + ("; ".join(parts) or "sem workspaces"))
+                lines.append(f"{p.name}: " + ("; ".join(parts) or "sem ambientes"))
             return "\n".join(lines) or "Nenhum projeto cadastrado."
 
         return await _speak(run)
 
     @sdk.tool(
-        "criar_workspace",
-        "Cadastra uma pasta existente como workspace de um projeto (ex: back e front).",
+        "criar_ambiente",
+        "Cadastra uma pasta existente como ambiente de um projeto (ex: back e front).",
         {"projeto": str, "nome": str, "pasta": str},
     )
-    async def criar_workspace(args: Result) -> Result:
+    async def criar_ambiente(args: Result) -> Result:
         async def run() -> str:
             found = projects.find(str(args["projeto"]))
             ws = projects.add_workspace(found.id, str(args["nome"]), str(args["pasta"]))
-            return f"Workspace {ws.name} cadastrado no projeto {found.name}."
+            return f"Ambiente {ws.name} cadastrado no projeto {found.name}."
 
         return await _speak(run)
 
     @sdk.tool(
         "criar_worktree",
-        "Cria um git worktree a partir de um workspace do projeto, numa branch com o nome dado, "
-        "e cadastra como workspace novo.",
-        {"projeto": str, "workspace_pai": str, "nome": str},
+        "Cria um git worktree a partir de um ambiente do projeto, numa branch com o nome dado, "
+        "e cadastra como ambiente novo.",
+        {"projeto": str, "ambiente_pai": str, "nome": str},
     )
     async def criar_worktree(args: Result) -> Result:
         async def run() -> str:
             found = projects.find(str(args["projeto"]))
-            parent = workspace_id(found.name, str(args["workspace_pai"]))
+            parent = workspace_id(found.name, str(args["ambiente_pai"]))
             ws = await projects.add_worktree(found.id, parent, str(args["nome"]))
             return f"Worktree {ws.name} criado no projeto {found.name}, branch {ws.branch}."
 
         return await _speak(run)
 
     @sdk.tool(
-        "apagar_workspace",
-        "Tira um workspace do projeto. Pasta comum continua no disco; worktree é removido com "
+        "apagar_ambiente",
+        "Tira um ambiente do projeto. Pasta comum continua no disco; worktree é removido com "
         "git. Confirme com o usuário antes, e de novo antes de usar 'forcar' (perde mudanças "
         "não commitadas).",
         {
@@ -208,11 +208,11 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
             "required": ["projeto", "nome"],
         },
     )
-    async def apagar_workspace(args: Result) -> Result:
+    async def apagar_ambiente(args: Result) -> Result:
         async def run() -> str:
             ws = workspace_id(str(args["projeto"]), str(args["nome"]))
             await projects.delete_workspace(ws, force=bool(args.get("forcar")))
-            return f"Workspace {args['nome']} apagado."
+            return f"Ambiente {args['nome']} apagado."
 
         return await _speak(run)
 
@@ -253,7 +253,7 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
             "type": "object",
             "properties": {
                 "projeto": {"type": "string"},
-                "workspace": {"type": "string"},
+                "ambiente": {"type": "string"},
                 "descricao": {"type": "string"},
             },
             "required": ["projeto", "descricao"],
@@ -262,7 +262,7 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
     async def definir_descricao(args: Result) -> Result:
         async def run() -> str:
             text = str(args["descricao"])
-            if name := str(args.get("workspace") or "").strip():
+            if name := str(args.get("ambiente") or "").strip():
                 ws = projects.update_workspace(workspace_id(str(args["projeto"]), name), text)
                 return f"Descrição do ambiente {ws.name}: {ws.description or 'nenhuma'}."
             updated = projects.update(projects.find(str(args["projeto"])).id, description=text)
@@ -279,9 +279,9 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
         listar_sessoes,
         criar_projeto,
         listar_projetos,
-        criar_workspace,
+        criar_ambiente,
         criar_worktree,
-        apagar_workspace,
+        apagar_ambiente,
         definir_apelidos,
     ]
 

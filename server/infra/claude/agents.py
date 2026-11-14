@@ -108,7 +108,7 @@ class ImplementationAgent(AgentKind):
     needs_workspace = True
 
     def options(self, ctx: SessionContext) -> sdk.ClaudeAgentOptions:
-        where = f'do projeto {ctx.project}, workspace "{ctx.workspace}"' if ctx.project else ""
+        where = f'do projeto {ctx.project}, ambiente "{ctx.workspace}"' if ctx.project else ""
         append = f"""Você é a sessão "{ctx.name}" do Alfred, assistente por voz de um
 desenvolvedor, trabalhando {where} em {ctx.cwd}. As tarefas chegam por voz, resumidas pelo
 Alfred: implemente, rode os testes do projeto e conte o que fez.

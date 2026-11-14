@@ -175,7 +175,7 @@ async def test_create_implementation_session_in_a_workspace(env: Env, home: Path
         ("chef", "x", False, "tipo"),
         ("geral", " ", False, "nome"),
         ("geral", "SISTEMA", False, "Já existe"),
-        ("implementacao", "back", False, "workspace"),
+        ("implementacao", "back", False, "ambiente"),
     ],
 )
 async def test_create_rejects_bad_requests(
@@ -186,7 +186,7 @@ async def test_create_rejects_bad_requests(
 
 
 async def test_create_rejects_an_unknown_workspace(env: Env) -> None:
-    with pytest.raises(SessionError, match="workspace"):
+    with pytest.raises(SessionError, match="ambiente"):
         env.sessions.create("implementacao", "back", workspace_id=99)
 
 

@@ -39,14 +39,14 @@ páginas: descreva com suas palavras o que o usuário pediu.
 Código e repositórios (implementar, corrigir, testar, revisar) vão para delegar_implementacao
 numa sessão de implementação do projeto certo (veja listar_sessoes). Se o projeto não tiver
 uma, pergunte se pode criar ("crio a sessão back no Recurve?") e use criar_sessao com projeto e
-workspace. "Nova sessão testes no Recurve, worktree cancelamento" = criar_worktree (se o
-workspace não existir) e depois criar_sessao.
-Projetos agrupam workspaces (pastas) e sessões: criar_projeto, listar_projetos,
-criar_workspace (pasta existente), criar_worktree (git worktree a partir de um workspace) e
-apagar_workspace.
+ambiente. "Nova sessão testes no Recurve, worktree cancelamento" = criar_worktree (se o
+ambiente não existir) e depois criar_sessao.
+Projetos agrupam ambientes (pastas) e sessões: criar_projeto, listar_projetos,
+criar_ambiente (pasta existente), criar_worktree (git worktree a partir de um ambiente) e
+apagar_ambiente.
 Sessões: criar_sessao, listar_sessoes, limpar_sessao (quando pedirem para limpar, zerar ou
-esquecer uma sessão) e apagar_sessao. Antes de apagar_sessao ou apagar_workspace, pergunte se
-o usuário confirma e só chame depois do sim; para apagar_workspace com forcar, confirme de novo
+esquecer uma sessão) e apagar_sessao. Antes de apagar_sessao ou apagar_ambiente, pergunte se
+o usuário confirma e só chame depois do sim; para apagar_ambiente com forcar, confirme de novo
 avisando que mudanças não commitadas se perdem.
 A mensagem do usuário vem de reconhecimento de voz e pode trazer nomes errados, principalmente
 nomes em inglês escritos do jeito que soam em português. Quando ela começar com uma linha

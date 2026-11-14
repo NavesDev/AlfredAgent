@@ -44,9 +44,9 @@ def test_every_tool_is_allowed_without_asking(tools: Tools) -> None:
         "listar_sessoes",
         "criar_projeto",
         "listar_projetos",
-        "criar_workspace",
+        "criar_ambiente",
         "criar_worktree",
-        "apagar_workspace",
+        "apagar_ambiente",
         "definir_apelidos",
     }
     assert {f"mcp__{SERVER}__{n}" for n in names} <= set(permissions.ALLOWED)
@@ -64,7 +64,7 @@ async def test_errors_become_spoken_messages(tools: Tools) -> None:
     with pytest.raises(SessionNotFound):
         tools.env.sessions.delegate("backend", "a")
     assert "Não existe projeto" in await tools.call(
-        "criar_workspace", {"projeto": "nada", "nome": "x", "pasta": "/"}
+        "criar_ambiente", {"projeto": "nada", "nome": "x", "pasta": "/"}
     )
 
 
@@ -113,10 +113,10 @@ async def test_project_workspace_worktree_and_implementation_session(tools: Tool
 
     project = await tools.call("criar_projeto", {"nome": "Recurve", "apelidos": ["billing"]})
     workspace = await tools.call(
-        "criar_workspace", {"projeto": "billing", "nome": "back", "pasta": str(tools.home / "api")}
+        "criar_ambiente", {"projeto": "billing", "nome": "back", "pasta": str(tools.home / "api")}
     )
     worktree = await tools.call(
-        "criar_worktree", {"projeto": "Recurve", "workspace_pai": "back", "nome": "cancel"}
+        "criar_worktree", {"projeto": "Recurve", "ambiente_pai": "back", "nome": "cancel"}
     )
     session = await tools.call(
         "criar_sessao",
@@ -124,7 +124,7 @@ async def test_project_workspace_worktree_and_implementation_session(tools: Tool
             "tipo": "implementacao",
             "nome": "back",
             "projeto": "Recurve",
-            "workspace": "cancel",
+            "ambiente": "cancel",
             "modelo": "opus",
             "effort": "high",
         },
@@ -154,20 +154,20 @@ async def test_session_with_an_unknown_workspace_is_refused(tools: Tools) -> Non
 
     text = await tools.call(
         "criar_sessao",
-        {"tipo": "implementacao", "nome": "back", "projeto": "Recurve", "workspace": "nada"},
+        {"tipo": "implementacao", "nome": "back", "projeto": "Recurve", "ambiente": "nada"},
     )
 
-    assert "workspace nada" in text
+    assert "ambiente nada" in text
 
 
 async def test_delete_workspace(tools: Tools) -> None:
     (tools.home / "api").mkdir()
     await tools.call("criar_projeto", {"nome": "Recurve"})
     await tools.call(
-        "criar_workspace", {"projeto": "Recurve", "nome": "back", "pasta": str(tools.home / "api")}
+        "criar_ambiente", {"projeto": "Recurve", "nome": "back", "pasta": str(tools.home / "api")}
     )
 
-    text = await tools.call("apagar_workspace", {"projeto": "Recurve", "nome": "back"})
+    text = await tools.call("apagar_ambiente", {"projeto": "Recurve", "nome": "back"})
 
     assert "apagado" in text
     assert tools.projects.find("Recurve").workspaces == []
@@ -199,9 +199,9 @@ def test_activity_labels() -> None:
     assert describe_tool("mcp__alfred__criar_sessao") == "Criando uma sessão"
     assert describe_tool("mcp__alfred__criar_projeto") == "Criando um projeto"
     assert describe_tool("mcp__alfred__listar_projetos") == "Vendo os projetos"
-    assert describe_tool("mcp__alfred__criar_workspace") == "Criando um workspace"
+    assert describe_tool("mcp__alfred__criar_ambiente") == "Criando um ambiente"
     assert describe_tool("mcp__alfred__criar_worktree") == "Criando um worktree"
-    assert describe_tool("mcp__alfred__apagar_workspace") == "Apagando um workspace"
+    assert describe_tool("mcp__alfred__apagar_ambiente") == "Apagando um ambiente"
 
 
 def test_server_is_named_alfred(tools: Tools) -> None:

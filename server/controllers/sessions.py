@@ -111,9 +111,9 @@ class Sessions:
             raise SessionError(f"Já existe uma sessão chamada {name}: {owner}.")
         aliases = self._check_aliases(name, aliases or [])
         if workspace_id is None and KINDS[kind].needs_workspace:
-            raise SessionError(f"Uma sessão de {KINDS[kind].label} precisa de um workspace.")
+            raise SessionError(f"Uma sessão de {KINDS[kind].label} precisa de um ambiente.")
         if workspace_id is not None and project.get_workspace(self._db, workspace_id) is None:
-            raise SessionError("Esse workspace não existe.")
+            raise SessionError("Esse ambiente não existe.")
         _check_effort(effort)
         record = records.insert_session(
             self._db, name, kind, workspace_id, model or None, effort or None, aliases=aliases

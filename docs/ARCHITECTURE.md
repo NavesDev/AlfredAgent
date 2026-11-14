@@ -170,8 +170,8 @@ Sessão ocupada não recebe dois prompts ao mesmo tempo: cada sessão tem uma fi
 
 ### Sessões nomeadas
 
-- Uma instância do Agent SDK por sessão, com `cwd` = path do workspace (ou a home, para `geral` sem workspace).
-- Tipos: `geral` (shell e arquivos, isolada) e `implementacao` (harness completo do Claude Code, preso a um workspace; [ADR 0008](adr/0008-implementation-agent-full-harness.md)). Modelo e effort vêm de `agent_settings`, com override por sessão.
+- Uma instância do Agent SDK por sessão, com `cwd` = path do ambiente (ou a home, para `geral` sem ambiente).
+- Tipos: `geral` (shell e arquivos, isolada) e `implementacao` (harness completo do Claude Code, preso a um ambiente; [ADR 0008](adr/0008-implementation-agent-full-harness.md)). Modelo e effort vêm de `agent_settings`, com override por sessão.
 - Subagentes nativos (`TaskStarted/Progress/NotificationMessage`) viram eventos `subagent_*`; as mensagens com `parent_tool_use_id` não contam como atividade da sessão.
 - A fase (`exploring`, `editing`, `running`) vem do nome da tool (`activity.phase_of`).
 - Auto mode do Claude Code + gate `canUseTool` do `permissions.py`.
@@ -241,7 +241,7 @@ Tabelas auxiliares previstas: `audit_log` (toda tool call), `confirmation` (pedi
 | `session_cleared` | snapshot da sessão | ws |
 | `session_deleted` | nome | ws |
 | `subagent_started` / `_progress` / `_finished` | sessão, id, tipo, descrição, última tool, status | ws |
-| `project_created` / `_updated` / `_deleted` | projeto com workspaces (ou id) | ws |
+| `project_created` / `_updated` / `_deleted` | projeto com ambientes (ou id) | ws |
 | `settings_updated` | configurações | ws |
 | `mcp_servers_seen` | sessão, nomes dos MCPs carregados | settings (sugestões da tela) |
 | `task_updated` | tarefa | ws |
@@ -285,7 +285,7 @@ flowchart TD
     no --> audit
 ```
 
-- **Denylist:** `sudo`, `rm -rf` fora do worktree, escrita fora do workspace.
+- **Denylist:** `sudo`, `rm -rf` fora do worktree, escrita fora do ambiente.
 - **Sensíveis:** push, apagar arquivo, instalar dependência, enviar e-mail, mexer na agenda.
 - **Turno contaminado:** se o turno leu e-mail ou web, qualquer efeito colateral exige confirmação (defesa contra prompt injection).
 - **Canais:** `voice`, `key`, `web`, `voice+key`, configuráveis por ação. Um "pode" falado não prova que foi você, por isso ações críticas usam `key`.

@@ -34,8 +34,7 @@ export function ProjectsPage() {
 
       {!loading && projects.length === 0 && (
         <p className="text-center text-sm text-gray-500">
-          Um projeto agrupa pastas (workspaces) e sessões. Por voz: “Alfred, cria o projeto
-          Recurve”.
+          Um projeto agrupa ambientes (pastas) e sessões. Por voz: “Alfred, cria o projeto Recurve”.
         </p>
       )}
 
@@ -84,11 +83,13 @@ export function ProjectsPage() {
                     </span>
                   )}
                   {p.workspaces.length === 0 && (
-                    <span className="text-[11px] text-gray-600">nenhum workspace</span>
+                    <span className="text-[11px] text-gray-600">nenhum ambiente</span>
                   )}
                 </div>
                 <div className="mt-auto flex items-center gap-3 border-t border-white/5 pt-3 text-xs text-gray-500">
-                  <span>{p.workspaces.length} workspaces</span>
+                  <span>
+                    {p.workspaces.length} {p.workspaces.length === 1 ? 'ambiente' : 'ambientes'}
+                  </span>
                   <span>{mine.length} sessões</span>
                   <span className="ml-auto text-gray-600 transition group-hover:translate-x-0.5 group-hover:text-gray-300">
                     →

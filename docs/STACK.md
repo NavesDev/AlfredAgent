@@ -36,7 +36,7 @@ Tecnologias do Alfred e o motivo de cada escolha. Mudanças relevantes viram um 
 
 **Threads para áudio.** Captura, STT e TTS são CPU/GPU-bound ou bloqueantes. Rodam em threads próprias e conversam com o loop via `asyncio.Queue` / `loop.call_soon_threadsafe`, para não travar os agentes.
 
-**Claude Agent SDK.** Dá sessões com resume, `canUseTool` para o gate de permissões, auto mode, WebSearch/WebFetch e servidores MCP (externos e in-process). Cada sessão nomeada é uma instância do SDK com `cwd` no workspace.
+**Claude Agent SDK.** Dá sessões com resume, `canUseTool` para o gate de permissões, auto mode, WebSearch/WebFetch e servidores MCP (externos e in-process). Cada sessão nomeada é uma instância do SDK com `cwd` no ambiente.
 
 **SQLite.** Um usuário, uma máquina, poucas escritas. Sem servidor de banco para manter. Acesso via `sqlite3`/`aiosqlite` direto ou SQLModel — decisão na fase 3.
 
