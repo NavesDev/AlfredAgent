@@ -458,5 +458,5 @@ async def test_settings_change_reopens_with_the_new_model_and_same_conversation(
 def test_prompt_routes_code_to_implementation_sessions() -> None:
     from infra.claude.alfred import SYSTEM_PROMPT
 
-    for name in ("delegar_implementacao", "criar_projeto", "criar_worktree", "apagar_workspace"):
+    for name in ("delegar_implementacao", "criar_projeto", "criar_worktree", "apagar_ambiente"):
         assert name in SYSTEM_PROMPT

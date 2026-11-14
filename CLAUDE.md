@@ -8,6 +8,7 @@ Alfred: voice assistant (Python server) that routes spoken commands to a main ag
 - `docs/REQUIREMENTS.md` — RF/RNF/RN ids, roadmap, open questions
 - `docs/ARCHITECTURE.md` — layers, data model, events, permissions
 - `CONTRIBUTING.md` — conventions
+- `docs/DESIGN.md` — visual direction of the web panel
 
 ## Rules
 

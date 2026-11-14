@@ -16,6 +16,10 @@ import claude_agent_sdk as sdk
 # default turns those into a failed task ("JSON message exceeded maximum buffer size").
 MAX_BUFFER = 64 * 1024 * 1024
 
+# The CLI echoes each prompt it starts a turn with, so a session can tell its task's turn from
+# one a background job's notification started (infra/claude/session.py).
+REPLAY_PROMPTS: dict[str, str | None] = {"replay-user-messages": None}
+
 # (session name, task) -> what Alfred says
 Delegate = Callable[[str, str], str]
 
@@ -74,6 +78,7 @@ a tarefa não peça explicitamente.
             setting_sources=[],  # no user hooks, plugins or permission rules
             cwd=ctx.cwd,
             max_buffer_size=MAX_BUFFER,
+            extra_args=dict(REPLAY_PROMPTS),
         )
 
     def delegate_tool(self, delegate: Delegate) -> sdk.SdkMcpTool[Any]:
@@ -103,7 +108,7 @@ class ImplementationAgent(AgentKind):
     needs_workspace = True
 
     def options(self, ctx: SessionContext) -> sdk.ClaudeAgentOptions:
-        where = f'do projeto {ctx.project}, workspace "{ctx.workspace}"' if ctx.project else ""
+        where = f'do projeto {ctx.project}, ambiente "{ctx.workspace}"' if ctx.project else ""
         append = f"""Você é a sessão "{ctx.name}" do Alfred, assistente por voz de um
 desenvolvedor, trabalhando {where} em {ctx.cwd}. As tarefas chegam por voz, resumidas pelo
 Alfred: implemente, rode os testes do projeto e conte o que fez.
@@ -120,6 +125,7 @@ Use MCPs externos (e-mail, agenda, navegador) só quando a tarefa pedir isso exp
             disallowed_tools=[f"mcp__{name}" for name in ctx.mcp_disabled],
             cwd=ctx.cwd,
             max_buffer_size=MAX_BUFFER,
+            extra_args=dict(REPLAY_PROMPTS),
         )
 
     def delegate_tool(self, delegate: Delegate) -> sdk.SdkMcpTool[Any]:

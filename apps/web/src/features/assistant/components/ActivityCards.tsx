@@ -61,25 +61,23 @@ export function ActivityCards({ items: live }: { items: Activity[] }) {
             className="absolute top-1 left-1/2 -ml-[92px] w-[184px] transition-[transform,opacity] duration-600 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
           >
             <div
-              className={`animate-card-in rounded-xl border bg-[#0c1120]/90 p-1.5 text-[11px] backdrop-blur ${
-                current ? 'border-amber-300/40' : 'border-white/10'
-              }`}
+              className={`animate-card-in glass rounded-2xl p-1.5 text-[11px] ${current ? '' : 'opacity-90'}`}
             >
-              <div className="rounded-lg bg-[#0a0e1a] px-2 py-1">
+              <div className="rounded-xl bg-well px-2 py-1">
                 <ActivityScene action={item.action} still={!current} className="h-[72px] w-full" />
               </div>
               <p
                 className={`mt-1.5 flex items-center gap-1 truncate px-0.5 ${
-                  current ? 'text-amber-200' : 'text-gray-400'
+                  current ? 'text-ink' : 'text-ink-2'
                 }`}
               >
                 <span className="truncate">
                   {item.label}
                   {current && '…'}
                 </span>
-                {!current && <span className="ml-auto text-gray-500">✓</span>}
+                {!current && <span className="ml-auto text-ink-3">✓</span>}
               </p>
-              <p className="min-h-4 truncate px-0.5 font-mono text-gray-500">{item.detail}</p>
+              <p className="min-h-4 truncate px-0.5 font-mono text-ink-3">{item.detail}</p>
             </div>
           </div>
         )

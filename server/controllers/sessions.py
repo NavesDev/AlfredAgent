@@ -6,11 +6,12 @@ idle sessions give theirs up after idle_minutes, or sooner when another session 
 """
 
 import asyncio
+import builtins
 import contextlib
 import logging
 import sqlite3
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
@@ -42,11 +43,14 @@ class Session(Protocol):
 
 
 class Speaker(Protocol):
-    def say(self, text: str) -> None: ...
+    def notify(self, text: str) -> None: ...
 
 
 # (kind, context read on every connect) -> a session that connects on its first task
 SessionFactory = Callable[[AgentKind, Callable[[], SessionContext]], Session]
+
+# (session id, name) -> portrait URL, or None while there is none (controllers/portraits.py)
+PortraitUrl = Callable[[int, str], str | None]
 
 
 @dataclass
@@ -79,9 +83,11 @@ class Sessions:
         factory: SessionFactory,
         home: Path,
         clock: Callable[[], float] = time.monotonic,
+        portrait: PortraitUrl = lambda _id, _name: None,
     ) -> None:
         self._bus, self._talker, self._db = bus, talker, db
         self._settings, self._factory, self._home, self._clock = settings, factory, home, clock
+        self._portrait = portrait
         self._slots: dict[str, Slot] = {}
         self._waiters: list[asyncio.Future[None]] = []
 
@@ -99,23 +105,33 @@ class Sessions:
         workspace_id: int | None = None,
         model: str | None = None,
         effort: str | None = None,
+        aliases: list[str] | None = None,
     ) -> SessionView:
         name = name.strip()
         if kind not in KINDS:
             raise SessionError(f"Não conheço o tipo {kind}. Tipos: {', '.join(KINDS)}.")
         if not name:
             raise SessionError("A sessão precisa de um nome.")
-        if name.lower() in self._slots:
-            raise SessionError(f"Já existe uma sessão chamada {name}.")
+        if (owner := self._owner(name)) is not None:
+            raise SessionError(f"Já existe uma sessão chamada {name}: {owner}.")
+        aliases = self._check_aliases(name, aliases or [])
         if workspace_id is None and KINDS[kind].needs_workspace:
-            raise SessionError(f"Uma sessão de {KINDS[kind].label} precisa de um workspace.")
+            raise SessionError(f"Uma sessão de {KINDS[kind].label} precisa de um ambiente.")
         if workspace_id is not None and project.get_workspace(self._db, workspace_id) is None:
-            raise SessionError("Esse workspace não existe.")
+            raise SessionError("Esse ambiente não existe.")
         _check_effort(effort)
         record = records.insert_session(
-            self._db, name, kind, workspace_id, model or None, effort or None
+            self._db, name, kind, workspace_id, model or None, effort or None, aliases=aliases
         )
         return self._register(record)
+
+    def set_aliases(self, name: str, aliases: list[str]) -> SessionView:
+        """Replaces the spoken alternatives for a session's name."""
+        slot = self._get(name)
+        clean = self._check_aliases(slot.session.name, aliases)
+        records.update_session(self._db, slot.session.name, aliases=clean)
+        self._publish_status(slot)
+        return self._view(slot)
 
     def update(self, name: str, model: str | None = None, effort: str | None = None) -> SessionView:
         """Overrides the kind's model or effort; an empty string goes back to the kind's."""
@@ -166,12 +182,15 @@ class Sessions:
         return [self._view(slot) for slot in self._slots.values()]
 
     async def run(self) -> None:
-        """Keeps each busy session's activity, phase and subagents from the bus."""
+        """Keeps each busy session's activity, phase and subagents from the bus, and shows new
+        portraits."""
         queue = self._bus.subscribe()
         try:
             while True:
                 event = await queue.get()
                 slot = self._slots.get(str(event.get("session", "")).lower())
+                if slot is not None and event["type"] == "portrait_updated":
+                    self._publish_status(slot)
                 if slot is None or slot.status != "busy":
                     continue
                 if self._apply(slot, event):
@@ -288,7 +307,7 @@ class Sessions:
             log.warning("session %s failed: %s", name, e)
             slot.status, slot.last_error = "error", str(e)
             self._bus.publish("error", where=name, message=str(e))
-            self._talker.say(
+            self._talker.notify(
                 f"A sessão {name} não conseguiu terminar a tarefa. O motivo está no painel."
             )
         else:
@@ -299,7 +318,8 @@ class Sessions:
             slot.context = reply.context or slot.context
             if reply.session_id:
                 records.update_session(self._db, name, claude_session_id=reply.session_id)
-            self._talker.say(reply.summary or f"A sessão {name} terminou.")
+            done = f"{name} terminou"
+            self._talker.notify(f"{done}: {reply.summary}" if reply.summary else f"{done}.")
         slot.task, slot.activity, slot.phase = None, None, None
         slot.last_used = self._clock()
         self._publish_status(slot)
@@ -336,10 +356,27 @@ class Sessions:
         self._wake()
 
     def _get(self, name: str) -> Slot:
-        slot = self._slots.get(name.strip().lower())
-        if slot is None:
+        owner = self._owner(name)
+        if owner is None:
             raise SessionNotFound(f"Não existe sessão chamada {name}.")
-        return slot
+        return self._slots[owner.lower()]
+
+    def _owner(self, spoken: str, skip: str = "") -> str | None:
+        """The session whose name or alias is `spoken`, ignoring case; `skip` is left out."""
+        wanted = spoken.strip().lower()
+        for record in records.list_sessions(self._db):
+            if record.name.lower() == skip.lower():
+                continue
+            if wanted in (n.lower() for n in [record.name, *record.aliases]):
+                return record.name
+        return None
+
+    def _check_aliases(self, name: str, aliases: Iterable[str]) -> builtins.list[str]:
+        clean = [a.strip() for a in aliases if a.strip()]
+        for alias in clean:
+            if (owner := self._owner(alias, skip=name)) is not None:
+                raise SessionError(f"O apelido {alias} já é da sessão {owner}.")
+        return clean
 
     def _publish_status(self, slot: Slot) -> None:
         self._bus.publish("session_status", session=self._view(slot).model_dump())
@@ -352,6 +389,7 @@ class Sessions:
         model, effort = self._settings.resolve(record.kind, record.model, record.effort)
         return SessionView(
             name=s.name,
+            aliases=record.aliases,
             kind=s.kind.kind,
             label=s.kind.label,
             model=model,
@@ -375,6 +413,7 @@ class Sessions:
             last_error=slot.last_error,
             protected=slot.protected,
             subagents=list(slot.subagents.values()),
+            portrait=self._portrait(record.id, record.name),
         )
 
 

@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 
+from controllers.portraits import Portraits
 from controllers.sessions import Sessions
 from controllers.settings import Settings, SettingsUpdate
 from errors import AgentError, SessionError, SessionNotFound, SessionProtected
@@ -17,6 +18,7 @@ from models import session as records
 from models import settings as model
 from models.db import open_db
 from tests.conftest import drain
+from tests.test_portraits import FakePaint
 
 DEFAULTS = model.Defaults(
     models={"alfred": "sonnet", "geral": "sonnet", "implementacao": "opus"},
@@ -61,7 +63,7 @@ class FakeTalker:
     def __init__(self) -> None:
         self.said: list[str] = []
 
-    def say(self, text: str) -> None:
+    def notify(self, text: str) -> None:
         self.said.append(text)
 
 
@@ -81,8 +83,16 @@ class Env:
         self.settings.update(SettingsUpdate(max_active_sessions=max_active))
         self.talker, self.clock = FakeTalker(), Clock()
         self.made: dict[str, FakeSession] = {}
+        self.portraits = Portraits(self.db, bus, self.settings, home / ".portraits", FakePaint())
         self.sessions = Sessions(
-            bus, self.talker, self.db, self.settings, self.factory, home, clock=self.clock
+            bus,
+            self.talker,
+            self.db,
+            self.settings,
+            self.factory,
+            home,
+            clock=self.clock,
+            portrait=self.portraits.url,
         )
         self.sessions.load()
 
@@ -175,7 +185,7 @@ async def test_create_implementation_session_in_a_workspace(env: Env, home: Path
         ("chef", "x", False, "tipo"),
         ("geral", " ", False, "nome"),
         ("geral", "SISTEMA", False, "Já existe"),
-        ("implementacao", "back", False, "workspace"),
+        ("implementacao", "back", False, "ambiente"),
     ],
 )
 async def test_create_rejects_bad_requests(
@@ -186,7 +196,7 @@ async def test_create_rejects_bad_requests(
 
 
 async def test_create_rejects_an_unknown_workspace(env: Env) -> None:
-    with pytest.raises(SessionError, match="workspace"):
+    with pytest.raises(SessionError, match="ambiente"):
         env.sessions.create("implementacao", "back", workspace_id=99)
 
 
@@ -208,6 +218,30 @@ async def test_update_overrides_model_and_effort(env: Env) -> None:
     assert env.sessions.update("downloads", model="").model == "sonnet"
 
 
+async def test_aliases_are_cleaned_listed_and_find_the_session(env: Env) -> None:
+    env.sessions.create("geral", "Site Sales", aliases=[" saite seils ", "", "vendas"])
+
+    assert env.sessions.list()[1].aliases == ["saite seils", "vendas"]
+    assert "Site Sales" in env.sessions.delegate("Saite Seils", "a")
+
+    view = env.sessions.set_aliases("site sales", ["seils"])
+
+    assert view.aliases == ["seils"]
+    with pytest.raises(SessionNotFound):
+        env.sessions.delegate("vendas", "b")
+
+
+async def test_an_alias_cannot_be_another_sessions_name_or_alias(env: Env) -> None:
+    env.sessions.create("geral", "Developer", aliases=["dev"])
+
+    with pytest.raises(SessionError, match="Developer"):
+        env.sessions.create("geral", "Design", aliases=["Dev"])
+    with pytest.raises(SessionError, match="sistema"):
+        env.sessions.set_aliases("Developer", ["Sistema"])
+    with pytest.raises(SessionError, match="Developer"):
+        env.sessions.create("geral", "dev")
+
+
 async def test_update_rejects_a_bad_effort(env: Env) -> None:
     with pytest.raises(SessionError, match="Effort"):
         env.sessions.update("sistema", effort="turbo")
@@ -225,7 +259,7 @@ async def test_delegate_runs_the_task_speaks_and_saves_the_conversation(env: Env
 
     assert "sistema" in message and "fila" not in message
     assert session.tasks == ["gira a tela"]
-    assert env.talker.said == ["Tela girada."]
+    assert env.talker.said == ["sistema terminou: Tela girada."]
     [view] = env.sessions.list()
     assert (view.tasks_done, view.tokens, view.last_summary) == (1, 500, "Tela girada.")
     assert view.connected
@@ -408,7 +442,7 @@ async def test_clear_cancels_the_task_drops_the_queue_and_forgets(env: Env) -> N
     assert records.get_session(env.db, "sistema").claude_session_id is None  # type: ignore[union-attr]
     assert session.tasks == ["a", "b"]
     assert of_type(drain(queue), "session_cleared")
-    assert env.talker.said == ["a"]
+    assert env.talker.said == ["sistema terminou: a"]
 
 
 async def test_delete_removes_and_protects_sistema(env: Env) -> None:
@@ -484,3 +518,21 @@ async def test_a_new_task_resets_phase_and_subagents(env: Env) -> None:
 
     view = env.sessions.list()[0]
     assert (view.phase, view.subagents) == (None, [])
+
+
+# --- portraits -------------------------------------------------------------------------------
+
+
+async def test_a_new_portrait_republishes_the_session_with_its_url(env: Env, bus: EventBus) -> None:
+    assert env.sessions.list()[0].portrait is None
+    queue = bus.subscribe()
+    task = asyncio.create_task(env.sessions.run())
+    env.portraits.request("sistema")
+    worker = asyncio.create_task(env.portraits.run())
+    for _ in range(10):
+        await asyncio.sleep(0.01)
+    task.cancel()
+    worker.cancel()
+
+    [status] = [e for e in of_type(drain(queue), "session_status")]
+    assert status["session"]["portrait"].startswith("/api/sessions/sistema/portrait?v=")

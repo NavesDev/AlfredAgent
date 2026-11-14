@@ -17,14 +17,14 @@ export function UsagePill() {
   const now = useNow()
   const limit = usage ? headline(usage.limits) : null
   const base =
-    'flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1 text-[11px] whitespace-nowrap hover:bg-white/5'
+    'flex items-center gap-1.5 rounded-full px-3 py-2 text-[11.5px] whitespace-nowrap hover:bg-fill'
 
   if (!limit) {
     return (
       <Link
         to="/settings#uso"
         title="Os limites aparecem depois que o Alfred ou uma sessão trabalhar"
-        className={`${base} text-gray-500`}
+        className={`${base} text-ink-3`}
       >
         limites —
       </Link>

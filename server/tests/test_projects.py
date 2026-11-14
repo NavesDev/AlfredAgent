@@ -183,3 +183,37 @@ async def test_worktree_of_a_worktree_blocks_deleting_the_parent(env: Env, tmp_p
 
     with pytest.raises(ProjectInUse, match="cancel"):
         await projects.delete_workspace(back.id)
+
+
+async def test_projects_and_workspaces_carry_a_short_description(env: Env, tmp_path: Path) -> None:
+    (tmp_path / "api").mkdir()
+    projects = make(env)
+
+    p = projects.create("Recurve", [], "  Cobrança recorrente ")
+    ws = projects.add_workspace(p.id, "back", str(tmp_path / "api"), "API")
+    wt = await projects.add_worktree(p.id, ws.id, "cancel", "Fluxo de cancelamento")
+    changed = projects.update_workspace(ws.id, description="API em Spring")
+    renamed = projects.update(p.id, description="")
+
+    assert p.description == "Cobrança recorrente"
+    assert wt.description == "Fluxo de cancelamento"
+    assert changed.description == "API em Spring"
+    assert renamed.description == ""
+    assert [w.description for w in projects.get(p.id).workspaces] == [
+        "API em Spring",
+        "Fluxo de cancelamento",
+    ]
+
+
+async def test_descriptions_longer_than_200_chars_are_refused(env: Env, tmp_path: Path) -> None:
+    (tmp_path / "api").mkdir()
+    projects = make(env)
+    p = projects.create("Recurve", [])
+    ws = projects.add_workspace(p.id, "back", str(tmp_path / "api"))
+
+    with pytest.raises(ProjectError, match="200"):
+        projects.create("Vrummy", [], "x" * 201)
+    with pytest.raises(ProjectError, match="200"):
+        projects.update_workspace(ws.id, description="x" * 201)
+    with pytest.raises(ProjectNotFound):
+        projects.update_workspace(99, description="nada")

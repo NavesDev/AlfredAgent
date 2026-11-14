@@ -1,5 +1,6 @@
 """Named sessions: the stored record, and what the panel and Alfred see of one."""
 
+import json
 import sqlite3
 from typing import Any, Literal
 
@@ -11,6 +12,7 @@ Status = Literal["idle", "busy", "error"]
 class SessionRecord(BaseModel):
     id: int
     name: str
+    aliases: list[str] = []
     kind: str
     workspace_id: int | None = None
     model: str | None = None
@@ -33,6 +35,7 @@ class SubagentView(BaseModel):
 
 class SessionView(BaseModel):
     name: str
+    aliases: list[str]  # spoken alternatives, for names Whisper gets wrong
     kind: str
     label: str
     model: str
@@ -56,10 +59,12 @@ class SessionView(BaseModel):
     last_error: str | None  # why the last task failed, until the next one starts
     protected: bool
     subagents: list[SubagentView]
+    portrait: str | None  # generated portrait URL; the panel shows a monogram until then
 
 
 def _record(row: sqlite3.Row) -> SessionRecord:
-    return SessionRecord(**{k: row[k] for k in SessionRecord.model_fields})
+    fields = {k: row[k] for k in SessionRecord.model_fields}
+    return SessionRecord(**{**fields, "aliases": json.loads(fields["aliases"])})
 
 
 def insert_session(
@@ -70,15 +75,18 @@ def insert_session(
     model: str | None = None,
     effort: str | None = None,
     protected: bool = False,
+    aliases: list[str] | None = None,
 ) -> SessionRecord:
+    aliases = aliases or []
     cursor = db.execute(
-        "INSERT INTO session (name, kind, workspace_id, model, effort, protected)"
-        " VALUES (?, ?, ?, ?, ?, ?)",
-        (name, kind, workspace_id, model, effort, int(protected)),
+        "INSERT INTO session (name, aliases, kind, workspace_id, model, effort, protected)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (name, json.dumps(aliases), kind, workspace_id, model, effort, int(protected)),
     )
     return SessionRecord(
         id=cursor.lastrowid or 0,
         name=name,
+        aliases=aliases,
         kind=kind,
         workspace_id=workspace_id,
         model=model,
@@ -96,12 +104,14 @@ def get_session(db: sqlite3.Connection, name: str) -> SessionRecord | None:
     return _record(row) if row else None
 
 
-_UPDATABLE = {"model", "effort", "claude_session_id"}
+_UPDATABLE = {"model", "effort", "claude_session_id", "aliases"}
 
 
 def update_session(db: sqlite3.Connection, name: str, **fields: Any) -> None:
-    """Only model, effort and claude_session_id change after creation."""
+    """Only aliases, model, effort and claude_session_id change after creation."""
     assert set(fields) <= _UPDATABLE, set(fields) - _UPDATABLE
+    if "aliases" in fields:
+        fields["aliases"] = json.dumps(fields["aliases"])
     for key, value in fields.items():
         db.execute(f"UPDATE session SET {key} = ? WHERE name = ?", (value, name))
 

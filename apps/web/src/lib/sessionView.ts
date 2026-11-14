@@ -3,6 +3,7 @@ import type { SessionView } from '../api/events'
 /** A complete SessionView with neutral defaults, for the demo and tests. */
 export const sessionView = (name: string, over: Partial<SessionView> = {}): SessionView => ({
   name,
+  aliases: [],
   kind: 'geral',
   label: 'Geral',
   model: 'sonnet',
@@ -26,5 +27,6 @@ export const sessionView = (name: string, over: Partial<SessionView> = {}): Sess
   context_max: null,
   protected: false,
   subagents: [],
+  portrait: null,
   ...over,
 })

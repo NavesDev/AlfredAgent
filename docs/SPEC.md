@@ -44,23 +44,27 @@ Regras do agente principal:
 
 ## Modelo de dados
 
-Três entidades em SQLite: Projeto → Workspace → Sessão. O projeto é só um agrupador; o workspace é uma pasta (com ou sem git) ou um worktree criado a partir de outro workspace. A sessão é o que você chama por voz; o nome dela é o "endereço" do comando.
+Três entidades em SQLite: Projeto → Ambiente → Sessão. O projeto é só um agrupador; o ambiente é uma pasta (com ou sem git) ou um worktree criado a partir de outro ambiente. No código e no banco, ambiente é `workspace`. A sessão é o que você chama por voz; o nome dela é o "endereço" do comando.
 
 | Entidade | Campos principais | Exemplo |
 |---|---|---|
-| Project | id, name, aliases[] | Recurve · aliases: "recurve", "billing" |
-| Workspace | id, project_id, name, path, kind (folder ou worktree), parent_id, branch | "back" · ~/dev/recurve-api · folder; "cancelamento" · ~/dev/recurve-api-wt/cancelamento · worktree de back |
-| Session | id, name, kind (geral ou implementacao), workspace_id, model, effort, claude_session_id | "backend" · implementacao · workspace back · opus |
+| Project | id, name, aliases[], description | Recurve · aliases: "recurve", "billing" · "SaaS de cobrança recorrente" |
+| Ambiente (`workspace`) | id, project_id, name, path, kind (folder ou worktree), parent_id, branch, description | "back" · ~/dev/recurve-api · folder · "API em Spring Boot"; "cancelamento" · ~/dev/recurve-api-wt/cancelamento · worktree de back |
+| Session | id, name, aliases, kind (geral ou implementacao), workspace_id, model, effort, claude_session_id | "backend" · implementacao · ambiente back · opus |
 | Task | id, project_id (opcional), title, status, priority, session_id (opcional), created_at | "Implementar reembolso" · Recurve · high · in_progress na sessão backend |
 
 Regras:
 
 - Nome de sessão é único no sistema todo, pra você não precisar falar o projeto toda vez.
 - Apelidos existem porque o Whisper às vezes transcreve "backend" como "bequi end"; o match usa apelidos + fuzzy match (rapidfuzz, corte ~85%).
-- Um projeto pode ter vários workspaces (ex: um pro back e outro pro front). Cadastrar uma pasta não exige git.
-- Criar worktree roda `git worktree add <pai>-wt/<nome> -b <nome>` a partir do workspace pai; remover roda `git worktree remove` e recusa se houver mudança não commitada (a menos que force). Remover workspace de pasta comum só tira do cadastro.
+- Nome em inglês num comando em português é o caso mais difícil. Três defesas, nesta ordem: o Whisper recebe os nomes atuais como `hotwords`; apelido de sessão ou projeto achado na transcrição vira o nome real; e o comando chega ao Alfred com uma linha "Nomes conhecidos" para ele escolher o nome mais parecido pelo som, ou perguntar.
+- Projeto e ambiente têm uma descrição curta opcional (até 200 caracteres), editável no painel e por voz. O Alfred lê as descrições ao listar projetos, para saber do que cada um trata e escolher o ambiente certo.
+- Um projeto pode ter vários ambientes (ex: um pro back e outro pro front). Cadastrar uma pasta não exige git.
+- Criar worktree roda `git worktree add <pai>-wt/<nome> -b <nome>` a partir do ambiente pai; remover roda `git worktree remove` e recusa se houver mudança não commitada (a menos que force). Remover ambiente de pasta comum só tira do cadastro.
 - Modelo e effort vêm da tela de configurações por tipo de agente; cada sessão pode sobrescrever.
 - O tipo `implementacao` usa o harness completo do Claude Code: CLAUDE.md, skills, plugins, hooks e MCPs ([ADR 0008](adr/0008-implementation-agent-full-harness.md)).
+- Na tela de configurações, os MCPs dessas sessões ligam e desligam um a um ou todos de uma vez (botão "Desligar todos" / "Ligar todos").
+- Cada sessão ganha um retrato 3D gerado em segundo plano pelo gerador de imagem dos MCPs do usuário; até ele existir (ou se a geração falhar), o painel mostra o monograma. Na tela de configurações, "Gerador de imagens" escolhe o MCP favorito ou "Automático" ([ADR 0009](adr/0009-session-portraits-via-mcp.md)).
 - `claude_session_id` guarda o id do Agent SDK pra retomar a conversa (resume) depois de reiniciar o assistente.
 - Status de sessão: ociosa, ocupada, aguardando permissão, erro. Status de tarefa: aberta, em andamento, feita; tarefa sem projeto vale pra coisas pessoais ("pagar boleto"), e tarefa delegada vira feita sozinha quando a sessão termina.
 
@@ -83,7 +87,7 @@ Todo comando começa com a wake word. O roteador tenta primeiro os comandos de s
 | "Alfred, status" | Lê o status de todas as sessões numa frase |
 | "Alfred, backend, o que você fez?" | Lê o último resumo da sessão |
 | "Alfred, nova sessão testes no Recurve, worktree cancelamento" | Cria worktree (se não existir) + sessão "testes" |
-| "Alfred, cria worktree cancelamento no Recurve" | `git worktree add` + cadastra o workspace |
+| "Alfred, cria worktree cancelamento no Recurve" | `git worktree add` + cadastra o ambiente |
 | "Alfred, lista projetos" / "lista sessões" | Lê os nomes cadastrados |
 | "Alfred, backend, para" | Interrompe a execução da sessão |
 | "Alfred, fecha a sessão testes" | Encerra a sessão (mantém o histórico) |
@@ -99,7 +103,7 @@ Como o roteamento funciona:
 
 **Permissões.** As sessões de código rodam no auto mode do Claude Code, que barra sozinho a maior parte das ações perigosas; sem sandbox por enquanto. Por cima disso, o `permissions.py` faz três coisas via `canUseTool`:
 
-- Denylist mínima, sempre negada: `sudo`, `rm -rf` fora do worktree, escrita fora do workspace.
+- Denylist mínima, sempre negada: `sudo`, `rm -rf` fora do worktree, escrita fora do ambiente.
 - Ações sensíveis (push, apagar arquivo, instalar dependência, enviar e-mail, mexer na agenda) pedem confirmação pelo canal configurado.
 - Turno contaminado: se o Alfred leu e-mail ou web no turno, qualquer ação com efeito colateral exige confirmação, contra prompt injection.
 

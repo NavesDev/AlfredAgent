@@ -18,29 +18,32 @@ export function TranscriptPanel({ turns, onClose }: { turns: Turn[]; onClose: ()
   }
 
   return (
-    <aside className="flex h-full flex-col border-white/10 bg-[#0a0d16]/95 backdrop-blur md:border-l">
-      <header className="flex items-center justify-between border-b border-white/10 px-5 py-3">
-        <h2 className="text-sm font-medium tracking-wide">Transcrição</h2>
+    <aside
+      aria-label="Transcrição"
+      className="glass flex h-full min-h-0 flex-col overflow-hidden rounded-panel"
+    >
+      <header className="flex items-center justify-between px-5 pt-4 pb-2">
+        <h2 className="text-[15px] font-semibold">Transcrição</h2>
         <div className="flex gap-2">
           <button
             onClick={copy}
             disabled={turns.length === 0}
-            className="rounded-md px-2.5 py-1 text-xs text-gray-300 hover:bg-white/10 disabled:opacity-40"
+            className="rounded-full px-3 py-1 text-xs text-ink-2 hover:bg-fill disabled:opacity-40"
           >
             {copied ? 'Copiado' : 'Copiar'}
           </button>
           <button
             onClick={onClose}
             aria-label="Fechar transcrição"
-            className="rounded-md px-2 py-1 text-xs text-gray-400 hover:bg-white/10"
+            className="rounded-full px-2.5 py-1 text-xs text-ink-2 hover:bg-fill"
           >
             ✕
           </button>
         </div>
       </header>
-      <div ref={list} className="flex-1 overflow-y-auto">
+      <div ref={list} className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-3 pb-3">
         {turns.length === 0 ? (
-          <p className="px-5 py-10 text-center text-sm text-gray-500">
+          <p className="px-5 py-10 text-center text-sm text-ink-3">
             Nada ainda. Fale “Alfred” e o que você disser aparece aqui, com o que ele respondeu e os
             tempos.
           </p>

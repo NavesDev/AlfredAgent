@@ -78,6 +78,34 @@ def test_session_records(db: sqlite3.Connection) -> None:
     assert [r.name for r in session.list_sessions(db)] == ["sistema"]
 
 
+def test_session_aliases(db: sqlite3.Connection) -> None:
+    session.insert_session(db, "Site Sales", "geral", aliases=["saite seils"])
+    assert session.get_session(db, "site sales").aliases == ["saite seils"]  # type: ignore[union-attr]
+
+    session.update_session(db, "Site Sales", aliases=["vendas"])
+
+    assert session.get_session(db, "Site Sales").aliases == ["vendas"]  # type: ignore[union-attr]
+    assert session.get_session(db, "sistema") is None
+
+
+def test_opening_an_old_database_adds_session_aliases(tmp_path: Path) -> None:
+    path = tmp_path / "old.sqlite3"
+    old = sqlite3.connect(path)
+    old.execute(
+        "CREATE TABLE session (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE,"
+        " kind TEXT NOT NULL, workspace_id INTEGER, model TEXT, effort TEXT,"
+        " claude_session_id TEXT, protected INTEGER NOT NULL DEFAULT 0,"
+        " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+    )
+    old.execute("INSERT INTO session (name, kind) VALUES ('sistema', 'geral')")
+    old.commit()
+    old.close()
+
+    [record] = session.list_sessions(open_db(path))
+
+    assert record.aliases == []
+
+
 def test_seed_writes_defaults_only_once(db: sqlite3.Connection) -> None:
     defaults = settings.Defaults(
         models={"alfred": "sonnet", "geral": "sonnet", "implementacao": "opus"},
@@ -96,3 +124,29 @@ def test_seed_writes_defaults_only_once(db: sqlite3.Connection) -> None:
     assert settings.load_app(db) == settings.AppSettings(
         max_active_sessions=5, idle_minutes=2, mcp_disabled=[]
     )
+
+
+def test_descriptions_persist_and_old_databases_gain_the_columns(tmp_path: Path) -> None:
+    path = tmp_path / "old.sqlite3"
+    old = sqlite3.connect(path)
+    old.executescript(
+        "CREATE TABLE project (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE,"
+        " aliases TEXT NOT NULL DEFAULT '[]');"
+        "CREATE TABLE workspace (id INTEGER PRIMARY KEY, project_id INTEGER NOT NULL,"
+        " name TEXT NOT NULL, path TEXT NOT NULL, kind TEXT NOT NULL, parent_id INTEGER,"
+        " branch TEXT);"
+        "INSERT INTO project (name) VALUES ('Recurve');"
+    )
+    old.close()
+    db = open_db(path)
+
+    [legacy] = project.list_projects(db)
+    p = project.insert_project(db, "Vrummy", [], "App de aluguel de carros")
+    ws = project.insert_workspace(db, p.id, "back", "/dev/api", "folder", description="API")
+    project.update_project(db, legacy.id, description="Cobrança recorrente")
+    project.update_workspace(db, ws.id, description="API em Spring")
+
+    assert legacy.description == ""
+    assert project.get_project(db, legacy.id).description == "Cobrança recorrente"  # type: ignore[union-attr]
+    assert project.get_workspace(db, ws.id).description == "API em Spring"  # type: ignore[union-attr]
+    assert project.get_project(db, p.id).description == "App de aluguel de carros"  # type: ignore[union-attr]

@@ -74,6 +74,27 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/sessions/{name}/portrait': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get Portrait */
+    get: operations['get_portrait_api_sessions__name__portrait_get']
+    put?: never
+    /**
+     * Repaint
+     * @description Paints the portrait again in the background.
+     */
+    post: operations['repaint_api_sessions__name__portrait_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/projects': {
     parameters: {
       query?: never
@@ -159,7 +180,8 @@ export interface paths {
     delete: operations['delete_workspace_api_workspaces__id__delete']
     options?: never
     head?: never
-    patch?: never
+    /** Update Workspace */
+    patch: operations['update_workspace_api_workspaces__id__patch']
     trace?: never
   }
   '/api/settings': {
@@ -241,6 +263,11 @@ export interface components {
        * @default []
        */
       aliases: string[]
+      /**
+       * Description
+       * @default
+       */
+      description: string
     }
     /** NewSession */
     NewSession: {
@@ -254,6 +281,11 @@ export interface components {
       model?: string | null
       /** Effort */
       effort?: string | null
+      /**
+       * Aliases
+       * @default []
+       */
+      aliases: string[]
     }
     /** NewWorkspace */
     NewWorkspace: {
@@ -261,6 +293,11 @@ export interface components {
       name: string
       /** Path */
       path: string
+      /**
+       * Description
+       * @default
+       */
+      description: string
     }
     /** NewWorktree */
     NewWorktree: {
@@ -268,6 +305,11 @@ export interface components {
       parent_id: number
       /** Name */
       name: string
+      /**
+       * Description
+       * @default
+       */
+      description: string
     }
     /** Project */
     Project: {
@@ -277,6 +319,11 @@ export interface components {
       name: string
       /** Aliases */
       aliases: string[]
+      /**
+       * Description
+       * @default
+       */
+      description: string
       /**
        * Workspaces
        * @default []
@@ -289,6 +336,8 @@ export interface components {
       name?: string | null
       /** Aliases */
       aliases?: string[] | null
+      /** Description */
+      description?: string | null
     }
     /** RateLimit */
     RateLimit: {
@@ -312,6 +361,8 @@ export interface components {
       model?: string | null
       /** Effort */
       effort?: string | null
+      /** Aliases */
+      aliases?: string[] | null
     }
     /** SessionUsage */
     SessionUsage: {
@@ -328,6 +379,8 @@ export interface components {
     SessionView: {
       /** Name */
       name: string
+      /** Aliases */
+      aliases: string[]
       /** Kind */
       kind: string
       /** Label */
@@ -377,6 +430,8 @@ export interface components {
       protected: boolean
       /** Subagents */
       subagents: components['schemas']['SubagentView'][]
+      /** Portrait */
+      portrait: string | null
     }
     /** SettingsUpdate */
     SettingsUpdate: {
@@ -391,6 +446,8 @@ export interface components {
       idle_minutes?: number | null
       /** Mcp Disabled */
       mcp_disabled?: string[] | null
+      /** Image Mcp */
+      image_mcp?: string | null
     }
     /** SettingsView */
     SettingsView: {
@@ -402,6 +459,10 @@ export interface components {
       idle_minutes: number
       /** Mcp Disabled */
       mcp_disabled: string[]
+      /** Image Mcp */
+      image_mcp: string | null
+      /** Image Mcp Servers */
+      image_mcp_servers: string[]
       /** Known Mcp Servers */
       known_mcp_servers: string[]
     }
@@ -432,8 +493,6 @@ export interface components {
       open_sessions: number
       /** Max Active Sessions */
       max_active_sessions: number
-      /** Task Timeout S */
-      task_timeout_s: number
     }
     /** ValidationError */
     ValidationError: {
@@ -467,6 +526,16 @@ export interface components {
       parent_id?: number | null
       /** Branch */
       branch?: string | null
+      /**
+       * Description
+       * @default
+       */
+      description: string
+    }
+    /** WorkspaceChange */
+    WorkspaceChange: {
+      /** Description */
+      description: string
     }
   }
   responses: never
@@ -630,6 +699,66 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['SessionView']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_portrait_api_sessions__name__portrait_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        name: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  repaint_api_sessions__name__portrait_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        name: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': unknown
         }
       }
       /** @description Validation Error */
@@ -880,6 +1009,41 @@ export interface operations {
           [name: string]: unknown
         }
         content?: never
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  update_workspace_api_workspaces__id__patch: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        id: number
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['WorkspaceChange']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Workspace']
+        }
       }
       /** @description Validation Error */
       422: {

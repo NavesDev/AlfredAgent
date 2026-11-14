@@ -134,7 +134,10 @@ def load_vad(threshold: float = 0.5) -> Callable[[np.ndarray], bool]:
     return lambda frame: bool(vad.predict(frame, frame_size=640) >= threshold)
 
 
-def load_whisper(config: WhisperConfig) -> Callable[[np.ndarray], str]:
+def load_whisper(
+    config: WhisperConfig, hotwords: Callable[[], str] = lambda: ""
+) -> Callable[[np.ndarray], str]:
+    """`hotwords` is read on every call: the current session and project names."""
     from faster_whisper import WhisperModel
 
     try:
@@ -153,6 +156,7 @@ def load_whisper(config: WhisperConfig) -> Callable[[np.ndarray], str]:
                 audio.astype(np.float32) / 32768,
                 language=config.language,
                 initial_prompt=config.initial_prompt or None,
+                hotwords=hotwords() or None,
                 beam_size=1,
             )
             return " ".join(s.text for s in segments)

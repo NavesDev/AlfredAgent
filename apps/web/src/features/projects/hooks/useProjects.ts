@@ -39,13 +39,20 @@ export function useProjectActions() {
   const refreshSessions = () => client.invalidateQueries({ queryKey: SESSIONS })
   return {
     create: useMutation({
-      mutationFn: (body: { name: string; aliases: string[] }) =>
+      mutationFn: (body: { name: string; aliases: string[]; description?: string }) =>
         api<Project>('/api/projects', json('POST', body)),
       onSuccess: refresh,
     }),
     update: useMutation({
-      mutationFn: ({ id, ...body }: { id: number; name?: string; aliases?: string[] }) =>
-        api<Project>(`/api/projects/${id}`, json('PATCH', body)),
+      mutationFn: ({
+        id,
+        ...body
+      }: {
+        id: number
+        name?: string
+        aliases?: string[]
+        description?: string
+      }) => api<Project>(`/api/projects/${id}`, json('PATCH', body)),
       onSuccess: refresh,
     }),
     remove: useMutation({
@@ -53,13 +60,32 @@ export function useProjectActions() {
       onSuccess: refresh,
     }),
     addWorkspace: useMutation({
-      mutationFn: ({ id, ...body }: { id: number; name: string; path: string }) =>
-        api<Workspace>(`/api/projects/${id}/workspaces`, json('POST', body)),
+      mutationFn: ({
+        id,
+        ...body
+      }: {
+        id: number
+        name: string
+        path: string
+        description?: string
+      }) => api<Workspace>(`/api/projects/${id}/workspaces`, json('POST', body)),
       onSuccess: refresh,
     }),
     addWorktree: useMutation({
-      mutationFn: ({ id, ...body }: { id: number; parent_id: number; name: string }) =>
-        api<Workspace>(`/api/projects/${id}/worktrees`, json('POST', body)),
+      mutationFn: ({
+        id,
+        ...body
+      }: {
+        id: number
+        parent_id: number
+        name: string
+        description?: string
+      }) => api<Workspace>(`/api/projects/${id}/worktrees`, json('POST', body)),
+      onSuccess: refresh,
+    }),
+    updateWorkspace: useMutation({
+      mutationFn: ({ id, description }: { id: number; description: string }) =>
+        api<Workspace>(`/api/workspaces/${id}`, json('PATCH', { description })),
       onSuccess: refresh,
     }),
     removeWorkspace: useMutation({

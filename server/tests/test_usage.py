@@ -38,7 +38,7 @@ async def test_a_session_run_reports_limits_and_how_full_its_context_is(bus: Eve
 async def test_usage_keeps_the_latest_report_per_window(bus: EventBus, tmp_path: Path) -> None:
     env = Env(bus, tmp_path)
     clock = iter([10.0, 20.0, 30.0])
-    usage = Usage(bus, env.sessions, env.settings, 300, clock=lambda: next(clock))
+    usage = Usage(bus, env.sessions, env.settings, clock=lambda: next(clock))
     task = asyncio.create_task(usage.run())
     await settle()
 
@@ -57,6 +57,6 @@ async def test_usage_keeps_the_latest_report_per_window(bus: EventBus, tmp_path:
         30.0,
     )
     assert len(view.limits) == 2
-    assert view.max_active_sessions == 3 and view.task_timeout_s == 300
+    assert view.max_active_sessions == 3
     assert view.open_sessions == 0
     assert [(s.name, s.tokens, s.context_max) for s in view.sessions] == [("sistema", 0, None)]

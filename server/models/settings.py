@@ -1,4 +1,5 @@
-"""Runtime settings edited on the panel: model and effort per agent kind, and session limits.
+"""Runtime settings edited on the panel: model and effort per agent kind, session limits, and
+how big the panel draws the session characters.
 
 config.yaml only seeds these on the first boot.
 """
@@ -21,6 +22,7 @@ class AppSettings(BaseModel):
     max_active_sessions: int = 3
     idle_minutes: int = 10
     mcp_disabled: list[str] = []
+    image_mcp: str | None = None  # favorite image generator; None lets the model pick
 
 
 class Defaults(BaseModel):

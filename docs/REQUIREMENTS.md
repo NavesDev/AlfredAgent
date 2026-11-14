@@ -10,9 +10,9 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 |---|---|
 | Wake word | Palavra que ativa a escuta ("Alfred", apelido "Alfredo") |
 | Agente principal | Sessão fixa `alfred`: responde, pesquisa, coordena. Não edita código |
-| Sessão nomeada | Sessão do Claude Code presa a um workspace; o nome é o "endereço" do comando |
-| Projeto | Agrupador de workspaces e sessões (nome + apelidos) |
-| Workspace | Pasta de um projeto (com ou sem git) ou um `git worktree` criado a partir de outra |
+| Sessão nomeada | Sessão do Claude Code presa a um ambiente; o nome é o "endereço" do comando |
+| Projeto | Agrupador de ambientes e sessões (nome + apelidos) |
+| Ambiente | Pasta de um projeto (com ou sem git) ou um `git worktree` criado a partir de outra. No código, `workspace` |
 | Sessão em foco | Sessão que recebe comandos de código sem nome explícito |
 | Linha `RESUMO:` | Última linha de cada resposta, até 2 frases, a única lida em voz alta |
 | Turno contaminado | Turno em que o agente leu conteúdo externo (e-mail, web) |
@@ -25,12 +25,12 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 | ID | Requisito | Fase |
 |---|---|---|
 | RF-01 | Escutar continuamente e ativar com a wake word configurável (`alfred.onnx`, treinado com `server/wakeword/train/`) | F1 |
-| RF-02 | Detectar fim de fala com VAD e transcrever localmente com Whisper (pt, `initial_prompt` com jargão) | F1 |
+| RF-02 | Detectar fim de fala com VAD e transcrever localmente com Whisper (pt, `initial_prompt` com jargão, `hotwords` com os nomes e apelidos atuais de sessões e projetos) | F1 |
 | RF-03 | Falar respostas com Kokoro (voz e velocidade configuráveis) | F1 |
 | RF-04 | Ler em voz alta apenas a linha `RESUMO:`, que abre a resposta e é falada assim que chega (streaming); nunca output bruto, código ou caminhos longos | F1 |
 | RF-05 | Se a resposta não trouxer `RESUMO:`, gerar resumo com Haiku | F7 |
 | RF-06 | Barge-in: wake word durante a fala interrompe o áudio imediatamente | F5 |
-| RF-07 | Fila de fala: notificações não atropelam o usuário falando nem outro áudio | F5 |
+| RF-07 | Fila de fala: notificações não atropelam o usuário falando nem outro áudio; aviso de sessão que chega durante um turno do Alfred espera o turno acabar, e cada aviso abre com o nome da sessão ("Recurve terminou: …") | F5 |
 | RF-08 | Bip curto ao detectar a wake word e outro ao parar de gravar | F1 |
 
 ### Roteamento
@@ -39,7 +39,7 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 |---|---|---|
 | RF-10 | Interrupções por regex, mesmo com o Alfred ocupado: "para" (cala e cancela o Alfred), "<sessão>, para", "para tudo" | F3 |
 | RF-11 | Atalho explícito: frase começando com `<nome>:` ou `<nome>,` de sessão conhecida vai direto para a sessão | F3 |
-| RF-12 | Resolução de nome por apelidos + fuzzy match (rapidfuzz, corte ~85%) | F3 |
+| RF-12 | Resolução de nome por apelidos + fuzzy match (rapidfuzz, corte ~85%). Sessões e projetos têm apelidos falados; apelido na transcrição vira o nome real antes de ir ao Alfred, e cada comando leva a lista de nomes conhecidos para o Alfred corrigir nome mal transcrito | F3 |
 | RF-13 | Todo o resto vai para o agente principal | F1 |
 | RF-14 | Comando para sessão ocupada entra na fila da sessão e o Alfred avisa ("backend tá ocupado, coloquei na fila") | F3 |
 | RF-15 | Comandos digitados no painel (`POST /api/commands`) passam pelo mesmo roteador da voz | F6 |
@@ -67,7 +67,8 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 | RF-32 | Ler o último resumo de uma sessão ("backend, o que você fez?") | F3 |
 | RF-33 | Interromper a execução de uma sessão ou de todas | F3 |
 | RF-34 | Cadastrar e listar projetos com apelidos | F4 |
-| RF-35 | Criar worktree (`git worktree add <path> -b <branch>`) e cadastrar o workspace; remover com `git worktree remove` | F4 |
+| RF-34a | Projeto e ambiente têm descrição curta, editável no painel e por voz; o Alfred a recebe ao listar projetos | F4 |
+| RF-35 | Criar worktree (`git worktree add <path> -b <branch>`) e cadastrar o ambiente; remover com `git worktree remove` | F4 |
 | RF-36 | "Nova sessão X no projeto Y, worktree Z" cria o worktree se não existir e a sessão | F4 |
 | RF-37 | Retomar sessões após reiniciar o assistente via `claude_session_id` (resume) | F4 |
 | RF-38 | Criar, listar, concluir e priorizar tarefas, com ou sem projeto | F4 |
@@ -78,7 +79,7 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 
 | ID | Requisito | Fase |
 |---|---|---|
-| RF-50 | Denylist sempre negada: `sudo`, `rm -rf` fora do worktree, escrita fora do workspace | F5 |
+| RF-50 | Denylist sempre negada: `sudo`, `rm -rf` fora do worktree, escrita fora do ambiente | F5 |
 | RF-51 | Ações sensíveis (push, apagar arquivo, instalar dependência, enviar e-mail, mexer na agenda) pedem confirmação | F5 |
 | RF-52 | Canal de confirmação configurável por ação: `voice`, `key`, `web`, `voice+key` | F5 |
 | RF-53 | Turno contaminado: qualquer ação com efeito colateral exige confirmação | F5 |
@@ -127,7 +128,8 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 | RN-08 | Fechar sessão encerra a execução mas mantém o histórico |
 | RN-09 | E-mail é sempre lido resumido, nunca na íntegra |
 | RN-10 | Ler e-mail/agenda roda direto; escrever exige confirmação |
-| RN-11 | Workspace tem `kind` `folder` (qualquer pasta) ou `worktree` (com `parent_id` e `branch`) |
+| RN-11 | Ambiente tem `kind` `folder` (qualquer pasta) ou `worktree` (com `parent_id` e `branch`) |
+| RN-11a | Descrição de projeto e ambiente é opcional, com no máximo 200 caracteres |
 
 ## Fora de escopo no MVP
 

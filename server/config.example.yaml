@@ -21,8 +21,8 @@ wakeword:
 
 listener:
   sample_rate: 16000
-  silence_ms: 1200           # pause that ends a command; lower cuts you mid-sentence
-  max_record_s: 15
+  silence_ms: 1800           # pause that ends a command; lower cuts you mid-sentence
+  max_record_s: 60
 
 agents:
   default_model: sonnet
@@ -32,7 +32,6 @@ agents:
     implementacao: opus
   light_model: haiku         # simple questions + RESUMO fallback
   timeout_s: 60
-  session_timeout_s: 300     # one task in a delegated session
 
 limits:                      # seeds; edited on the panel afterwards
   max_active_sessions: 3     # open claude processes, not registered sessions

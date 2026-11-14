@@ -47,9 +47,11 @@ ALLOWED = [
             "listar_sessoes",
             "criar_projeto",
             "listar_projetos",
-            "criar_workspace",
+            "criar_ambiente",
             "criar_worktree",
-            "apagar_workspace",
+            "apagar_ambiente",
+            "definir_apelidos",
+            "definir_descricao",
         )
     ),
 ]

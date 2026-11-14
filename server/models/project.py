@@ -17,12 +17,14 @@ class Workspace(BaseModel):
     kind: WorkspaceKind
     parent_id: int | None = None
     branch: str | None = None
+    description: str = ""
 
 
 class Project(BaseModel):
     id: int
     name: str
     aliases: list[str]
+    description: str = ""
     workspaces: list[Workspace] = []
 
 
@@ -35,15 +37,19 @@ def _project(db: sqlite3.Connection, row: sqlite3.Row) -> Project:
         id=row["id"],
         name=row["name"],
         aliases=json.loads(row["aliases"]),
+        description=row["description"],
         workspaces=workspaces_of(db, row["id"]),
     )
 
 
-def insert_project(db: sqlite3.Connection, name: str, aliases: list[str]) -> Project:
+def insert_project(
+    db: sqlite3.Connection, name: str, aliases: list[str], description: str = ""
+) -> Project:
     cursor = db.execute(
-        "INSERT INTO project (name, aliases) VALUES (?, ?)", (name, json.dumps(aliases))
+        "INSERT INTO project (name, aliases, description) VALUES (?, ?, ?)",
+        (name, json.dumps(aliases), description),
     )
-    return Project(id=cursor.lastrowid or 0, name=name, aliases=aliases)
+    return Project(id=cursor.lastrowid or 0, name=name, aliases=aliases, description=description)
 
 
 def get_project(db: sqlite3.Connection, id: int) -> Project | None:
@@ -65,12 +71,18 @@ def find_project(db: sqlite3.Connection, name: str) -> Project | None:
 
 
 def update_project(
-    db: sqlite3.Connection, id: int, name: str | None = None, aliases: list[str] | None = None
+    db: sqlite3.Connection,
+    id: int,
+    name: str | None = None,
+    aliases: list[str] | None = None,
+    description: str | None = None,
 ) -> None:
     if name is not None:
         db.execute("UPDATE project SET name = ? WHERE id = ?", (name, id))
     if aliases is not None:
         db.execute("UPDATE project SET aliases = ? WHERE id = ?", (json.dumps(aliases), id))
+    if description is not None:
+        db.execute("UPDATE project SET description = ? WHERE id = ?", (description, id))
 
 
 def delete_project(db: sqlite3.Connection, id: int) -> None:
@@ -85,11 +97,12 @@ def insert_workspace(
     kind: WorkspaceKind,
     parent_id: int | None = None,
     branch: str | None = None,
+    description: str = "",
 ) -> Workspace:
     cursor = db.execute(
-        "INSERT INTO workspace (project_id, name, path, kind, parent_id, branch)"
-        " VALUES (?, ?, ?, ?, ?, ?)",
-        (project_id, name, path, kind, parent_id, branch),
+        "INSERT INTO workspace (project_id, name, path, kind, parent_id, branch, description)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (project_id, name, path, kind, parent_id, branch, description),
     )
     return Workspace(
         id=cursor.lastrowid or 0,
@@ -99,6 +112,7 @@ def insert_workspace(
         kind=kind,
         parent_id=parent_id,
         branch=branch,
+        description=description,
     )
 
 
@@ -110,6 +124,10 @@ def get_workspace(db: sqlite3.Connection, id: int) -> Workspace | None:
 def workspaces_of(db: sqlite3.Connection, project_id: int) -> list[Workspace]:
     rows = db.execute("SELECT * FROM workspace WHERE project_id = ? ORDER BY id", (project_id,))
     return [_workspace(row) for row in rows]
+
+
+def update_workspace(db: sqlite3.Connection, id: int, description: str) -> None:
+    db.execute("UPDATE workspace SET description = ? WHERE id = ?", (description, id))
 
 
 def delete_workspace(db: sqlite3.Connection, id: int) -> None:

@@ -13,11 +13,7 @@ export function Segmented<T extends string>({
   label: string
 }) {
   return (
-    <div
-      role="radiogroup"
-      aria-label={label}
-      className="inline-flex rounded-lg border border-white/10 bg-black/30 p-0.5"
-    >
+    <div role="radiogroup" aria-label={label} className="inline-flex rounded-full bg-well p-[3px]">
       {options.map((o) => (
         <button
           key={o.value}
@@ -26,7 +22,7 @@ export function Segmented<T extends string>({
           aria-checked={o.value === value}
           disabled={o.disabled}
           onClick={() => onChange(o.value)}
-          className="rounded-md px-2.5 py-1 text-xs text-gray-400 transition hover:text-gray-200 disabled:opacity-30 aria-checked:bg-white/10 aria-checked:text-gray-100 aria-checked:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
+          className="rounded-full px-3 py-1.5 text-[12.5px] font-medium text-ink-2 transition hover:text-ink disabled:opacity-30 aria-checked:bg-fill-on aria-checked:text-ink"
         >
           {o.label}
         </button>
@@ -51,10 +47,10 @@ export function Switch({
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className="relative h-5 w-9 shrink-0 rounded-full bg-white/10 transition aria-checked:bg-emerald-400/70"
+      className="relative h-[30px] w-[50px] shrink-0 rounded-full bg-[rgb(120_120_128/0.36)] transition aria-checked:bg-apple-green"
     >
       <span
-        className={`absolute top-0.5 left-0.5 size-4 rounded-full bg-gray-200 shadow transition-transform ${checked ? 'translate-x-4' : ''}`}
+        className={`absolute top-[2px] left-[2px] size-[26px] rounded-full bg-white shadow-[0_2px_6px_rgba(0,0,0,0.3)] transition-transform ${checked ? 'translate-x-5' : ''}`}
       />
     </button>
   )
@@ -73,16 +69,16 @@ export function Row({
   children: ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex min-w-0 items-start gap-3">
+    <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-center gap-3">
         {icon && (
-          <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-gray-400">
+          <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-[#636366] text-white">
             {icon}
           </span>
         )}
         <div className="min-w-0">
-          <p className="text-sm text-gray-100">{title}</p>
-          {description && <p className="mt-0.5 text-xs text-gray-500">{description}</p>}
+          <p className="text-sm">{title}</p>
+          {description && <p className="mt-0.5 text-xs text-ink-2">{description}</p>}
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">{children}</div>
@@ -103,12 +99,11 @@ export function Section({
   return (
     <section className="flex flex-col gap-2.5">
       <div>
-        <h3 className="text-sm font-medium text-gray-200">{title}</h3>
-        {description && <p className="mt-0.5 text-xs text-gray-500">{description}</p>}
+        <h3 className="text-[13px] font-semibold tracking-wide text-ink-2 uppercase">{title}</h3>
+        {description && <p className="mt-0.5 text-xs text-ink-3">{description}</p>}
       </div>
-      <div className="divide-y divide-white/5 rounded-xl border border-white/10 bg-white/[0.02]">
-        {children}
-      </div>
+      {/* no overflow-hidden: dropdowns in a row must spill out of the group */}
+      <div className="divide-y divide-hairline rounded-[18px] bg-well">{children}</div>
     </section>
   )
 }

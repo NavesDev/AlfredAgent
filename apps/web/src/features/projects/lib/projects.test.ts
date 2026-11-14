@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { Project } from '../../../api/events'
-import { applyProjectEvent } from './projects'
+import { applyProjectEvent, plural } from './projects'
 
-const project = (id: number, name: string): Project => ({ id, name, aliases: [], workspaces: [] })
+const project = (id: number, name: string): Project => ({
+  id,
+  name,
+  aliases: [],
+  description: '',
+  workspaces: [],
+})
 
 describe('applyProjectEvent', () => {
   it('adds, replaces and removes projects', () => {
@@ -26,5 +32,13 @@ describe('applyProjectEvent', () => {
     const list = [project(1, 'Recurve')]
 
     expect(applyProjectEvent(list, { type: 'session_deleted', name: 'x', ts: 1 })).toBe(list)
+  })
+})
+
+describe('plural', () => {
+  it('counts in Portuguese', () => {
+    expect(plural(1, 'ambiente', 'ambientes')).toBe('1 ambiente')
+    expect(plural(0, 'sessão', 'sessões')).toBe('0 sessões')
+    expect(plural(3, 'sessão', 'sessões')).toBe('3 sessões')
   })
 })

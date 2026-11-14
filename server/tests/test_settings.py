@@ -27,6 +27,7 @@ async def test_get_returns_seeded_values(bus: EventBus) -> None:
 
     assert {a.kind: a.model for a in view.agents} == DEFAULTS.models
     assert (view.max_active_sessions, view.idle_minutes, view.mcp_disabled) == (3, 10, [])
+    assert "figure_scale" not in view.model_dump()  # went with the map characters
     assert view.known_mcp_servers == []
 
 
@@ -91,3 +92,20 @@ async def test_remembers_mcp_servers_seen_by_sessions(bus: EventBus) -> None:
     worker.cancel()
 
     assert s.get().known_mcp_servers == ["context7", "figma", "gmail"]
+
+
+async def test_image_mcp_starts_automatic_and_empty_goes_back_to_it(bus: EventBus) -> None:
+    s = make(bus)
+    assert s.get().image_mcp is None
+
+    assert s.update(SettingsUpdate(image_mcp=" imagens-local ")).image_mcp == "imagens-local"
+    assert s.update(SettingsUpdate(max_active_sessions=4)).image_mcp == "imagens-local"
+    assert s.update(SettingsUpdate(image_mcp="")).image_mcp is None
+
+
+async def test_image_mcp_servers_lists_the_user_servers(bus: EventBus) -> None:
+    db = open_db(":memory:")
+    model.seed(db, DEFAULTS)
+    s = Settings(db, bus, image_servers=lambda: ["shoogle", "imagens-local"])
+
+    assert s.get().image_mcp_servers == ["imagens-local", "shoogle"]

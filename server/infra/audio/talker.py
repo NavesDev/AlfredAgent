@@ -16,6 +16,7 @@ from infra.audio import level
 KOKORO_RATE = 24000
 LEVELS_PER_S = 15
 CHIMES = {"start": (660.0, 990.0), "end": (990.0, 660.0)}  # rising = listening, falling = done
+PAUSE_S = 0.5  # silence between two lines played back to back, so they don't run together
 
 log = logging.getLogger(__name__)
 
@@ -31,12 +32,15 @@ class Talker:
     ) -> None:
         self._bus, self._synthesize, self._play = bus, synthesize, play
         self._block = sample_rate // LEVELS_PER_S
+        self._pause = np.zeros(int(sample_rate * PAUSE_S), dtype=np.float32)
         self._chimes = {kind: _sweep(*hz, sample_rate) for kind, hz in CHIMES.items()}
         # Synthesized once at startup so they play with no delay.
         self._acks = [np.concatenate(list(synthesize(text))) for text in acknowledgements]
         self._last_ack = -1
         self._queue: queue.Queue[str | np.ndarray] = queue.Queue()
         self._resting = "idle"
+        self._held: list[str] = []  # notifications waiting for Alfred's turn to end
+        self._lock = threading.Lock()
 
     @property
     def is_speaking(self) -> bool:
@@ -45,9 +49,23 @@ class Talker:
     def say(self, text: str) -> None:
         self._queue.put(text)
 
+    def notify(self, text: str) -> None:
+        """A line nobody asked for (a session finished): during Alfred's turn it waits for the
+        turn to end, so it never lands in the middle of his answer."""
+        with self._lock:
+            if self._resting == "thinking":
+                self._held.append(text)
+                return
+        self.say(text)
+
     def set_resting(self, state: str) -> None:
-        """voice_state published when the queue empties: "thinking" while a turn is still on."""
-        self._resting = state
+        """voice_state published when the queue empties: "thinking" while a turn is still on.
+        Leaving the turn releases the notifications held during it."""
+        with self._lock:
+            self._resting = state
+            held, self._held = (self._held, []) if state != "thinking" else ([], self._held)
+        for text in held:
+            self.say(text)
 
     def acknowledge(self) -> None:
         """Queue a short ready-made reply ("Certo.") so the user hears something while STT and
@@ -80,6 +98,8 @@ class Talker:
             return
         try:
             self._speak(item)
+            if not self._queue.empty():
+                self._play(self._pause)
         except AudioError as e:
             self._bus.publish("error", where="talker", message=str(e))
         except Exception as e:

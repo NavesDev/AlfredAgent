@@ -67,6 +67,7 @@ alfred/
 │   ├── controllers/
 │   │   ├── router.py          # interrupts + session-name shortcut
 │   │   ├── sessions.py
+│   │   ├── portraits.py       # portrait queue, files under data/portraits
 │   │   ├── projects.py
 │   │   └── tasks.py
 │   ├── infra/
@@ -76,6 +77,7 @@ alfred/
 │   │   ├── claude/
 │   │   │   ├── alfred.py      # main agent
 │   │   │   ├── session.py     # coding sessions
+│   │   │   ├── portrait.py    # one-shot agent that paints session portraits
 │   │   │   ├── permissions.py # permission gates
 │   │   │   └── tools.py       # internal tools for Alfred
 │   │   └── git.py             # git worktree add/remove
@@ -170,13 +172,14 @@ Sessão ocupada não recebe dois prompts ao mesmo tempo: cada sessão tem uma fi
 
 ### Sessões nomeadas
 
-- Uma instância do Agent SDK por sessão, com `cwd` = path do workspace (ou a home, para `geral` sem workspace).
-- Tipos: `geral` (shell e arquivos, isolada) e `implementacao` (harness completo do Claude Code, preso a um workspace; [ADR 0008](adr/0008-implementation-agent-full-harness.md)). Modelo e effort vêm de `agent_settings`, com override por sessão.
+- Uma instância do Agent SDK por sessão, com `cwd` = path do ambiente (ou a home, para `geral` sem ambiente).
+- Tipos: `geral` (shell e arquivos, isolada) e `implementacao` (harness completo do Claude Code, preso a um ambiente; [ADR 0008](adr/0008-implementation-agent-full-harness.md)). Modelo e effort vêm de `agent_settings`, com override por sessão.
 - Subagentes nativos (`TaskStarted/Progress/NotificationMessage`) viram eventos `subagent_*`; as mensagens com `parent_tool_use_id` não contam como atividade da sessão.
 - A fase (`exploring`, `editing`, `running`) vem do nome da tool (`activity.phase_of`).
 - Auto mode do Claude Code + gate `canUseTool` do `permissions.py`.
 - `system_prompt` exige começar com `RESUMO:` (até 2 frases, sem código nem caminhos longos), falado assim que chega.
 - `claude_session_id` persistido para resume após reinício.
+- Retrato: um agente de uma pergunta, só com os MCPs do usuário, gera a foto da sessão ao criar e no boot; o gerador favorito (`image_mcp`) restringe as tools ([ADR 0009](adr/0009-session-portraits-via-mcp.md)).
 - Vagas: `max_active_sessions` conta processos `claude` abertos. Sem vaga, a sessão ociosa há mais tempo fecha o processo; se todas trabalham, a tarefa espera. Sessão ociosa por `idle_minutes` fecha sozinha e retoma pelo `claude_session_id`.
 
 ## Modelo de dados
@@ -223,7 +226,7 @@ erDiagram
     }
 ```
 
-Configurações em `agent_settings` (modelo e effort por tipo: `alfred`, `geral`, `implementacao`) e `app_settings` (`max_active_sessions`, `idle_minutes`, `mcp_disabled`); o `config.yaml` só semeia na primeira vez. Status e fila das sessões ficam em memória.
+Configurações em `agent_settings` (modelo e effort por tipo: `alfred`, `geral`, `implementacao`) e `app_settings` (`max_active_sessions`, `idle_minutes`, `mcp_disabled`, `image_mcp`); o `config.yaml` só semeia na primeira vez. Status e fila das sessões ficam em memória.
 
 Tabelas auxiliares previstas: `audit_log` (toda tool call), `confirmation` (pedidos pendentes/respondidos), `session_summary` (último `RESUMO:` por sessão).
 
@@ -241,9 +244,10 @@ Tabelas auxiliares previstas: `audit_log` (toda tool call), `confirmation` (pedi
 | `session_cleared` | snapshot da sessão | ws |
 | `session_deleted` | nome | ws |
 | `subagent_started` / `_progress` / `_finished` | sessão, id, tipo, descrição, última tool, status | ws |
-| `project_created` / `_updated` / `_deleted` | projeto com workspaces (ou id) | ws |
+| `project_created` / `_updated` / `_deleted` | projeto com ambientes (ou id) | ws |
 | `settings_updated` | configurações | ws |
 | `mcp_servers_seen` | sessão, nomes dos MCPs carregados | settings (sugestões da tela) |
+| `portrait_updated` | sessão | sessions (republica o status) |
 | `task_updated` | tarefa | ws |
 | `permission_request` | id, sessão, ação, descrição, canal | talker, ws |
 | `permission_resolved` | id, aprovado, canal | ws |
@@ -285,7 +289,7 @@ flowchart TD
     no --> audit
 ```
 
-- **Denylist:** `sudo`, `rm -rf` fora do worktree, escrita fora do workspace.
+- **Denylist:** `sudo`, `rm -rf` fora do worktree, escrita fora do ambiente.
 - **Sensíveis:** push, apagar arquivo, instalar dependência, enviar e-mail, mexer na agenda.
 - **Turno contaminado:** se o turno leu e-mail ou web, qualquer efeito colateral exige confirmação (defesa contra prompt injection).
 - **Canais:** `voice`, `key`, `web`, `voice+key`, configuráveis por ação. Um "pode" falado não prova que foi você, por isso ações críticas usam `key`.
@@ -295,11 +299,12 @@ flowchart TD
 
 | Rota | Uso |
 |---|---|
-| `GET/POST /api/projects`, `GET/PATCH/DELETE /api/projects/{id}` | Projetos e workspaces |
-| `POST /api/projects/{id}/workspaces`, `POST /api/projects/{id}/worktrees`, `DELETE /api/workspaces/{id}?force=` | Pastas e worktrees |
+| `GET/POST /api/projects`, `GET/PATCH/DELETE /api/projects/{id}` | Projetos e ambientes |
+| `POST /api/projects/{id}/workspaces`, `POST /api/projects/{id}/worktrees`, `PATCH /api/workspaces/{id}`, `DELETE /api/workspaces/{id}?force=` | Pastas e worktrees (PATCH muda a descrição) |
 | `POST /api/alfred/clear` | Esquece a conversa do dia do Alfred (espera a resposta em andamento) |
 | `GET/POST /api/sessions`, `PATCH /api/sessions/{name}`, `POST …/clear`, `DELETE …` | Sessões |
-| `GET/PUT /api/settings` | Modelos e effort por tipo, limites, MCPs desligados |
+| `GET/POST /api/sessions/{name}/portrait` | Retrato da sessão (POST gera de novo) |
+| `GET/PUT /api/settings` | Modelos e effort por tipo, limites, MCPs desligados, gerador de imagem favorito |
 | `GET/POST/PATCH /api/tasks` | Tarefas |
 | `GET /api/confirmations`, `POST /api/confirmations/{id}` | Confirmações pendentes |
 | `POST /api/commands` | Texto para o mesmo router da voz |

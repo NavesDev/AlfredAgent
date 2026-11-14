@@ -27,9 +27,9 @@ export function toneOf(limit: RateLimit): Tone {
 
 /** Text color per tone, for the numbers next to a meter. */
 export const TONE_TEXT: Record<Tone, string> = {
-  ok: 'text-gray-300',
-  warn: 'text-amber-200',
-  bad: 'text-red-300',
+  ok: 'text-ink-2',
+  warn: 'text-apple-orange',
+  bad: 'text-apple-red',
 }
 
 export const percentOf = (limit: RateLimit) =>

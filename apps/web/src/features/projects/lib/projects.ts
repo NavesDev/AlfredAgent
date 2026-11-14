@@ -15,3 +15,6 @@ export function applyProjectEvent(list: Project[], event: AlfredEvent): Project[
       return list
   }
 }
+
+/** "1 ambiente", "3 sessões". */
+export const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`

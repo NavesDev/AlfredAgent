@@ -4,7 +4,7 @@ Its kind (infra/claude/agents.py) builds the options from a context read fresh o
 so model, effort and resume changes apply to the next connection (ADR 0006, 0007, 0008).
 """
 
-import asyncio
+import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from typing import Any
@@ -25,6 +25,8 @@ from infra.claude.alfred import (
 )
 from infra.claude.summary import extract_summary
 
+log = logging.getLogger(__name__)
+
 
 class CodingSession:
     def __init__(
@@ -32,13 +34,12 @@ class CodingSession:
         bus: EventBus,
         kind: AgentKind,
         context: Callable[[], SessionContext],
-        timeout_s: float,
         connect: Callable[[sdk.ClaudeAgentOptions], Awaitable[Client]] = connect_sdk,
     ) -> None:
         self.kind, self._context = kind, context
         self.name = context().name
         self._bus = bus
-        self._timeout_s, self._connect = timeout_s, connect
+        self._connect = connect
         self._client: Client | None = None
 
     @property
@@ -46,17 +47,16 @@ class CodingSession:
         return self._client is not None
 
     async def run(self, task: str) -> Reply:
+        """No time limit: a task runs until it ends or someone clears or deletes the session."""
         try:
-            async with asyncio.timeout(self._timeout_s):
-                if self._client is None:
-                    self._client = await self._open()
-                return await self._run(self._client, task)
-        except (TimeoutError, sdk.ClaudeSDKError, AgentError) as e:
+            if self._client is None:
+                self._client = await self._open()
+            return await self._run(self._client, task)
+        except (sdk.ClaudeSDKError, AgentError) as e:
             await self.disconnect()  # next task reconnects fresh
             if isinstance(e, AgentError):
                 raise
-            reason = f"timeout after {self._timeout_s}s" if isinstance(e, TimeoutError) else e
-            raise AgentError(str(reason)) from e
+            raise AgentError(str(e)) from e
 
     async def disconnect(self) -> None:
         """Ends the CLI process; the next task resumes the conversation if the context says so."""
@@ -82,16 +82,12 @@ class CodingSession:
 
     async def _run(self, client: Client, task: str) -> Reply:
         await client.query(task)
-        result = None
-        async for message in client.receive_response():
-            if isinstance(message, sdk.AssistantMessage):
-                publish_progress(self._bus, self.name, message)
-            elif isinstance(message, sdk.ResultMessage):
-                result = message
-            elif isinstance(message, sdk.SystemMessage):
-                self._publish_system(message)
-            elif isinstance(message, sdk.RateLimitEvent):
-                publish_rate_limit(self._bus, message)
+        while True:
+            result, prompts = await self._turn(client, task)
+            if not prompts or _ours(prompts, task):
+                break
+            # a background job's notification, or a turn left unread, ended before ours
+            log.info("session %s skipped a turn it did not ask for: %s", self.name, prompts)
         if result is None:
             raise AgentError("stream ended without a result")
         if result.is_error or result.result is None:
@@ -104,6 +100,24 @@ class CodingSession:
         )
         self._bus.publish("alfred_reply", session=self.name, text=reply.text, summary=reply.summary)
         return reply
+
+    async def _turn(self, client: Client, task: str) -> tuple[sdk.ResultMessage | None, list[str]]:
+        """Reads one turn; returns its result and the prompts the CLI echoed starting it."""
+        result, prompts = None, []
+        async for message in client.receive_response():
+            if (prompt := _prompt(message)) is not None:
+                prompts.append(prompt)
+            if prompts and not _ours(prompts, task):
+                continue  # not our turn: its steps belong to no task on the panel
+            if isinstance(message, sdk.AssistantMessage):
+                publish_progress(self._bus, self.name, message)
+            elif isinstance(message, sdk.ResultMessage):
+                result = message
+            elif isinstance(message, sdk.SystemMessage):
+                self._publish_system(message)
+            elif isinstance(message, sdk.RateLimitEvent):
+                publish_rate_limit(self._bus, message)
+        return result, prompts
 
     def _publish_system(self, message: sdk.SystemMessage) -> None:
         name = self.name
@@ -130,6 +144,21 @@ class CodingSession:
             servers: list[Any] = message.data.get("mcp_servers") or []
             names = [str(s["name"]) for s in servers if isinstance(s, dict) and "name" in s]
             self._bus.publish("mcp_servers_seen", session=name, names=names)
+
+
+def _prompt(message: Any) -> str | None:
+    """The text of a prompt the CLI echoed (a task or a notification); None for anything else."""
+    if not isinstance(message, sdk.UserMessage) or message.parent_tool_use_id:
+        return None
+    if isinstance(message.content, str):
+        return message.content.strip()
+    if any(isinstance(b, sdk.ToolResultBlock) for b in message.content):
+        return None
+    return "".join(b.text for b in message.content if isinstance(b, sdk.TextBlock)).strip()
+
+
+def _ours(prompts: list[str], task: str) -> bool:
+    return any(task.strip() in prompt for prompt in prompts)
 
 
 def _without_resume(ctx: SessionContext) -> SessionContext:

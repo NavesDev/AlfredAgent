@@ -121,3 +121,21 @@ async def test_talker_rests_in_thinking_during_the_turn_then_idle(bus: EventBus)
     await Router(bus, FakeAgent(Reply("x", "y")), talker).handle("oi")
 
     assert talker.resting == ["thinking", "idle"]
+
+
+class FakeVocabulary:
+    def canonicalize(self, text: str) -> str:
+        return text.replace("saite seils", "Site Sales")
+
+    def hint(self) -> str:
+        return "[Nomes conhecidos: Site Sales]"
+
+
+async def test_fixes_aliases_and_sends_the_known_names(bus: EventBus) -> None:
+    agent = FakeAgent(Reply("x", "y"))
+
+    await Router(bus, agent, FakeTalker(), vocabulary=FakeVocabulary()).handle(
+        "manda pro saite seils"
+    )
+
+    assert agent.asked == ["[Nomes conhecidos: Site Sales]\nmanda pro Site Sales"]
