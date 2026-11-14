@@ -8,18 +8,23 @@ from errors import ConfigError
 from infra.claude.agents import KINDS
 from models.settings import Defaults
 
+Device = Literal["cpu", "cuda"]
+
 
 class Whisper(BaseModel):
     model: str
-    device: Literal["cpu", "cuda"]
-    compute_type: str
+    device: Device
+    compute_type: str  # on the CPU fallback always int8
     language: str
     initial_prompt: str = ""
+    idle_s: int = 30  # GPU released after this long unused; the wake word reloads it (~2.6 s)
 
 
 class Kokoro(BaseModel):
     voice: str
     speed: float = 1.0
+    device: Device = "cuda"
+    idle_s: int = 10  # moving back to the GPU takes ~0.07 s
     acknowledgements: list[str] = []
 
 
@@ -33,6 +38,7 @@ class Listener(BaseModel):
     sample_rate: int = 16000
     silence_ms: int = 1800
     max_record_s: int = 60
+    guess_ms: int = 400  # pause after which Whisper starts early on the audio so far
 
 
 class Agents(BaseModel):

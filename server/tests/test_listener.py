@@ -12,6 +12,7 @@ from tests.conftest import drain
 
 WAKE, SPEECH, SILENCE = (np.full(FRAME, v, dtype=np.int16) for v in (2, 1, 0))
 SILENCE_FRAMES = 23  # 1800 ms / 80 ms, rounded up
+GUESS_FRAMES = 5  # 400 ms / 80 ms
 chimes: list[str] = []
 
 
@@ -31,6 +32,8 @@ def make(  # type: ignore[no-untyped-def]
     text: str | Exception = "oi alfred",
     muted: bool = False,
     acknowledge: Callable[[], None] | None = None,
+    warm: Callable[[], None] = lambda: None,
+    can_guess: bool = True,
 ):
     heard: list[str] = []
     chimes.clear()
@@ -53,6 +56,8 @@ def make(  # type: ignore[no-untyped-def]
         muted=lambda: muted,
         chime=chimes.append,
         acknowledge=acknowledge,
+        warm=warm,
+        can_guess=lambda: can_guess,
     )
     return listener, heard, recorded
 
@@ -74,9 +79,47 @@ async def test_wake_word_then_speech_then_silence_hands_off_transcript(bus: Even
     feed(listener, SILENCE, WAKE, SPEECH, SPEECH, *[SILENCE] * SILENCE_FRAMES)
 
     assert heard == ["oi alfred"]
-    assert len(recorded[0]) == FRAME * (2 + SILENCE_FRAMES)
+    assert len(recorded) == 1  # the guess at the pause, reused when the silence ends
+    assert len(recorded[0]) == FRAME * (2 + GUESS_FRAMES)
     states = [e["state"] for e in await events(queue, "voice_state")]
     assert states == ["listening", "transcribing"]
+
+
+async def test_wake_word_warms_whisper(bus: EventBus) -> None:
+    warmed: list[bool] = []
+    listener, _, _ = make(bus, warm=lambda: warmed.append(True))
+
+    feed(listener, SPEECH)
+    assert warmed == []
+    feed(listener, WAKE)
+    assert warmed == [True]
+
+
+async def test_speech_after_the_guess_discards_it(bus: EventBus) -> None:
+    listener, heard, recorded = make(bus)
+
+    feed(listener, WAKE, SPEECH, *[SILENCE] * GUESS_FRAMES, SPEECH)
+    feed(listener, *[SILENCE] * SILENCE_FRAMES)
+
+    assert heard == ["oi alfred"]
+    assert [len(a) // FRAME for a in recorded] == [1 + GUESS_FRAMES, 2 + 2 * GUESS_FRAMES]
+
+
+async def test_no_guess_when_whisper_is_slow(bus: EventBus) -> None:
+    listener, heard, recorded = make(bus, can_guess=False)
+
+    feed(listener, WAKE, SPEECH, *[SILENCE] * SILENCE_FRAMES)
+
+    assert heard == ["oi alfred"]
+    assert [len(a) // FRAME for a in recorded] == [1 + SILENCE_FRAMES]
+
+
+async def test_without_a_pause_transcribes_at_the_end(bus: EventBus) -> None:
+    listener, _, recorded = make(bus)
+
+    feed(listener, WAKE, *[SPEECH] * 800)
+
+    assert len(recorded) == 1
 
 
 async def test_chimes_on_wake_word_and_when_recording_stops(bus: EventBus) -> None:

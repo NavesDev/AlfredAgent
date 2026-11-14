@@ -14,8 +14,8 @@ Tecnologias do Alfred e o motivo de cada escolha. Mudanças relevantes viram um 
 | Tools internas | Servidor MCP in-process (tools Python definidas no próprio código) |
 | Wake word | openWakeWord (modelo `alfred.onnx` treinado) |
 | VAD | Silero VAD |
-| STT | faster-whisper `large-v3-turbo`, `int8`, CUDA ou CPU |
-| TTS | Kokoro (`pf_dora` ou `pm_alex`) |
+| STT | faster-whisper `large-v3-turbo`, `int8_float16` na GPU sob demanda, `int8` na CPU ([ADR 0010](adr/0010-voice-models-on-demand-gpu.md)) |
+| TTS | Kokoro (`pf_dora` ou `pm_alex`), GPU sob demanda ou CPU |
 | Áudio I/O | sounddevice (PortAudio) |
 | Fuzzy match | rapidfuzz |
 | Persistência | SQLite |
@@ -49,12 +49,14 @@ Tecnologias do Alfred e o motivo de cada escolha. Mudanças relevantes viram um 
 | Componente | RAM aprox. | Quando pesa |
 |---|---|---|
 | openWakeWord + Silero | ~150 MB | Sempre ligado, CPU quase zero |
-| faster-whisper large-v3-turbo int8 | ~2 GB (ou ~1,5–2 GB de VRAM) | Pico curto a cada comando |
-| Kokoro | ~400 MB | Só enquanto fala |
+| faster-whisper large-v3-turbo | ~1,1 GB de VRAM (`int8_float16`), ~2 GB de RAM no fallback de CPU | Da wake word até 30 s depois do último comando |
+| Kokoro | ~350 MB de VRAM ou ~400 MB de RAM | Até 10 s depois da última fala |
+| Contextos CUDA | ~470 MB de VRAM | Enquanto o Alfred roda |
 | Sessões Claude Code (3) | ~0,5–1 GB | Enquanto rodam tarefas |
 
 - **faster-whisper `large-v3-turbo` int8:** melhor relação qualidade/velocidade em pt. `initial_prompt` com o jargão (Spring, Liferay, endpoint, worktree, commit, nomes das sessões) melhora termos técnicos. Se a máquina apertar, trocar para `medium` é uma linha no config.
-- **Kokoro:** TTS local leve, com vozes em português, rápido o suficiente em CPU.
+- **Kokoro:** TTS local leve, com vozes em português. 8 s de fala em 0,14 s na GPU, 2,3 s na CPU.
+- **GPU sob demanda:** a GPU é dividida com o serviço de imagens. Whisper e Kokoro sobem quando usados, soltam a VRAM ociosos e caem para a CPU se ela estiver ocupada ([ADR 0010](adr/0010-voice-models-on-demand-gpu.md)). torch vem do índice `cu126`, cujos wheels `nvidia-*` (cuBLAS, cuDNN 9) também servem ao CTranslate2.
 - **openWakeWord:** permite treinar a wake word própria ("Alfred") e roda em CPU com custo quase zero.
 
 ## Web
@@ -73,7 +75,7 @@ Tecnologias do Alfred e o motivo de cada escolha. Mudanças relevantes viram um 
 | Node.js | 20 LTS |
 | pnpm | 9 |
 | Git | 2.40 |
-| CUDA (opcional) | 12.x |
+| Driver NVIDIA (opcional) | CUDA 12+ |
 
 ## Configuração
 
@@ -82,14 +84,17 @@ Arquivo único `server/config.yaml` (versionado apenas como `config.example.yaml
 ```yaml
 whisper:
   model: large-v3-turbo
-  device: cuda          # cuda | cpu
-  compute_type: int8
+  device: cuda          # cuda | cpu; fallback para CPU com a GPU ocupada
+  compute_type: int8_float16
   language: pt
   initial_prompt: "Spring, Liferay, endpoint, worktree, commit, backend, frontend"
+  idle_s: 30            # solta a GPU depois disso sem uso
 
 kokoro:
   voice: pf_dora        # ou pm_alex
   speed: 1.1
+  device: cuda
+  idle_s: 10
 
 wakeword:
   name: Alfred

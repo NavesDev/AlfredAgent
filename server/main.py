@@ -73,19 +73,22 @@ async def serve(config: Config) -> None:
     await agent.start()
     vocabulary = Vocabulary(db, bus)
     router = Router(bus, agent, talker, vocabulary=vocabulary)
+    whisper = load_whisper(config.whisper, lambda: vocabulary.whisper_words)
     listener = Listener(
         bus,
         config.listener,
         config.wakeword.threshold,
         wake=OpenWakeWord(config.wakeword.model),
         is_speech=load_vad(),
-        transcribe=load_whisper(config.whisper, lambda: vocabulary.whisper_words),
+        transcribe=whisper,
         on_transcript=lambda text: asyncio.run_coroutine_threadsafe(
             router.handle(text), loop
         ).result(),
         muted=lambda: talker.is_speaking,
         chime=talker.chime,
         acknowledge=talker.acknowledge,
+        warm=whisper.warm,
+        can_guess=whisper.fast,
     )
 
     jobs = [

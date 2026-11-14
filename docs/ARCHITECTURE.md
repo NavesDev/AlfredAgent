@@ -72,6 +72,7 @@ alfred/
 │   │   └── tasks.py
 │   ├── infra/
 │   │   ├── audio/
+│   │   │   ├── device.py      # GPU on demand, CPU fallback
 │   │   │   ├── listener.py    # wake word + VAD + Whisper
 │   │   │   └── talker.py      # Kokoro + speech queue
 │   │   ├── claude/
@@ -112,7 +113,8 @@ flowchart TB
 ```
 
 - Captura e wake word ficam sempre ligados, com custo quase zero de CPU.
-- O Whisper roda na thread do listener, só por segmento de fala; o modelo fica carregado. O microfone é ignorado enquanto o comando é processado.
+- O Whisper roda numa thread própria (`stt`). A wake word já carrega o modelo na GPU; numa pausa de 400 ms ele transcreve o áudio até ali, e esse palpite vira o comando se ninguém voltar a falar. O microfone é ignorado enquanto o texto final é aguardado.
+- Whisper e Kokoro usam a GPU sob demanda e caem para a CPU com ela ocupada (`infra/audio/device.py`, [ADR 0010](adr/0010-voice-models-on-demand-gpu.md)).
 - O Kokoro consome uma fila de fala com prioridade; barge-in limpa a fila e para o playback.
 - Interrupções ("para") são casadas no próprio listener/router antes de qualquer `await` longo, para agir em milissegundos.
 

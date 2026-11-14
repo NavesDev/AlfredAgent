@@ -48,11 +48,12 @@ dev = [
     "types-pyyaml>=6.0.12.20260906",
 ]
 
-# Machine has no NVIDIA GPU: CPU-only torch keeps the venv small.
+# CUDA 12 torch: its nvidia-cublas/cudnn wheels also serve faster-whisper (CTranslate2
+# needs CUDA 12 + cuDNN 9, so not cu13x). See ADR 0010.
 [[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
 explicit = true
 
 [tool.uv.sources]
-torch = { index = "pytorch-cpu" }
+torch = { index = "pytorch-cu126" }
