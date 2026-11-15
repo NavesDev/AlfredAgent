@@ -328,6 +328,70 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
 
         return await _speak(run)
 
+    @sdk.tool(
+        "iniciar_feature",
+        "Começa uma feature nova num projeto: escolhe o ambiente ('ambiente', ou o padrão do "
+        "projeto) e, conforme o modo de implementação dele, cria worktree, branch feat/<nome> e "
+        "sessão de implementação, ou usa a sessão do ambiente; depois manda a 'tarefa'. Não "
+        "precisa perguntar ao usuário antes.",
+        {
+            "type": "object",
+            "properties": {
+                "projeto": {"type": "string"},
+                "feature": {"type": "string"},
+                "tarefa": {"type": "string"},
+                "ambiente": {"type": "string"},
+            },
+            "required": ["projeto", "feature", "tarefa"],
+        },
+    )
+    async def iniciar_feature(args: Result) -> Result:
+        async def run() -> str:
+            found = projects.find(str(args["projeto"]))
+            ws = await projects.start_feature(
+                found.name, str(args["feature"]), str(args.get("ambiente") or "") or None
+            )
+            views = sessions.list()
+            view = next(
+                (
+                    v
+                    for v in views
+                    if v.kind == "implementacao"
+                    and v.project == found.name
+                    and v.workspace == ws.name
+                ),
+                None,
+            )
+            made = ""
+            if view is None:
+                taken = {v.name.lower() for v in views}
+                name = ws.name if ws.name.lower() not in taken else f"{found.name}-{ws.name}"
+                view = sessions.create("implementacao", name, ws.id)
+                made = f" e a sessão {view.name}"
+            sent = delegate(view.name, str(args["tarefa"]))
+            if ws.kind == "worktree" and ws.branch:
+                return f"Worktree {ws.name} na branch {ws.branch}{made}. {sent}"
+            return f"Ambiente {ws.name}, sessão {view.name}{made and ' (nova)'}. {sent}"
+
+        return await _speak(run)
+
+    @sdk.tool(
+        "definir_ambiente_padrao",
+        "Define o ambiente padrão de um projeto: o principal, base dos worktrees de feature.",
+        {
+            "type": "object",
+            "properties": {"projeto": {"type": "string"}, "ambiente": {"type": "string"}},
+            "required": ["projeto", "ambiente"],
+        },
+    )
+    async def definir_ambiente_padrao(args: Result) -> Result:
+        async def run() -> str:
+            ws = projects.workspace(str(args["projeto"]), str(args["ambiente"]))
+            updated = projects.update(ws.project_id, default_workspace_id=ws.id)
+            return f"Ambiente padrão do {updated.name}: {ws.name}."
+
+        return await _speak(run)
+
     return [
         *delegates,
         criar_sessao,
@@ -342,6 +406,8 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
         definir_apelidos,
         definir_descricao,
         ver_ambiente,
+        iniciar_feature,
+        definir_ambiente_padrao,
     ]
 
 

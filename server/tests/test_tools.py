@@ -19,7 +19,9 @@ class Tools:
     def __init__(self, env: Env, home: Path) -> None:
         self.env, self.home = env, home
         self.git = FakeGit()
-        self.projects = Projects(env.db, env.sessions._bus, self.git)
+        self.projects = Projects(
+            env.db, env.sessions._bus, self.git, mode=lambda: env.settings.app().implementation_mode
+        )
         self.list = session_tools(env.sessions, self.projects)
 
     async def call(self, name: str, args: dict[str, Any]) -> str:
@@ -51,6 +53,8 @@ def test_every_tool_is_allowed_without_asking(tools: Tools) -> None:
         "definir_apelidos",
         "definir_descricao",
         "ver_ambiente",
+        "iniciar_feature",
+        "definir_ambiente_padrao",
     }
     assert {f"mcp__{SERVER}__{n}" for n in names} <= set(permissions.ALLOWED)
     assert not {"Bash", "Edit", "Write"} & set(permissions.ALLOWED)
@@ -269,3 +273,68 @@ async def test_ver_ambiente_speaks_the_error(tools: Tools, tmp_path: Path) -> No
     assert "not a git repository" in await tools.call(
         "ver_ambiente", {"projeto": "Recurve", "ambiente": "solto"}
     )
+
+
+async def recurve_with(tools: Tools, tmp_path: Path, *names: str) -> None:
+    await tools.call("criar_projeto", {"nome": "Recurve"})
+    for name in names:
+        (tmp_path / name).mkdir()
+        await tools.call(
+            "criar_ambiente", {"projeto": "Recurve", "nome": name, "pasta": str(tmp_path / name)}
+        )
+
+
+async def test_iniciar_feature_opens_worktree_and_session_and_delegates(
+    tools: Tools, tmp_path: Path
+) -> None:
+    await recurve_with(tools, tmp_path, "back")
+
+    text = await tools.call(
+        "iniciar_feature",
+        {"projeto": "Recurve", "feature": "Cancelamento", "tarefa": "implementa o cancelamento"},
+    )
+    await settle()
+
+    assert "feat/cancelamento" in text and "cancelamento" in text
+    [view] = [v for v in tools.env.sessions.list() if v.workspace == "cancelamento"]
+    assert view.kind == "implementacao"
+    assert view.status == "busy" or view.tasks_done or view.queue
+
+
+async def test_iniciar_feature_in_workspace_mode_reuses_its_session(
+    tools: Tools, tmp_path: Path
+) -> None:
+    await recurve_with(tools, tmp_path, "back")
+    tools.env.settings.update(SettingsUpdate(implementation_mode="ambiente"))
+    await tools.call(
+        "criar_sessao",
+        {"tipo": "implementacao", "nome": "api", "projeto": "Recurve", "ambiente": "back"},
+    )
+
+    text = await tools.call(
+        "iniciar_feature", {"projeto": "Recurve", "feature": "login", "tarefa": "faz o login"}
+    )
+
+    assert "api" in text and "worktree" not in text.lower()
+    assert len([v for v in tools.env.sessions.list() if v.project == "Recurve"]) == 1
+
+
+async def test_iniciar_feature_without_default_asks(tools: Tools) -> None:
+    await tools.call("criar_projeto", {"nome": "Recurve"})
+
+    text = await tools.call(
+        "iniciar_feature", {"projeto": "Recurve", "feature": "login", "tarefa": "faz"}
+    )
+
+    assert "ambiente padrão" in text
+    assert not [v for v in tools.env.sessions.list() if v.project == "Recurve"]
+
+
+async def test_definir_ambiente_padrao(tools: Tools, tmp_path: Path) -> None:
+    await recurve_with(tools, tmp_path, "back", "front")
+
+    text = await tools.call("definir_ambiente_padrao", {"projeto": "Recurve", "ambiente": "front"})
+
+    found = tools.projects.find("Recurve")
+    assert "front" in text
+    assert found.default_workspace_id == next(w.id for w in found.workspaces if w.name == "front")
