@@ -172,7 +172,7 @@ async def test_client_reads_only_streams_and_asks_for_resumo_first(
     await started(bus, tmp_path, connect)
 
     options = connect.options[0]
-    assert options.tools == ["WebSearch", "WebFetch"]
+    assert options.tools == ["WebSearch", "WebFetch", "Read", "Glob", "Grep"]
     assert options.permission_mode == "auto"
     assert "mcp__claude_ai_Gmail__search_threads" in options.allowed_tools
     assert "mcp__claude_ai_Gmail__send_message" not in options.allowed_tools
@@ -373,6 +373,8 @@ def test_no_write_tool_is_both_allowed_and_hidden() -> None:
         ({"query": "previsão do tempo"}, "previsão do tempo"),
         ({"url": "https://www.linkedin.com/feed/"}, "www.linkedin.com"),
         ({"selector": "#x"}, None),
+        ({"file_path": "/home/u/Projetos/Vrummy/package.json"}, "package.json"),
+        ({"pattern": "supabase", "path": "/home/u"}, "supabase"),
         ({"query": ""}, None),
     ],
 )
@@ -413,7 +415,7 @@ def test_options_install_the_url_hook() -> None:
     options = AlfredAgent(None, None, "sonnet", 1)._options(None)  # type: ignore[arg-type]
     [matcher] = options.hooks["PreToolUse"]  # type: ignore[index]
     assert isinstance(matcher, sdk.HookMatcher) and matcher.matcher is None
-    assert matcher.hooks == [permissions.block_local_urls]
+    assert matcher.hooks == [permissions.block_local_urls, permissions.guard_local_paths]
 
 
 def test_agent_exposes_tools_server_as_alfred() -> None:

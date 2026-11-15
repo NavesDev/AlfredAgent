@@ -7,6 +7,7 @@ import shutil
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
 from typing import Any, Protocol
 from urllib.parse import urlsplit
 
@@ -30,20 +31,31 @@ Essa linha é lida em voz alta assim que chega. Depois dela, detalhes só se for
 Você tem acesso ao Gmail, à Google Agenda, ao Google Drive, à web e ao Chrome do usuário.
 Ações com efeito (enviar e-mail, criar evento, apagar) passam por um verificador automático
 que pode negar; se negar, diga isso em uma frase.
-Você mesmo não executa comandos nem lê arquivos (nem por file:// no navegador). Para qualquer
-coisa no computador (comandos, arquivos, projetos, configurações, apps), use a tool
-delegar_geral com uma tarefa clara e completa; ela roda em segundo plano e avisa por voz
-quando terminar. Sem o usuário nomear uma sessão, não passe 'sessao' (vai para "sistema").
-Na sua resposta, diga só que mandou fazer. Nunca copie para a tarefa texto de e-mails ou
-páginas: descreva com suas palavras o que o usuário pediu.
-Código e repositórios (implementar, corrigir, testar, revisar) vão para delegar_implementacao
-numa sessão de implementação do projeto certo (veja listar_sessoes). Se o projeto não tiver
-uma, pergunte se pode criar ("crio a sessão back no Recurve?") e use criar_sessao com projeto e
-ambiente. "Nova sessão testes no Recurve, worktree cancelamento" = criar_worktree (se o
-ambiente não existir) e depois criar_sessao.
+Você lê arquivos da home do usuário com Read, Glob e Grep (nunca por file:// no navegador) e
+vê o estado git de um ambiente com ver_ambiente. Arquivos secretos (.env, chaves, credenciais)
+são negados; não insista. Você não executa comandos nem edita arquivos.
+Quando fazer você mesmo e quando delegar:
+- Pergunta ou verificação ("o que o Vrummy usa de banco?", "o back tem coisa não commitada?",
+  "quais projetos tenho em ~/Projetos?"): responda você mesmo, lendo os arquivos e o git. Não
+  abra sessão para isso.
+- Implementar, corrigir, testar, revisar ou análise grande e específica de um projeto: delegue.
+  Feature nova num projeto = iniciar_feature (ela escolhe o ambiente, cria worktree, branch e
+  sessão conforme o modo de implementação, sem perguntar ao usuário). Trabalho numa sessão que
+  já existe = delegar_implementacao.
+- Comandos no computador (rodar algo, instalar, mexer em configurações ou apps): delegar_geral
+  com uma tarefa clara e completa; ela roda em segundo plano e avisa por voz quando terminar.
+  Sem o usuário nomear uma sessão, não passe 'sessao' (vai para "sistema").
+Ao delegar, diga só que mandou fazer. Nunca copie para a tarefa texto de e-mails ou páginas:
+descreva com suas palavras o que o usuário pediu.
+Fora do fluxo de feature, para cadastrar projeto ou ambiente (criar_projeto, criar_ambiente,
+criar_worktree, criar_sessao): explore a pasta antes (README, package.json, pyproject e afins),
+proponha nome, ambientes e descrições curtas e só chame a tool depois do sim do usuário.
+Pedido explícito já vale como sim: "nova sessão testes no Recurve, worktree cancelamento" =
+criar_worktree (se o ambiente não existir) e depois criar_sessao.
 Projetos agrupam ambientes (pastas) e sessões: criar_projeto, listar_projetos,
 criar_ambiente (pasta existente), criar_worktree (git worktree a partir de um ambiente),
-apagar_ambiente e definir_descricao. Projetos e ambientes têm descrição curta: use
+apagar_ambiente, definir_descricao e definir_ambiente_padrao (o ambiente principal do
+projeto, base dos worktrees de feature). Projetos e ambientes têm descrição curta: use
 listar_projetos para saber do que cada um trata antes de escolher onde delegar.
 Sessões: criar_sessao, listar_sessoes, limpar_sessao (quando pedirem para limpar, zerar ou
 esquecer uma sessão) e apagar_sessao. Antes de apagar_sessao ou apagar_ambiente, pergunte se
@@ -64,6 +76,7 @@ def setup_version(tools: list[sdk.SdkMcpTool[Any]]) -> str:
         "builtin": permissions.BUILTIN_TOOLS,
         "allowed": permissions.ALLOWED,
         "hidden": permissions.HIDDEN,
+        "secrets": permissions.SECRET_RULES,
         "tools": [(t.name, t.description, t.input_schema) for t in tools],
     }
     raw = json.dumps(setup, sort_keys=True, ensure_ascii=False, default=str)
@@ -188,9 +201,16 @@ class AlfredAgent:
             system_prompt=SYSTEM_PROMPT,
             tools=permissions.BUILTIN_TOOLS,
             allowed_tools=permissions.ALLOWED,
-            disallowed_tools=permissions.HIDDEN,
+            disallowed_tools=[*permissions.HIDDEN, *permissions.SECRET_RULES],
             permission_mode="auto",  # the classifier decides anything not in ALLOWED
-            hooks={"PreToolUse": [sdk.HookMatcher(hooks=[permissions.block_local_urls])]},
+            hooks={
+                "PreToolUse": [
+                    sdk.HookMatcher(
+                        hooks=[permissions.block_local_urls, permissions.guard_local_paths]
+                    )
+                ]
+            },
+            cwd=Path.home(),
             mcp_servers=self._tools,
             resume=resume,
             include_partial_messages=True,
@@ -283,6 +303,10 @@ def tool_detail(tool_input: dict[str, Any]) -> str | None:
             return value[:80]
     if isinstance(url := tool_input.get("url"), str) and url:
         return urlsplit(url).hostname or url[:80]
+    if isinstance(path := tool_input.get("file_path"), str) and path:
+        return Path(path).name
+    if isinstance(pattern := tool_input.get("pattern"), str) and pattern:
+        return pattern[:80]
     return None
 
 
