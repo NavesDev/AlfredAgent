@@ -7,6 +7,8 @@ from typing import Literal
 from pydantic import BaseModel
 
 WorkspaceKind = Literal["folder", "worktree"]
+ImplementationMode = Literal["worktree", "ambiente"]
+MAX_DESCRIPTION = 200  # short descriptions: Alfred's context for where to delegate
 
 
 class Workspace(BaseModel):
@@ -18,6 +20,7 @@ class Workspace(BaseModel):
     parent_id: int | None = None
     branch: str | None = None
     description: str = ""
+    implementation_mode: ImplementationMode | None = None  # None follows the global setting
 
 
 class Project(BaseModel):
@@ -25,6 +28,7 @@ class Project(BaseModel):
     name: str
     aliases: list[str]
     description: str = ""
+    default_workspace_id: int | None = None  # base of feature worktrees
     workspaces: list[Workspace] = []
 
 
@@ -38,6 +42,7 @@ def _project(db: sqlite3.Connection, row: sqlite3.Row) -> Project:
         name=row["name"],
         aliases=json.loads(row["aliases"]),
         description=row["description"],
+        default_workspace_id=row["default_workspace_id"],
         workspaces=workspaces_of(db, row["id"]),
     )
 
@@ -76,7 +81,12 @@ def update_project(
     name: str | None = None,
     aliases: list[str] | None = None,
     description: str | None = None,
+    default_workspace_id: int | None = None,
 ) -> None:
+    if default_workspace_id is not None:
+        db.execute(
+            "UPDATE project SET default_workspace_id = ? WHERE id = ?", (default_workspace_id, id)
+        )
     if name is not None:
         db.execute("UPDATE project SET name = ? WHERE id = ?", (name, id))
     if aliases is not None:
@@ -128,6 +138,12 @@ def workspaces_of(db: sqlite3.Connection, project_id: int) -> list[Workspace]:
 
 def update_workspace(db: sqlite3.Connection, id: int, description: str) -> None:
     db.execute("UPDATE workspace SET description = ? WHERE id = ?", (description, id))
+
+
+def set_implementation_mode(
+    db: sqlite3.Connection, id: int, mode: ImplementationMode | None
+) -> None:
+    db.execute("UPDATE workspace SET implementation_mode = ? WHERE id = ?", (mode, id))
 
 
 def delete_workspace(db: sqlite3.Connection, id: int) -> None:

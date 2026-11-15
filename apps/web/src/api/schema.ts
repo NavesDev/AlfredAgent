@@ -324,6 +324,8 @@ export interface components {
        * @default
        */
       description: string
+      /** Default Workspace Id */
+      default_workspace_id?: number | null
       /**
        * Workspaces
        * @default []
@@ -338,6 +340,8 @@ export interface components {
       aliases?: string[] | null
       /** Description */
       description?: string | null
+      /** Default Workspace Id */
+      default_workspace_id?: number | null
     }
     /** RateLimit */
     RateLimit: {
@@ -363,6 +367,8 @@ export interface components {
       effort?: string | null
       /** Aliases */
       aliases?: string[] | null
+      /** Description */
+      description?: string | null
     }
     /** SessionUsage */
     SessionUsage: {
@@ -381,6 +387,8 @@ export interface components {
       name: string
       /** Aliases */
       aliases: string[]
+      /** Description */
+      description: string
       /** Kind */
       kind: string
       /** Label */
@@ -448,6 +456,8 @@ export interface components {
       mcp_disabled?: string[] | null
       /** Image Mcp */
       image_mcp?: string | null
+      /** Implementation Mode */
+      implementation_mode?: ('worktree' | 'ambiente') | null
     }
     /** SettingsView */
     SettingsView: {
@@ -465,6 +475,11 @@ export interface components {
       image_mcp_servers: string[]
       /** Known Mcp Servers */
       known_mcp_servers: string[]
+      /**
+       * Implementation Mode
+       * @enum {string}
+       */
+      implementation_mode: 'worktree' | 'ambiente'
     }
     /** SubagentView */
     SubagentView: {
@@ -531,11 +546,15 @@ export interface components {
        * @default
        */
       description: string
+      /** Implementation Mode */
+      implementation_mode?: ('worktree' | 'ambiente') | null
     }
     /** WorkspaceChange */
     WorkspaceChange: {
       /** Description */
-      description: string
+      description?: string | null
+      /** Implementation Mode */
+      implementation_mode?: ('worktree' | 'ambiente') | null
     }
   }
   responses: never

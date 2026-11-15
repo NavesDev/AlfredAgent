@@ -46,7 +46,7 @@ export function SettingsPage() {
   )
 }
 
-function Form({
+export function Form({
   settings,
   save,
   section,
@@ -140,6 +140,24 @@ function Form({
                 value={draft.idle_minutes}
                 onChange={(v) => set('idle_minutes', v)}
                 unit="min"
+              />
+            </Row>
+          </Section>
+          <Section
+            title="Features"
+            description="Orienta o Alfred em ambientes sem modo próprio; ele decide caso a caso."
+          >
+            <Row title="Feature nova" icon={<GitBranch />}>
+              <Segmented
+                label="Feature nova, por padrão"
+                value={draft.implementation_mode}
+                onChange={(mode) =>
+                  set('implementation_mode', mode as SettingsView['implementation_mode'])
+                }
+                options={[
+                  { value: 'worktree', label: 'Worktree novo' },
+                  { value: 'ambiente', label: 'No próprio ambiente' },
+                ]}
               />
             </Row>
           </Section>

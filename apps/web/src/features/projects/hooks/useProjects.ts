@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../api/client'
-import type { Project, SessionView, Workspace } from '../../../api/events'
+import type { Project, SessionView, SettingsView, Workspace } from '../../../api/events'
 import type { NewSession } from '../../../lib/sessionForm'
 import { useEvents } from '../../../hooks/useEvents'
-import { applyProjectEvent } from '../lib/projects'
+import { applyProjectEvent, type Mode } from '../lib/projects'
 
 const KEY = ['projects'] as const
 const SESSIONS = ['sessions'] as const
@@ -21,6 +21,15 @@ export function useProjects() {
     client.setQueryData<Project[]>(KEY, (list) => (list ? applyProjectEvent(list, event) : list))
   })
   return { projects: query.data ?? [], loading: query.isPending, error: query.error }
+}
+
+/** The global implementation mode, the one a workspace without its own follows. */
+export function useGlobalMode(): Mode {
+  const query = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => api<SettingsView>('/api/settings'),
+  })
+  return query.data?.implementation_mode ?? 'worktree'
 }
 
 /** Sessions, refetched whenever one changes (the dashboard applies events in place instead). */
@@ -52,6 +61,7 @@ export function useProjectActions() {
         name?: string
         aliases?: string[]
         description?: string
+        default_workspace_id?: number
       }) => api<Project>(`/api/projects/${id}`, json('PATCH', body)),
       onSuccess: refresh,
     }),
@@ -84,8 +94,14 @@ export function useProjectActions() {
       onSuccess: refresh,
     }),
     updateWorkspace: useMutation({
-      mutationFn: ({ id, description }: { id: number; description: string }) =>
-        api<Workspace>(`/api/workspaces/${id}`, json('PATCH', { description })),
+      mutationFn: ({
+        id,
+        ...body
+      }: {
+        id: number
+        description?: string
+        implementation_mode?: Mode | null
+      }) => api<Workspace>(`/api/workspaces/${id}`, json('PATCH', body)),
       onSuccess: refresh,
     }),
     removeWorkspace: useMutation({

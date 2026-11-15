@@ -52,7 +52,7 @@ Detalhes em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#estrutura-de-pastas).
 - Node.js 20+ e pnpm
 - Git 2.40+ (worktrees)
 - Sistema: `libportaudio2`, `espeak-ng`
-- Opcional: GPU NVIDIA com CUDA (Whisper na GPU libera ~2 GB de RAM)
+- Opcional: GPU NVIDIA com driver CUDA 12+ (Whisper em ~0,3 s em vez de ~6 s; cai para a CPU se a GPU estiver ocupada)
 - [Claude Code](https://claude.com/claude-code) instalado e logado (`claude`)
 - Para e-mail/agenda: credenciais Google
 

@@ -20,11 +20,13 @@ from controllers.usage import Usage
 from controllers.vocabulary import Vocabulary
 from errors import ConfigError, DependencyError
 from events import EventBus
+from infra import git
 from infra.audio import check_audio
 from infra.audio.listener import Listener, OpenWakeWord, load_vad, load_whisper
 from infra.audio.talker import Talker, load_kokoro, open_speaker
 from infra.claude.agents import AgentKind, SessionContext
 from infra.claude.alfred import AlfredAgent, check_cli
+from infra.claude.mcp import mcp_server_names
 from infra.claude.portrait import paint, user_mcp_servers
 from infra.claude.session import CodingSession
 from infra.claude.state import DailyState
@@ -51,7 +53,12 @@ async def serve(config: Config) -> None:
 
     db = open_db(config.storage.db_path)
     settings_model.seed(db, config.seed_defaults())
-    settings = Settings(db, bus, image_servers=lambda: list(user_mcp_servers()))
+    settings = Settings(
+        db,
+        bus,
+        image_servers=lambda: list(user_mcp_servers()),
+        mcp_servers=lambda: mcp_server_names(Path.home()),
+    )
 
     def new_session(kind: AgentKind, context: Callable[[], SessionContext]) -> CodingSession:
         return CodingSession(bus, kind, context)
@@ -62,7 +69,13 @@ async def serve(config: Config) -> None:
     )
     sessions.load()
     usage = Usage(bus, sessions, settings)
-    projects = Projects(db, bus)
+    projects = Projects(
+        db,
+        bus,
+        mode=lambda: settings.app().implementation_mode,
+        drop_session=sessions.delete,
+        watch=git.watch_worktrees,
+    )
     agent = AlfredAgent(
         bus,
         DailyState(config.storage.state_path),
@@ -73,19 +86,22 @@ async def serve(config: Config) -> None:
     await agent.start()
     vocabulary = Vocabulary(db, bus)
     router = Router(bus, agent, talker, vocabulary=vocabulary)
+    whisper = load_whisper(config.whisper, lambda: vocabulary.whisper_words)
     listener = Listener(
         bus,
         config.listener,
         config.wakeword.threshold,
         wake=OpenWakeWord(config.wakeword.model),
         is_speech=load_vad(),
-        transcribe=load_whisper(config.whisper, lambda: vocabulary.whisper_words),
+        transcribe=whisper,
         on_transcript=lambda text: asyncio.run_coroutine_threadsafe(
             router.handle(text), loop
         ).result(),
         muted=lambda: talker.is_speaking,
         chime=talker.chime,
         acknowledge=talker.acknowledge,
+        warm=whisper.warm,
+        can_guess=whisper.fast,
     )
 
     jobs = [
@@ -97,6 +113,7 @@ async def serve(config: Config) -> None:
             usage.run,
             vocabulary.run,
             portraits.run,
+            projects.watch_worktrees,
         )
     ]
     stop = threading.Event()

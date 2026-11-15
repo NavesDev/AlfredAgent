@@ -3,9 +3,9 @@
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
-from controllers.projects import Projects
+from controllers.projects import KEEP, Projects
 from errors import GitError, ProjectError, ProjectInUse, ProjectNotFound
-from models.project import Project, Workspace
+from models.project import ImplementationMode, Project, Workspace
 
 router = APIRouter(prefix="/api", tags=["projects"])
 
@@ -20,6 +20,7 @@ class ProjectChange(BaseModel):
     name: str | None = None
     aliases: list[str] | None = None
     description: str | None = None
+    default_workspace_id: int | None = None
 
 
 class NewWorkspace(BaseModel):
@@ -35,7 +36,8 @@ class NewWorktree(BaseModel):
 
 
 class WorkspaceChange(BaseModel):
-    description: str
+    description: str | None = None
+    implementation_mode: ImplementationMode | None = None  # null: follow the global setting
 
 
 def _projects(request: Request) -> Projects:
@@ -75,7 +77,9 @@ async def get_project(id: int, request: Request) -> Project:
 @router.patch("/projects/{id}")
 async def update_project(id: int, body: ProjectChange, request: Request) -> Project:
     try:
-        return _projects(request).update(id, body.name, body.aliases, body.description)
+        return _projects(request).update(
+            id, body.name, body.aliases, body.description, body.default_workspace_id
+        )
     except ProjectError as e:
         raise _http(e) from e
 
@@ -110,7 +114,8 @@ async def add_worktree(id: int, body: NewWorktree, request: Request) -> Workspac
 @router.patch("/workspaces/{id}")
 async def update_workspace(id: int, body: WorkspaceChange, request: Request) -> Workspace:
     try:
-        return _projects(request).update_workspace(id, body.description)
+        mode = body.implementation_mode if "implementation_mode" in body.model_fields_set else KEEP
+        return _projects(request).update_workspace(id, body.description, mode)
     except ProjectError as e:
         raise _http(e) from e
 

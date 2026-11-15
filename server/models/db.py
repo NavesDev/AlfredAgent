@@ -3,7 +3,7 @@
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS project (
@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS project (
     name TEXT NOT NULL UNIQUE COLLATE NOCASE,
     aliases TEXT NOT NULL DEFAULT '[]',
     description TEXT NOT NULL DEFAULT '',
+    default_workspace_id INTEGER REFERENCES workspace(id) ON DELETE SET NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS workspace (
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS workspace (
     parent_id INTEGER REFERENCES workspace(id),
     branch TEXT,
     description TEXT NOT NULL DEFAULT '',
+    implementation_mode TEXT CHECK (implementation_mode IN ('worktree', 'ambiente')),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (project_id, name)
 );
@@ -35,6 +37,7 @@ CREATE TABLE IF NOT EXISTS session (
     effort TEXT,
     claude_session_id TEXT,
     protected INTEGER NOT NULL DEFAULT 0,
+    description TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS agent_settings (
@@ -57,6 +60,7 @@ def open_db(path: Path | str) -> sqlite3.Connection:
     db.execute("PRAGMA foreign_keys = ON")
     db.executescript(_SCHEMA)
     _migrate(db)
+    _default_workspaces(db)
     db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     return db
 
@@ -67,8 +71,26 @@ def _migrate(db: sqlite3.Connection) -> None:
         ("session", "aliases"): "TEXT NOT NULL DEFAULT '[]'",  # version 2
         ("project", "description"): "TEXT NOT NULL DEFAULT ''",  # version 3
         ("workspace", "description"): "TEXT NOT NULL DEFAULT ''",  # version 3
+        ("session", "description"): "TEXT NOT NULL DEFAULT ''",  # version 4
+        (
+            "project",
+            "default_workspace_id",
+        ): "INTEGER REFERENCES workspace(id) ON DELETE SET NULL",  # version 4
+        (
+            "workspace",
+            "implementation_mode",
+        ): "TEXT CHECK (implementation_mode IN ('worktree', 'ambiente'))",  # version 4
     }
     for (table, column), kind in added.items():
         columns = {row["name"] for row in db.execute(f"PRAGMA table_info({table})")}
         if column not in columns:
             db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {kind}")
+
+
+def _default_workspaces(db: sqlite3.Connection) -> None:
+    """A project without a default workspace gets its first folder (version 4)."""
+    db.execute(
+        "UPDATE project SET default_workspace_id = (SELECT MIN(id) FROM workspace"
+        " WHERE workspace.project_id = project.id AND kind = 'folder')"
+        " WHERE default_workspace_id IS NULL"
+    )

@@ -72,6 +72,7 @@ alfred/
 │   │   └── tasks.py
 │   ├── infra/
 │   │   ├── audio/
+│   │   │   ├── device.py      # GPU on demand, CPU fallback
 │   │   │   ├── listener.py    # wake word + VAD + Whisper
 │   │   │   └── talker.py      # Kokoro + speech queue
 │   │   ├── claude/
@@ -80,7 +81,7 @@ alfred/
 │   │   │   ├── portrait.py    # one-shot agent that paints session portraits
 │   │   │   ├── permissions.py # permission gates
 │   │   │   └── tools.py       # internal tools for Alfred
-│   │   └── git.py             # git worktree add/remove
+│   │   └── git.py             # git worktree add/remove/list, estado, watcher de .git/worktrees
 │   └── api/
 │       ├── app.py             # FastAPI + serves the web build
 │       ├── routes/            # projects, sessions, tasks, confirmations, commands
@@ -112,7 +113,8 @@ flowchart TB
 ```
 
 - Captura e wake word ficam sempre ligados, com custo quase zero de CPU.
-- O Whisper roda na thread do listener, só por segmento de fala; o modelo fica carregado. O microfone é ignorado enquanto o comando é processado.
+- O Whisper roda numa thread própria (`stt`). A wake word já carrega o modelo na GPU; numa pausa de 400 ms ele transcreve o áudio até ali, e esse palpite vira o comando se ninguém voltar a falar. O microfone é ignorado enquanto o texto final é aguardado.
+- Whisper e Kokoro usam a GPU sob demanda e caem para a CPU com ela ocupada (`infra/audio/device.py`, [ADR 0010](adr/0010-voice-models-on-demand-gpu.md)).
 - O Kokoro consome uma fila de fala com prioridade; barge-in limpa a fila e para o playback.
 - Interrupções ("para") são casadas no próprio listener/router antes de qualquer `await` longo, para agir em milissegundos.
 
@@ -160,8 +162,9 @@ Sessão ocupada não recebe dois prompts ao mesmo tempo: cada sessão tem uma fi
 ### Agente principal (`alfred`)
 
 - Sessão fixa, não presa a repositório.
-- Tools: WebSearch, WebFetch, MCP Gmail, MCP Calendar e o MCP in-process de `infra/claude/tools.py` (projetos, sessões, worktrees, tarefas, `delegar`).
-- **Sem Bash e sem Edit.** Quem lê conteúdo externo nunca executa comando.
+- Tools: WebSearch, WebFetch, Read, Glob, Grep, MCP Gmail, MCP Calendar e o MCP in-process de `infra/claude/tools.py` (projetos, sessões, worktrees, tarefas, `delegar`, `ver_ambiente`, `iniciar_feature`).
+- **Sem Bash, Edit e Write.** Quem lê conteúdo externo nunca executa comando.
+- Lê a home (`cwd`), menos arquivos secretos; o hook `guard_local_paths` nega caminho fora dela. Pergunta e verificação ele responde lendo; implementação e análise grande vão para sessão ([ADR 0011](adr/0011-main-agent-local-read.md)).
 - Tarefas no computador vão pela tool `delegar` para a sessão `sistema`, com Bash e auto mode, sem e-mail nem web ([ADR 0006](adr/0006-system-session-for-computer-tasks.md)).
 - Cada tipo de agente (`AgentKind` em `infra/claude/agents.py`) gera sua tool `delegar_<tipo>`; o Alfred cria, lista, limpa e apaga sessões por voz ([ADR 0007](adr/0007-polymorphic-agent-kinds.md)).
 - Até a fase 5: auto mode do Claude Code decide as permissões, com leituras liberadas, sem Bash/Edit/Write e sem URLs fora de http/https ([ADR 0005](adr/0005-main-agent-auto-mode.md)).
@@ -195,6 +198,7 @@ erDiagram
         int id PK
         text name UK
         json aliases
+        int default_workspace_id FK "ambiente padrão"
     }
     WORKSPACE {
         int id PK
@@ -204,6 +208,7 @@ erDiagram
         text kind "folder | worktree"
         int parent_id FK "worktree"
         text branch
+        text implementation_mode "worktree | ambiente | null = global"
     }
     SESSION {
         int id PK
@@ -226,7 +231,9 @@ erDiagram
     }
 ```
 
-Configurações em `agent_settings` (modelo e effort por tipo: `alfred`, `geral`, `implementacao`) e `app_settings` (`max_active_sessions`, `idle_minutes`, `mcp_disabled`, `image_mcp`); o `config.yaml` só semeia na primeira vez. Status e fila das sessões ficam em memória.
+Configurações em `agent_settings` (modelo e effort por tipo: `alfred`, `geral`, `implementacao`) e `app_settings` (`max_active_sessions`, `idle_minutes`, `mcp_disabled`, `image_mcp`, `implementation_mode`); o `config.yaml` só semeia na primeira vez. Status e fila das sessões ficam em memória.
+
+Ambientes espelham os worktrees do git: `Projects.watch_worktrees` observa por inotify o `.git/worktrees/` de cada repo e sincroniza só o repo que mudou; ao iniciar, sincroniza tudo uma vez.
 
 Tabelas auxiliares previstas: `audit_log` (toda tool call), `confirmation` (pedidos pendentes/respondidos), `session_summary` (último `RESUMO:` por sessão).
 

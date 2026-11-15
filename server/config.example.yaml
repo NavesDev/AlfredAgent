@@ -2,14 +2,17 @@
 
 whisper:
   model: large-v3-turbo      # medium if RAM is tight
-  device: cpu                # cuda | cpu
-  compute_type: int8
+  device: cuda               # cuda | cpu; cuda loads on the wake word, CPU fallback if busy
+  compute_type: int8_float16 # int8 on cpu
   language: pt
   initial_prompt: "Spring, Liferay, endpoint, worktree, commit, backend, frontend"
+  idle_s: 30                 # releases the GPU after this long unused (image jobs need it)
 
 kokoro:
   voice: pf_dora             # or pm_alex
   speed: 1.1
+  device: cuda               # cuda | cpu; CPU fallback if the GPU is busy
+  idle_s: 10
   # Said right when you stop talking, while Whisper and Claude work. Empty = chime only.
   acknowledgements: ["Certo.", "Deixa eu ver.", "Um momento.", "Só um instante."]
 
@@ -23,6 +26,7 @@ listener:
   sample_rate: 16000
   silence_ms: 1800           # pause that ends a command; lower cuts you mid-sentence
   max_record_s: 60
+  guess_ms: 400              # pause that starts Whisper early; ready when silence_ms ends
 
 agents:
   default_model: sonnet

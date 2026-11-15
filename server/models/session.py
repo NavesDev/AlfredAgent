@@ -19,6 +19,7 @@ class SessionRecord(BaseModel):
     effort: str | None = None
     claude_session_id: str | None = None
     protected: bool = False
+    description: str = ""  # context for Alfred when choosing where to delegate
 
 
 Phase = Literal["exploring", "editing", "running"]
@@ -36,6 +37,7 @@ class SubagentView(BaseModel):
 class SessionView(BaseModel):
     name: str
     aliases: list[str]  # spoken alternatives, for names Whisper gets wrong
+    description: str
     kind: str
     label: str
     model: str
@@ -104,11 +106,11 @@ def get_session(db: sqlite3.Connection, name: str) -> SessionRecord | None:
     return _record(row) if row else None
 
 
-_UPDATABLE = {"model", "effort", "claude_session_id", "aliases"}
+_UPDATABLE = {"model", "effort", "claude_session_id", "aliases", "description"}
 
 
 def update_session(db: sqlite3.Connection, name: str, **fields: Any) -> None:
-    """Only aliases, model, effort and claude_session_id change after creation."""
+    """Only aliases, description, model, effort and claude_session_id change after creation."""
     assert set(fields) <= _UPDATABLE, set(fields) - _UPDATABLE
     if "aliases" in fields:
         fields["aliases"] = json.dumps(fields["aliases"])

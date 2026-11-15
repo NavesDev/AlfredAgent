@@ -5,12 +5,15 @@ for projects and workspaces. Errors come back as the sentence Alfred says.
 """
 
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import claude_agent_sdk as sdk
 
-from errors import GitError, ProjectError, SessionError
+from errors import GitError, GitHubError, ProjectError, SessionError
+from infra import github as real_github
 from infra.claude.agents import KINDS
+from models.project import MAX_DESCRIPTION
 
 if TYPE_CHECKING:
     from controllers.projects import Projects
@@ -22,7 +25,9 @@ EFFORTS = ["low", "medium", "high", "xhigh", "max"]
 Result = dict[str, Any]
 
 
-def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcpTool[Any]]:
+def session_tools(
+    sessions: "Sessions", projects: "Projects", github: Any = real_github
+) -> list[sdk.SdkMcpTool[Any]]:
     def delegate(name: str, task: str) -> str:
         try:
             return sessions.delegate(name, task)
@@ -30,11 +35,7 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
             return str(e)
 
     def workspace_id(project_name: str, name: str) -> int:
-        found = projects.find(project_name)
-        ws = next((w for w in found.workspaces if w.name.lower() == name.strip().lower()), None)
-        if ws is None:
-            raise ProjectError(f"O projeto {found.name} não tem o ambiente {name}.")
-        return ws.id
+        return projects.workspace(project_name, name).id
 
     @sdk.tool(
         "criar_sessao",
@@ -43,13 +44,15 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
         "Implementação precisa de 'projeto' e 'ambiente'; geral aceita os dois opcionais "
         "(sem eles, roda na home). 'modelo' e 'effort' só quando o usuário pedir. "
         "'apelidos': jeitos de falar o nome que o reconhecimento de voz entende, úteis para "
-        'nomes em inglês ("saite seils" para Site Sales).',
+        "nomes em inglês (\"saite seils\" para Site Sales). 'descricao': até 200 caracteres "
+        "dizendo para que a sessão serve (contexto seu para delegar).",
         {
             "type": "object",
             "properties": {
                 "tipo": {"type": "string", "enum": list(KINDS)},
                 "nome": {"type": "string"},
                 "apelidos": {"type": "array", "items": {"type": "string"}},
+                "descricao": {"type": "string"},
                 "projeto": {"type": "string"},
                 "ambiente": {"type": "string"},
                 "modelo": {"type": "string"},
@@ -63,6 +66,8 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
             ws = None
             if args.get("projeto") or args.get("ambiente"):
                 ws = workspace_id(str(args.get("projeto", "")), str(args.get("ambiente", "")))
+            if len(" ".join(str(args.get("descricao") or "").split())) > MAX_DESCRIPTION:
+                raise SessionError(f"A descrição passa de {MAX_DESCRIPTION} caracteres; encurte.")
             view = sessions.create(
                 str(args["tipo"]),
                 str(args["nome"]),
@@ -71,6 +76,8 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
                 args.get("effort"),
                 aliases=[str(a) for a in args.get("apelidos", [])],
             )
+            if args.get("descricao"):
+                view = sessions.set_description(view.name, str(args["descricao"]))
             where = f"{view.project}, ambiente {view.workspace}" if view.project else view.cwd
             return f"Sessão {view.name} criada, tipo {view.label}, em {where}."
 
@@ -112,7 +119,9 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
             return "\n".join(
                 f"{v.name} ({v.label}, "
                 + (f"{v.project}/{v.workspace}" if v.project else v.cwd)
-                + f"): {'esperando vaga' if v.waiting else v.status}"
+                + ")"
+                + (f" — {v.description}" if v.description else "")
+                + f": {'esperando vaga' if v.waiting else v.status}"
                 + (f", {'vai fazer' if v.waiting else 'fazendo'}: {v.task}" if v.task else "")
                 + (f", {v.queue} na fila" if v.queue else "")
                 + (f", último erro: {v.last_error}" if v.last_error else "")
@@ -125,7 +134,7 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
         "criar_projeto",
         "Cadastra um projeto: um nome que agrupa ambientes (pastas) e sessões. "
         "'apelidos' ajudam a reconhecer o nome falado; 'descricao' diz em uma frase do que o "
-        "projeto trata.",
+        "projeto trata (contexto seu para delegar).",
         {
             "type": "object",
             "properties": {
@@ -163,6 +172,12 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
                 parts = [
                     f"{w.name} ({w.path}"
                     + (f", branch {w.branch}" if w.branch else "")
+                    + (", padrão" if w.id == p.default_workspace_id else "")
+                    + (
+                        ", features em worktree"
+                        if projects.mode_of(w) == "worktree"
+                        else ", features no próprio ambiente"
+                    )
                     + ")"
                     + (f" — {w.description}" if w.description else "")
                     + (
@@ -181,7 +196,7 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
     @sdk.tool(
         "criar_ambiente",
         "Cadastra uma pasta existente como ambiente de um projeto (ex: back e front), com uma "
-        "'descricao' curta opcional.",
+        "'descricao' curta opcional: o básico do que é, contexto seu para delegar.",
         {
             "type": "object",
             "properties": {
@@ -283,21 +298,26 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
 
     @sdk.tool(
         "definir_descricao",
-        "Troca a descrição curta (até 200 caracteres) de um projeto ou, com 'ambiente', de um "
-        "ambiente dele. Vazia apaga.",
+        "Troca a descrição curta (até 200 caracteres) de um projeto, de um ambiente dele (com "
+        "'ambiente') ou de uma sessão (só 'sessao'). A descrição é contexto seu: o básico do que "
+        "é e para que serve, para decidir onde delegar. Vazia apaga.",
         {
             "type": "object",
             "properties": {
                 "projeto": {"type": "string"},
                 "ambiente": {"type": "string"},
+                "sessao": {"type": "string"},
                 "descricao": {"type": "string"},
             },
-            "required": ["projeto", "descricao"],
+            "required": ["descricao"],
         },
     )
     async def definir_descricao(args: Result) -> Result:
         async def run() -> str:
             text = str(args["descricao"])
+            if session := str(args.get("sessao") or "").strip():
+                view = sessions.set_description(session, text)
+                return f"Descrição da sessão {view.name}: {view.description or 'nenhuma'}."
             if name := str(args.get("ambiente") or "").strip():
                 ws = projects.update_workspace(workspace_id(str(args["projeto"]), name), text)
                 return f"Descrição do ambiente {ws.name}: {ws.description or 'nenhuma'}."
@@ -307,6 +327,175 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
         return await _speak(run)
 
     delegates = [kind.delegate_tool(delegate) for kind in KINDS.values()]
+
+    @sdk.tool(
+        "ver_ambiente",
+        "Mostra o estado git de um ambiente: branch, quantos arquivos estão alterados e os "
+        "últimos commits. Use para verificações, sem abrir sessão.",
+        {
+            "type": "object",
+            "properties": {"projeto": {"type": "string"}, "ambiente": {"type": "string"}},
+            "required": ["projeto", "ambiente"],
+        },
+    )
+    async def ver_ambiente(args: Result) -> Result:
+        async def run() -> str:
+            ws, git = await projects.summary(str(args["projeto"]), str(args["ambiente"]))
+            changed = (
+                "nada alterado"
+                if git.changed == 0
+                else f"{git.changed} arquivo{'s' if git.changed > 1 else ''} "
+                f"alterado{'s' if git.changed > 1 else ''}"
+            )
+            commits = "; ".join(git.commits) or "sem commits"
+            branches = ", ".join(git.branches) or "nenhuma"
+            return (
+                f"{ws.name}: branch {git.branch}, {changed}. Últimos commits: {commits}. "
+                f"Branches recentes: {branches}."
+            )
+
+        return await _speak(run)
+
+    def repo_of(args: Result) -> Path:
+        found = projects.find(str(args["projeto"]))
+        if args.get("ambiente"):
+            return Path(projects.workspace(found.name, str(args["ambiente"])).path)
+        base = next((w for w in found.workspaces if w.id == found.default_workspace_id), None)
+        if base is None:
+            raise ProjectError(f"O projeto {found.name} não tem ambiente; diga em qual.")
+        return Path(base.path)
+
+    issue_args = {
+        "projeto": {"type": "string"},
+        "ambiente": {"type": "string", "description": "sem ele, o ambiente padrão"},
+    }
+
+    @sdk.tool(
+        "ver_issue",
+        "Lê uma issue do GitHub do repo do projeto: título, estado, labels, texto e os últimos "
+        "comentários. Use antes de planejar uma feature ou para responder sobre ela.",
+        {
+            "type": "object",
+            "properties": {**issue_args, "numero": {"type": "integer"}},
+            "required": ["projeto", "numero"],
+        },
+    )
+    async def ver_issue(args: Result) -> Result:
+        async def run() -> str:
+            i = await github.issue(repo_of(args), int(args["numero"]))
+            labels = f" [{', '.join(i.labels)}]" if i.labels else ""
+            comments = "\n".join(i.comments or []) or "sem comentários"
+            return (
+                f"#{i.number} {i.title} ({i.state}){labels} {i.url}\n{i.body}\n"
+                f"Comentários:\n{comments}"
+            )
+
+        return await _speak(run)
+
+    @sdk.tool(
+        "listar_issues",
+        "Lista até 20 issues do GitHub do repo do projeto, com 'busca' opcional (sintaxe de "
+        "busca do GitHub) e 'estado' open, closed ou all.",
+        {
+            "type": "object",
+            "properties": {
+                **issue_args,
+                "busca": {"type": "string"},
+                "estado": {"type": "string", "enum": ["open", "closed", "all"]},
+            },
+            "required": ["projeto"],
+        },
+    )
+    async def listar_issues(args: Result) -> Result:
+        async def run() -> str:
+            found = await github.issues(
+                repo_of(args),
+                str(args.get("busca") or "") or None,
+                str(args.get("estado") or "open"),
+            )
+            return (
+                "\n".join(
+                    f"#{i.number} {i.title}" + (f" [{', '.join(i.labels)}]" if i.labels else "")
+                    for i in found
+                )
+                or "Nenhuma issue encontrada."
+            )
+
+        return await _speak(run)
+
+    @sdk.tool(
+        "iniciar_feature",
+        "Começa uma feature num projeto e manda a 'tarefa'. Antes, decida: veja as branches "
+        "recentes (ver_ambiente) para seguir o padrão de nomes e leia a issue citada "
+        "(ver_issue). 'worktree': true cria worktree e sessão novos a partir do ambiente "
+        "('ambiente', ou o padrão do projeto); false usa a sessão do próprio ambiente; sem ele, "
+        "segue o modo do ambiente (listar_projetos). 'branch' no padrão do repo (sem ela, "
+        "feat/<feature>). Não precisa perguntar ao usuário.",
+        {
+            "type": "object",
+            "properties": {
+                "projeto": {"type": "string"},
+                "feature": {"type": "string"},
+                "tarefa": {"type": "string"},
+                "branch": {"type": "string"},
+                "worktree": {"type": "boolean"},
+                "ambiente": {"type": "string"},
+            },
+            "required": ["projeto", "feature", "tarefa"],
+        },
+    )
+    async def iniciar_feature(args: Result) -> Result:
+        async def run() -> str:
+            found = projects.find(str(args["projeto"]))
+            worktree = args.get("worktree")
+            ws = await projects.start_feature(
+                found.name,
+                str(args["feature"]),
+                str(args.get("ambiente") or "") or None,
+                str(args["branch"]) if args.get("branch") else None,
+                worktree if isinstance(worktree, bool) else None,
+            )
+            views = sessions.list()
+            view = next(
+                (
+                    v
+                    for v in views
+                    if v.kind == "implementacao"
+                    and v.project == found.name
+                    and v.workspace == ws.name
+                ),
+                None,
+            )
+            made = ""
+            if view is None:
+                taken = {v.name.lower() for v in views}
+                name = ws.name if ws.name.lower() not in taken else f"{found.name}-{ws.name}"
+                view = sessions.create("implementacao", name, ws.id)
+                made = f" e a sessão {view.name}"
+            sent = delegate(view.name, str(args["tarefa"]))
+            if ws.kind == "worktree" and ws.branch:
+                return f"Worktree {ws.name} na branch {ws.branch}{made}. {sent}"
+            return f"Ambiente {ws.name}, sessão {view.name}{made and ' (nova)'}. {sent}"
+
+        return await _speak(run)
+
+    @sdk.tool(
+        "definir_ambiente_padrao",
+        "Define o ambiente padrão de um projeto: o principal, base dos worktrees de feature.",
+        {
+            "type": "object",
+            "properties": {"projeto": {"type": "string"}, "ambiente": {"type": "string"}},
+            "required": ["projeto", "ambiente"],
+        },
+    )
+    async def definir_ambiente_padrao(args: Result) -> Result:
+        async def run() -> str:
+            ws = projects.workspace(str(args["projeto"]), str(args["ambiente"]))
+            updated = projects.update(ws.project_id, default_workspace_id=ws.id)
+            return f"Ambiente padrão do {updated.name}: {ws.name}."
+
+        return await _speak(run)
+
     return [
         *delegates,
         criar_sessao,
@@ -320,12 +509,17 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
         apagar_ambiente,
         definir_apelidos,
         definir_descricao,
+        ver_ambiente,
+        iniciar_feature,
+        definir_ambiente_padrao,
+        ver_issue,
+        listar_issues,
     ]
 
 
 async def _speak(run: Callable[[], Awaitable[str]]) -> Result:
     try:
         text = await run()
-    except (SessionError, ProjectError, GitError) as e:
+    except (SessionError, ProjectError, GitError, GitHubError) as e:
         text = str(e)
     return {"content": [{"type": "text", "text": text}]}

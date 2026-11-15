@@ -6,6 +6,7 @@ config.yaml only seeds these on the first boot.
 
 import json
 import sqlite3
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -23,6 +24,7 @@ class AppSettings(BaseModel):
     idle_minutes: int = 10
     mcp_disabled: list[str] = []
     image_mcp: str | None = None  # favorite image generator; None lets the model pick
+    implementation_mode: Literal["worktree", "ambiente"] = "worktree"  # workspaces may override
 
 
 class Defaults(BaseModel):

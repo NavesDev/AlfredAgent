@@ -158,7 +158,7 @@ Regras do front:
 
 Pontos-chave do `config.yaml`:
 
-- whisper: `model: large-v3-turbo`, `device: cuda|cpu`, `compute_type: int8`, `language: pt`, `initial_prompt` com seu jargão (Spring, Liferay, endpoint, worktree, commit, nomes das sessões).
+- whisper: `model: large-v3-turbo`, `device: cuda|cpu`, `compute_type: int8_float16`, `language: pt`, `initial_prompt` com seu jargão (Spring, Liferay, endpoint, worktree, commit, nomes das sessões).
 - kokoro: `voice: pf_dora` (ou `pm_alex`), `speed: 1.1`.
 - wakeword: nome Alfred, modelo `alfred.onnx` treinado no openWakeWord, threshold 0.65, apelidos alfred e alfredo. É configurável: trocar o nome é apontar pra outro modelo treinado.
 - limites: `max_sessoes_ativas: 3`, `timeout_permissao_s: 60`.
@@ -166,11 +166,11 @@ Pontos-chave do `config.yaml`:
 | Componente | RAM aprox. | Quando pesa |
 |---|---|---|
 | openWakeWord + Silero | ~150 MB | Sempre ligado, CPU quase zero |
-| faster-whisper large-v3-turbo int8 | ~2 GB (ou ~1,5–2 GB de VRAM na GPU) | Pico curto a cada comando |
+| faster-whisper large-v3-turbo | ~1,1 GB de VRAM (ou ~2 GB de RAM na CPU) | Da wake word até 30 s depois do comando |
 | Kokoro | ~400 MB | Só enquanto fala |
 | Sessões Claude Code (3) | ~0,5–1 GB | Enquanto rodam tarefas |
 
-Whisper na GPU deixa a RAM praticamente só com as sessões. Se a máquina apertar, trocar pra medium é só mudar uma linha.
+Whisper e Kokoro usam a GPU sob demanda e caem para a CPU quando ela está ocupada ([ADR 0010](adr/0010-voice-models-on-demand-gpu.md)). Se a máquina apertar, trocar pra medium é só mudar uma linha.
 
 ## Roadmap do MVP
 

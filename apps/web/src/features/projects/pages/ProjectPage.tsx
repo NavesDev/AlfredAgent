@@ -15,10 +15,11 @@ import { SessionPhoto } from '../../../components/SessionPhoto'
 import { presence } from '../../../lib/presence'
 import { field } from '../../../lib/sessionForm'
 import { AliasChips } from '../components/AliasChips'
-import { Description, MAX_DESCRIPTION } from '../components/Description'
+import { Description, MAX_DESCRIPTION } from '../../../components/Description'
 import { ProjectMark } from '../components/ProjectMark'
-import { useProjectActions, useProjects, useSessionList } from '../hooks/useProjects'
-import { plural } from '../lib/projects'
+import { WorkspaceMode } from '../components/WorkspaceMode'
+import { useGlobalMode, useProjectActions, useProjects, useSessionList } from '../hooks/useProjects'
+import { byParent, plural, type Mode } from '../lib/projects'
 
 const BACK = { to: '/projects', label: 'Projetos' }
 
@@ -101,11 +102,12 @@ export function ProjectPage() {
   return (
     <PageShell back={BACK} aside={aside}>
       <Section title="Ambientes">
-        {project.workspaces.map((w) => (
+        {byParent(project.workspaces).map((w) => (
           <WorkspaceRow
             key={w.id}
             workspace={w}
-            workspaces={project.workspaces}
+            depth={w.depth}
+            isDefault={project.default_workspace_id === w.id}
             sessions={mine.filter((s) => s.workspace === w.name)}
           />
         ))}
@@ -173,16 +175,19 @@ export function ProjectPage() {
 
 function WorkspaceRow({
   workspace: w,
-  workspaces,
+  depth,
+  isDefault,
   sessions,
 }: {
   workspace: Workspace
-  workspaces: Workspace[]
+  depth: number
+  isDefault: boolean
   sessions: { name: string }[]
 }) {
-  const { removeWorkspace, updateWorkspace } = useProjectActions()
+  const { removeWorkspace, update, updateWorkspace } = useProjectActions()
+  const globalMode = useGlobalMode()
   const [confirm, setConfirm] = useState<'no' | 'yes' | 'force'>('no')
-  const parent = workspaces.find((p) => p.id === w.parent_id)
+  const parent = w.kind === 'worktree'
   const dirty = removeWorkspace.error?.message.includes('não commitadas')
 
   const onDelete = () => {
@@ -194,7 +199,10 @@ function WorkspaceRow({
   }
 
   return (
-    <div className={`group flex flex-wrap items-center gap-3 px-4 py-3 ${parent ? 'pl-11' : ''}`}>
+    <div
+      className="group flex flex-wrap items-center gap-3 px-4 py-3"
+      style={depth ? { paddingLeft: 16 + depth * 28 } : undefined}
+    >
       <span
         className={`grid size-7 shrink-0 place-items-center rounded-lg text-white ${parent ? 'bg-apple-purple' : 'bg-apple-blue'}`}
       >
@@ -208,7 +216,6 @@ function WorkspaceRow({
               {w.branch}
             </span>
           )}
-          {parent && <span className="text-xs text-ink-3">worktree de {parent.name}</span>}
         </p>
         <p className="truncate font-mono text-xs text-ink-3">{w.path}</p>
         <Description
@@ -218,6 +225,20 @@ function WorkspaceRow({
           error={updateWorkspace.error?.message}
           onSave={(description) => updateWorkspace.mutate({ id: w.id, description })}
         />
+        {!parent && (
+          <div className="mt-2">
+            <WorkspaceMode
+              name={w.name}
+              isDefault={isDefault}
+              mode={(w.implementation_mode as Mode | null | undefined) ?? null}
+              globalMode={globalMode}
+              onDefault={() => update.mutate({ id: w.project_id, default_workspace_id: w.id })}
+              onMode={(implementation_mode) =>
+                updateWorkspace.mutate({ id: w.id, implementation_mode })
+              }
+            />
+          </div>
+        )}
       </div>
       {sessions.length > 0 && (
         <span className="text-xs text-ink-2" title={sessions.map((s) => s.name).join(', ')}>

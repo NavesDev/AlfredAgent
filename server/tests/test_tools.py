@@ -1,16 +1,18 @@
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
 from controllers.projects import Projects
 from controllers.settings import SettingsUpdate
-from errors import AgentError, SessionNotFound
+from errors import AgentError, GitHubError, SessionNotFound
 from events import EventBus
 from infra.claude import permissions
 from infra.claude.activity import describe_tool
 from infra.claude.alfred import AlfredAgent
 from infra.claude.tools import SERVER, session_tools
+from infra.github import Issue
 from tests.test_projects import FakeGit
 from tests.test_sessions import Env, settle
 
@@ -18,8 +20,26 @@ from tests.test_sessions import Env, settle
 class Tools:
     def __init__(self, env: Env, home: Path) -> None:
         self.env, self.home = env, home
-        self.projects = Projects(env.db, env.sessions._bus, FakeGit())
-        self.list = session_tools(env.sessions, self.projects)
+        self.git = FakeGit()
+        self.projects = Projects(
+            env.db, env.sessions._bus, self.git, mode=lambda: env.settings.app().implementation_mode
+        )
+        self.gh_calls: list[tuple[str, Path, object]] = []
+        self.gh_fail: str | None = None
+
+        async def issue(repo: Path, number: int) -> Issue:
+            self.gh_calls.append(("issue", repo, number))
+            if self.gh_fail:
+                raise GitHubError(self.gh_fail)
+            return Issue(12, "Login quebra", "OPEN", ["bug"], "passos...", "u", ["ana: vi"])
+
+        async def issues(repo: Path, search: str | None, state: str) -> list[Issue]:
+            self.gh_calls.append(("issues", repo, (search, state)))
+            return [Issue(12, "Login quebra", labels=["bug"]), Issue(13, "Doc", labels=[])]
+
+        self.list = session_tools(
+            env.sessions, self.projects, github=SimpleNamespace(issue=issue, issues=issues)
+        )
 
     async def call(self, name: str, args: dict[str, Any]) -> str:
         tool = next(t for t in self.list if t.name == name)
@@ -49,6 +69,11 @@ def test_every_tool_is_allowed_without_asking(tools: Tools) -> None:
         "apagar_ambiente",
         "definir_apelidos",
         "definir_descricao",
+        "ver_ambiente",
+        "iniciar_feature",
+        "definir_ambiente_padrao",
+        "ver_issue",
+        "listar_issues",
     }
     assert {f"mcp__{SERVER}__{n}" for n in names} <= set(permissions.ALLOWED)
     assert not {"Bash", "Edit", "Write"} & set(permissions.ALLOWED)
@@ -239,3 +264,172 @@ async def test_descriptions_by_voice_show_up_when_listing_projects(tools: Tools)
     assert "200" in too_long
     assert "SaaS de cobrança recorrente" in listed and "API em Spring Boot" in listed
     assert describe_tool("mcp__alfred__definir_descricao") == "Ajustando uma descrição"
+
+
+async def test_ver_ambiente_tells_branch_changes_and_commits(tools: Tools, tmp_path: Path) -> None:
+    (tmp_path / "back").mkdir()
+    tools.git.dirty = True
+    await tools.call("criar_projeto", {"nome": "Recurve"})
+    await tools.call(
+        "criar_ambiente", {"projeto": "Recurve", "nome": "back", "pasta": str(tmp_path / "back")}
+    )
+
+    text = await tools.call("ver_ambiente", {"projeto": "Recurve", "ambiente": "back"})
+
+    assert "main" in text and "2 arquivos alterados" in text and "add login" in text
+    assert "fix/12-login" in text and "docs/3-sprint" in text
+
+
+async def test_ver_ambiente_speaks_the_error(tools: Tools, tmp_path: Path) -> None:
+    await tools.call("criar_projeto", {"nome": "Recurve"})
+    assert "não tem o ambiente" in await tools.call(
+        "ver_ambiente", {"projeto": "Recurve", "ambiente": "nada"}
+    )
+    (tmp_path / "solto").mkdir()
+    await tools.call(
+        "criar_ambiente", {"projeto": "Recurve", "nome": "solto", "pasta": str(tmp_path / "solto")}
+    )
+    tools.git.fail = True
+    assert "not a git repository" in await tools.call(
+        "ver_ambiente", {"projeto": "Recurve", "ambiente": "solto"}
+    )
+
+
+async def recurve_with(tools: Tools, tmp_path: Path, *names: str) -> None:
+    await tools.call("criar_projeto", {"nome": "Recurve"})
+    for name in names:
+        (tmp_path / name).mkdir()
+        await tools.call(
+            "criar_ambiente", {"projeto": "Recurve", "nome": name, "pasta": str(tmp_path / name)}
+        )
+
+
+async def test_iniciar_feature_opens_worktree_and_session_and_delegates(
+    tools: Tools, tmp_path: Path
+) -> None:
+    await recurve_with(tools, tmp_path, "back")
+
+    text = await tools.call(
+        "iniciar_feature",
+        {"projeto": "Recurve", "feature": "Cancelamento", "tarefa": "implementa o cancelamento"},
+    )
+    await settle()
+
+    assert "feat/cancelamento" in text and "cancelamento" in text
+    [view] = [v for v in tools.env.sessions.list() if v.workspace == "cancelamento"]
+    assert view.kind == "implementacao"
+    assert view.status == "busy" or view.tasks_done or view.queue
+
+
+async def test_iniciar_feature_in_workspace_mode_reuses_its_session(
+    tools: Tools, tmp_path: Path
+) -> None:
+    await recurve_with(tools, tmp_path, "back")
+    tools.env.settings.update(SettingsUpdate(implementation_mode="ambiente"))
+    await tools.call(
+        "criar_sessao",
+        {"tipo": "implementacao", "nome": "api", "projeto": "Recurve", "ambiente": "back"},
+    )
+
+    text = await tools.call(
+        "iniciar_feature", {"projeto": "Recurve", "feature": "login", "tarefa": "faz o login"}
+    )
+
+    assert "api" in text and "worktree" not in text.lower()
+    assert len([v for v in tools.env.sessions.list() if v.project == "Recurve"]) == 1
+
+
+async def test_iniciar_feature_without_default_asks(tools: Tools) -> None:
+    await tools.call("criar_projeto", {"nome": "Recurve"})
+
+    text = await tools.call(
+        "iniciar_feature", {"projeto": "Recurve", "feature": "login", "tarefa": "faz"}
+    )
+
+    assert "ambiente padrão" in text
+    assert not [v for v in tools.env.sessions.list() if v.project == "Recurve"]
+
+
+async def test_definir_ambiente_padrao(tools: Tools, tmp_path: Path) -> None:
+    await recurve_with(tools, tmp_path, "back", "front")
+
+    text = await tools.call("definir_ambiente_padrao", {"projeto": "Recurve", "ambiente": "front"})
+
+    found = tools.projects.find("Recurve")
+    assert "front" in text
+    assert found.default_workspace_id == next(w.id for w in found.workspaces if w.name == "front")
+
+
+async def test_iniciar_feature_uses_alfreds_branch_and_choice(tools: Tools, tmp_path: Path) -> None:
+    await recurve_with(tools, tmp_path, "back")
+
+    text = await tools.call(
+        "iniciar_feature",
+        {
+            "projeto": "Recurve",
+            "feature": "issue 12 login",
+            "tarefa": "implementa a issue 12",
+            "branch": "fix/12-login",
+        },
+    )
+
+    assert "fix/12-login" in text
+    assert tools.git.added[-1][2] == "fix/12-login"
+
+
+async def test_listar_projetos_tells_each_workspace_mode(tools: Tools, tmp_path: Path) -> None:
+    await recurve_with(tools, tmp_path, "back", "front")
+    found = tools.projects.find("Recurve")
+    front = next(w for w in found.workspaces if w.name == "front")
+    tools.projects.update_workspace(front.id, implementation_mode="ambiente")
+
+    text = await tools.call("listar_projetos", {})
+
+    assert "padrão" in text
+    assert "features em worktree" in text and "features no próprio ambiente" in text
+
+
+async def test_ver_issue_reads_from_the_default_workspace(tools: Tools, tmp_path: Path) -> None:
+    await recurve_with(tools, tmp_path, "back")
+
+    text = await tools.call("ver_issue", {"projeto": "Recurve", "numero": 12})
+
+    assert tools.gh_calls == [("issue", tmp_path / "back", 12)]
+    assert "Login quebra" in text and "bug" in text and "ana: vi" in text
+
+
+async def test_listar_issues_and_errors_are_spoken(tools: Tools, tmp_path: Path) -> None:
+    await recurve_with(tools, tmp_path, "back")
+
+    listed = await tools.call("listar_issues", {"projeto": "Recurve", "busca": "login"})
+    tools.gh_fail = "no git remotes found"
+    failed = await tools.call("ver_issue", {"projeto": "Recurve", "numero": 1})
+
+    assert "#12 Login quebra" in listed and "#13 Doc" in listed
+    assert tools.gh_calls[0] == ("issues", tmp_path / "back", ("login", "open"))
+    assert "no git remotes" in failed
+
+
+async def test_sessions_carry_a_short_description_for_alfred(tools: Tools) -> None:
+    created = await tools.call(
+        "criar_sessao",
+        {"tipo": "geral", "nome": "downloads", "descricao": "Organiza a pasta Downloads"},
+    )
+    changed = await tools.call(
+        "definir_descricao", {"sessao": "downloads", "descricao": "Arruma downloads e fotos"}
+    )
+    listed = await tools.call("listar_sessoes", {})
+    too_long = await tools.call(
+        "definir_descricao", {"sessao": "downloads", "descricao": "x" * 201}
+    )
+
+    assert "downloads" in created
+    assert "Arruma downloads e fotos" in changed
+    assert "— Arruma downloads e fotos" in listed
+    assert "200" in too_long
+
+
+async def test_a_too_long_description_creates_no_session(tools: Tools) -> None:
+    text = await tools.call("criar_sessao", {"tipo": "geral", "nome": "x", "descricao": "y" * 201})
+
+    assert "200" in text and "x" not in {v.name for v in tools.env.sessions.list()}

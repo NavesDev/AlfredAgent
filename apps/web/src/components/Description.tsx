@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { field } from '../../../lib/sessionForm'
+import { field } from '../lib/sessionForm'
 
 export const MAX_DESCRIPTION = 200
 
@@ -41,7 +41,7 @@ export function Description({ value, label, onSave, pending, error }: Props) {
         aria-label={label}
         value={draft}
         maxLength={MAX_DESCRIPTION}
-        placeholder="do que se trata, em uma frase"
+        placeholder="o básico, para o Alfred saber onde delegar"
         onChange={(e) => setDraft(e.target.value)}
         onBlur={save}
         onKeyDown={(e) => {

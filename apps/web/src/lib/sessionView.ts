@@ -4,6 +4,7 @@ import type { SessionView } from '../api/events'
 export const sessionView = (name: string, over: Partial<SessionView> = {}): SessionView => ({
   name,
   aliases: [],
+  description: '',
   kind: 'geral',
   label: 'Geral',
   model: 'sonnet',

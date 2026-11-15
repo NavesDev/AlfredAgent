@@ -12,6 +12,7 @@ from config import Kokoro as KokoroConfig
 from errors import AudioError, DependencyError
 from events import EventBus
 from infra.audio import level
+from infra.audio.device import OnDemandGpu
 
 KOKORO_RATE = 24000
 LEVELS_PER_S = 15
@@ -126,19 +127,54 @@ def _sweep(start_hz: float, end_hz: float, rate: int, seconds: float = 0.12) -> 
 
 
 def load_kokoro(config: KokoroConfig) -> Callable[[str], Iterator[np.ndarray]]:
+    """Kokoro moves to the GPU on demand (see `OnDemandGpu`); on the CPU it streams by
+    sentence, on the GPU it renders the whole text at once (~0.1 s for 8 s of speech)."""
+    import torch
     from kokoro import KPipeline
 
     try:
-        pipeline = KPipeline(lang_code="p", repo_id="hexgrad/Kokoro-82M")
+        pipeline = KPipeline(lang_code="p", repo_id="hexgrad/Kokoro-82M", device="cpu")
         pipeline.load_voice(config.voice)
     except Exception as e:
         raise DependencyError(f"cannot load Kokoro voice {config.voice!r}: {e}") from e
+    model = pipeline.model
+    assert model is not None
+
+    def release(_: KPipeline | None = None) -> None:
+        model.to("cpu")
+        torch.cuda.empty_cache()
+
+    def to_gpu() -> KPipeline:
+        try:
+            model.to("cuda")
+        except Exception:
+            release()  # an out-of-memory move leaves some weights on the GPU
+            raise
+        return pipeline
+
+    models = OnDemandGpu(
+        "Kokoro",
+        config.device,
+        config.idle_s,
+        load_gpu=to_gpu,
+        load_cpu=lambda: pipeline,
+        release=release,
+        need_mb=800,  # ~0.35 GB of weights + torch's CUDA context
+    )
+
+    def chunks(p: KPipeline, text: str) -> Iterator[np.ndarray]:
+        for result in p(text, voice=config.voice, speed=config.speed):
+            if result.audio is not None:
+                yield result.audio.numpy()
+
+    def render(p: KPipeline, text: str) -> Iterator[np.ndarray]:
+        # The CPU generator runs after `run` returns: the talker thread consumes it whole
+        # before the next call, so the model is not moved under it.
+        return iter(list(chunks(p, text))) if models.on_gpu else chunks(p, text)
 
     def synthesize(text: str) -> Iterator[np.ndarray]:
         try:
-            for result in pipeline(text, voice=config.voice, speed=config.speed):
-                if result.audio is not None:
-                    yield result.audio.numpy()
+            yield from models.run(lambda p: render(p, text))
         except Exception as e:
             raise AudioError(f"speech synthesis failed: {e}") from e
 
