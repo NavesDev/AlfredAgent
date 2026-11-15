@@ -72,6 +72,19 @@ Escopos sugeridos: `server`, `router`, `sessions`, `alfred`, `permissions`, `aud
 - Mudou comportamento descrito em `docs/`? Atualize o doc no mesmo PR.
 - Decisão de arquitetura nova ou que contraria a spec? Abra um ADR em `docs/adr/`.
 
+## Versões e releases
+
+- [SemVer](https://semver.org/lang/pt-BR/), uma versão só para o repo todo (server, web e desktop). Tag `vX.Y.Z` anotada, sempre na `main`.
+- Antes do 1.0: `0.Y.0` para funcionalidades novas ou que quebram algo, `0.Y.Z` para correções.
+- Cada PR que muda algo visível acrescenta uma linha em `## [Não lançado]` no [CHANGELOG.md](CHANGELOG.md), na seção do tema (Voz, Agente principal, Sessões e projetos, Painel e app desktop).
+- Para lançar, na `main` limpa:
+
+```bash
+make release VERSION=0.2.0   # versões, CHANGELOG, commit chore(release) e tag
+git push origin main v0.2.0
+gh release create v0.2.0 --title "Alfred v0.2.0" --notes "$(scripts/release.sh notes 0.2.0)"
+```
+
 ## ADRs
 
 Copie [docs/adr/0000-template.md](docs/adr/0000-template.md) para `docs/adr/NNNN-titulo-curto.md`, numeração sequencial. ADR aceito não é editado; uma decisão nova o substitui (`Superseded by NNNN`).
