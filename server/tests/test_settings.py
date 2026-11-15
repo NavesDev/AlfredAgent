@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+from pydantic import ValidationError
 
 from controllers.settings import Settings, SettingsUpdate
 from errors import SettingsError
@@ -149,3 +150,15 @@ async def test_a_failing_mcp_listing_still_takes_session_reports(bus: EventBus) 
     worker.cancel()
 
     assert s.get().known_mcp_servers == ["gmail"]
+
+
+async def test_implementation_mode_starts_as_worktree_and_is_validated(bus: EventBus) -> None:
+    s = make(bus)
+    assert s.get().implementation_mode == "worktree"
+
+    assert s.update(SettingsUpdate(implementation_mode="ambiente")).implementation_mode == (
+        "ambiente"
+    )
+    assert s.app().implementation_mode == "ambiente"
+    with pytest.raises(ValidationError):
+        SettingsUpdate(implementation_mode="nada")  # type: ignore[arg-type]

@@ -3,7 +3,7 @@
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS project (
@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS project (
     name TEXT NOT NULL UNIQUE COLLATE NOCASE,
     aliases TEXT NOT NULL DEFAULT '[]',
     description TEXT NOT NULL DEFAULT '',
+    default_workspace_id INTEGER REFERENCES workspace(id) ON DELETE SET NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS workspace (
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS workspace (
     parent_id INTEGER REFERENCES workspace(id),
     branch TEXT,
     description TEXT NOT NULL DEFAULT '',
+    implementation_mode TEXT CHECK (implementation_mode IN ('worktree', 'ambiente')),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (project_id, name)
 );
@@ -67,6 +69,14 @@ def _migrate(db: sqlite3.Connection) -> None:
         ("session", "aliases"): "TEXT NOT NULL DEFAULT '[]'",  # version 2
         ("project", "description"): "TEXT NOT NULL DEFAULT ''",  # version 3
         ("workspace", "description"): "TEXT NOT NULL DEFAULT ''",  # version 3
+        (
+            "project",
+            "default_workspace_id",
+        ): "INTEGER REFERENCES workspace(id) ON DELETE SET NULL",  # version 4
+        (
+            "workspace",
+            "implementation_mode",
+        ): "TEXT CHECK (implementation_mode IN ('worktree', 'ambiente'))",  # version 4
     }
     for (table, column), kind in added.items():
         columns = {row["name"] for row in db.execute(f"PRAGMA table_info({table})")}

@@ -68,7 +68,7 @@ async def serve(config: Config) -> None:
     )
     sessions.load()
     usage = Usage(bus, sessions, settings)
-    projects = Projects(db, bus)
+    projects = Projects(db, bus, mode=lambda: settings.app().implementation_mode)
     agent = AlfredAgent(
         bus,
         DailyState(config.storage.state_path),

@@ -15,6 +15,7 @@ from errors import SettingsError
 from events import EventBus
 from infra.claude.agents import KINDS
 from models import settings as model
+from models.project import ImplementationMode
 
 log = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ class SettingsView(BaseModel):
     image_mcp: str | None
     image_mcp_servers: list[str]  # user-scope MCP servers that can be the image generator
     known_mcp_servers: list[str]  # user-scope servers plus the ones sessions reported
+    implementation_mode: ImplementationMode
 
 
 class SettingsUpdate(BaseModel):
@@ -38,6 +40,7 @@ class SettingsUpdate(BaseModel):
     idle_minutes: int | None = None
     mcp_disabled: list[str] | None = None
     image_mcp: str | None = None  # "" goes back to automatic
+    implementation_mode: ImplementationMode | None = None
 
 
 class Settings:
@@ -64,6 +67,7 @@ class Settings:
             image_mcp=app.image_mcp,
             image_mcp_servers=sorted(user_servers),
             known_mcp_servers=sorted(self._known_mcp | set(user_servers)),
+            implementation_mode=app.implementation_mode,
         )
 
     def app(self) -> model.AppSettings:

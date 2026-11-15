@@ -150,3 +150,8 @@ def test_descriptions_persist_and_old_databases_gain_the_columns(tmp_path: Path)
     assert project.get_project(db, legacy.id).description == "Cobrança recorrente"  # type: ignore[union-attr]
     assert project.get_workspace(db, ws.id).description == "API em Spring"  # type: ignore[union-attr]
     assert project.get_project(db, p.id).description == "App de aluguel de carros"  # type: ignore[union-attr]
+    assert legacy.default_workspace_id is None
+    project.update_project(db, p.id, default_workspace_id=ws.id)
+    project.set_implementation_mode(db, ws.id, "ambiente")
+    assert project.get_project(db, p.id).default_workspace_id == ws.id  # type: ignore[union-attr]
+    assert project.get_workspace(db, ws.id).implementation_mode == "ambiente"  # type: ignore[union-attr]

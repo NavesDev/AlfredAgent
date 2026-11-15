@@ -45,6 +45,10 @@ class ProjectInUse(ProjectError):
     """Cannot delete: workspaces or sessions still depend on it, or the worktree is dirty."""
 
 
+class NoDefaultWorkspace(ProjectError):
+    """A feature was asked for a project without a default workspace and none was named."""
+
+
 class GitError(AlfredError):
     """A git command failed. The message is git's stderr, trimmed."""
 

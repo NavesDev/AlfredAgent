@@ -207,3 +207,31 @@ def test_project_and_workspace_descriptions(api: Api) -> None:
     assert too_long.status_code == 422 and missing.status_code == 404
     assert listed["description"] == "Cobrança"
     assert listed["workspaces"][0]["description"] == "API em Spring"
+
+
+def test_default_workspace_and_implementation_modes(api: Api) -> None:
+    for name in ("api", "web"):
+        (api.home / name).mkdir()
+    pid = api.post("/api/projects", json={"name": "Recurve"}).json()["id"]
+    first, second = (
+        api.post(
+            f"/api/projects/{pid}/workspaces", json={"name": n, "path": str(api.home / n)}
+        ).json()["id"]
+        for n in ("api", "web")
+    )
+
+    assert api.get(f"/api/projects/{pid}").json()["default_workspace_id"] == first
+    moved = api.patch(f"/api/projects/{pid}", json={"default_workspace_id": second})
+    own = api.patch(f"/api/workspaces/{second}", json={"implementation_mode": "ambiente"})
+    back = api.patch(f"/api/workspaces/{second}", json={"implementation_mode": None})
+    kept = api.patch(f"/api/workspaces/{second}", json={"description": "Front"})
+    bad = api.patch(f"/api/workspaces/{second}", json={"implementation_mode": "nada"})
+    alien = api.patch(f"/api/projects/{pid}", json={"default_workspace_id": 99})
+    settings = api.put("/api/settings", json={"implementation_mode": "ambiente"}).json()
+
+    assert moved.json()["default_workspace_id"] == second
+    assert own.json()["implementation_mode"] == "ambiente"
+    assert back.json()["implementation_mode"] is None
+    assert kept.json()["implementation_mode"] is None and kept.json()["description"] == "Front"
+    assert bad.status_code == 422 and alien.status_code == 404
+    assert settings["implementation_mode"] == "ambiente"

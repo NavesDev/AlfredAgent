@@ -2,29 +2,42 @@
 
 from __future__ import annotations
 
+import re
 import sqlite3
+import unicodedata
+from collections.abc import Callable
 from pathlib import Path
 from typing import Protocol
 
-from errors import ProjectError, ProjectInUse, ProjectNotFound
+from errors import NoDefaultWorkspace, ProjectError, ProjectInUse, ProjectNotFound
 from events import EventBus
 from infra import git as real_git
 from infra.git import GitSummary
 from models import project
 from models import session as records
-from models.project import Project, Workspace
+from models.project import ImplementationMode, Project, Workspace
+
+KEEP = object()  # update_workspace: leave the implementation mode as it is
 
 
 class Git(Protocol):
-    async def add_worktree(self, parent: Path, name: str) -> tuple[Path, str]: ...
+    async def add_worktree(
+        self, parent: Path, name: str, branch: str | None = None
+    ) -> tuple[Path, str]: ...
     async def remove_worktree(self, path: Path, force: bool) -> None: ...
     async def is_dirty(self, path: Path) -> bool: ...
     async def summary(self, path: Path) -> GitSummary: ...
 
 
 class Projects:
-    def __init__(self, db: sqlite3.Connection, bus: EventBus, git: Git = real_git) -> None:
-        self._db, self._bus, self._git = db, bus, git
+    def __init__(
+        self,
+        db: sqlite3.Connection,
+        bus: EventBus,
+        git: Git = real_git,
+        mode: Callable[[], ImplementationMode] = lambda: "worktree",
+    ) -> None:
+        self._db, self._bus, self._git, self._mode = db, bus, git, mode
 
     def all(self) -> list[Project]:
         return project.list_projects(self._db)
@@ -53,16 +66,22 @@ class Projects:
         name: str | None = None,
         aliases: list[str] | None = None,
         description: str | None = None,
+        default_workspace_id: int | None = None,
     ) -> Project:
         current = self.get(id)
         if name is not None and name.strip().lower() != current.name.lower():
             name = self._free_name(name)
+        if default_workspace_id is not None and all(
+            w.id != default_workspace_id for w in current.workspaces
+        ):
+            raise ProjectNotFound(f"Esse ambiente não é do projeto {current.name}.")
         project.update_project(
             self._db,
             id,
             name.strip() if name else None,
             _clean(aliases) if aliases is not None else None,
             _description(description) if description is not None else None,
+            default_workspace_id,
         )
         return self._publish_updated(id)
 
@@ -85,11 +104,18 @@ class Projects:
         ws = project.insert_workspace(
             self._db, project_id, name, str(folder), "folder", description=description
         )
+        if current.default_workspace_id is None:
+            project.update_project(self._db, project_id, default_workspace_id=ws.id)
         self._publish_updated(project_id)
         return ws
 
     async def add_worktree(
-        self, project_id: int, parent_id: int, name: str, description: str = ""
+        self,
+        project_id: int,
+        parent_id: int,
+        name: str,
+        description: str = "",
+        branch: str | None = None,
     ) -> Workspace:
         current = self.get(project_id)
         name = self._free_workspace_name(current, name)
@@ -97,7 +123,7 @@ class Projects:
         parent = next((w for w in current.workspaces if w.id == parent_id), None)
         if parent is None:
             raise ProjectNotFound(f"O ambiente de origem não existe no projeto {current.name}.")
-        path, branch = await self._git.add_worktree(Path(parent.path), name)
+        path, branch = await self._git.add_worktree(Path(parent.path), name, branch)
         ws = project.insert_workspace(
             self._db, project_id, name, str(path), "worktree", parent.id, branch, description
         )
@@ -115,14 +141,54 @@ class Projects:
         ws = self.workspace(project_name, name)
         return ws, await self._git.summary(Path(ws.path))
 
-    def update_workspace(self, id: int, description: str) -> Workspace:
-        if project.get_workspace(self._db, id) is None:
+    def update_workspace(
+        self,
+        id: int,
+        description: str | None = None,
+        implementation_mode: ImplementationMode | object | None = KEEP,
+    ) -> Workspace:
+        ws = project.get_workspace(self._db, id)
+        if ws is None:
             raise ProjectNotFound("Esse ambiente não existe.")
-        project.update_workspace(self._db, id, _description(description))
+        if description is not None:
+            project.update_workspace(self._db, id, _description(description))
+        if implementation_mode is not KEEP:
+            if implementation_mode not in (None, "worktree", "ambiente"):
+                raise ProjectError("Modo de implementação inválido: use worktree ou ambiente.")
+            project.set_implementation_mode(self._db, id, implementation_mode)
+        self._publish_updated(ws.project_id)
         updated = project.get_workspace(self._db, id)
         assert updated is not None
-        self._publish_updated(updated.project_id)
         return updated
+
+    def mode_of(self, ws: Workspace) -> ImplementationMode:
+        """The workspace's own mode, else the global one; a worktree always works in itself."""
+        if ws.kind == "worktree":
+            return "ambiente"
+        return ws.implementation_mode or self._mode()
+
+    async def start_feature(
+        self, project_name: str, feature: str, workspace: str | None = None
+    ) -> Workspace:
+        """Where a new feature gets implemented: a worktree feat/<slug> of the workspace (named,
+        else the project's default), or the workspace itself, as its mode says."""
+        found = self.find(project_name)
+        base = (
+            self.workspace(found.name, workspace)
+            if workspace
+            else next((w for w in found.workspaces if w.id == found.default_workspace_id), None)
+        )
+        if base is None:
+            raise NoDefaultWorkspace(
+                f"O projeto {found.name} não tem ambiente padrão; diga em qual ambiente."
+            )
+        if self.mode_of(base) == "ambiente":
+            return base
+        slug = _slug(feature)
+        existing = next((w for w in found.workspaces if w.name.lower() == slug), None)
+        if existing is not None:
+            return existing
+        return await self.add_worktree(found.id, base.id, slug, branch=f"feat/{slug}")
 
     async def delete_workspace(self, id: int, force: bool = False) -> None:
         ws = project.get_workspace(self._db, id)
@@ -173,6 +239,14 @@ def _description(text: str) -> str:
     if len(text) > MAX_DESCRIPTION:
         raise ProjectError(f"A descrição passa de {MAX_DESCRIPTION} caracteres; encurte.")
     return text
+
+
+def _slug(text: str) -> str:
+    ascii_text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    slug = re.sub(r"[^a-z0-9]+", "-", ascii_text.lower()).strip("-")[:40].strip("-")
+    if not slug:
+        raise ProjectError("A feature precisa de um nome com letras ou números.")
+    return slug
 
 
 def _clean(aliases: list[str]) -> list[str]:
