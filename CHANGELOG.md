@@ -1,29 +1,31 @@
 # Changelog
 
-Mudanças relevantes do Alfred. Formato do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/), versões em [SemVer](https://semver.org/lang/pt-BR/). Como lançar: [CONTRIBUTING.md](CONTRIBUTING.md#versões-e-releases).
+## [0.1.0](https://github.com/NavesDev/AlfredAgent/releases/tag/v0.1.0) (2026-11-15)
 
-## [Não lançado]
+First release: end-to-end voice, Claude Code sessions per project, web panel and desktop app.
 
-Primeira versão: voz de ponta a ponta, sessões do Claude Code por projeto, painel e app desktop.
+### Voice
 
-### Voz
-- Wake word própria **"Alfred"** (`alfred.onnx`, openWakeWord), com medidor de score para ajuste.
-- Transcrição local com Whisper `large-v3-turbo` e fala com Kokoro (pt-BR), na GPU sob demanda, caindo para a CPU se ela estiver ocupada.
-- Transcrição adiantada na pausa curta, confirmação falada ("Certo.") assim que você para de falar e bipes de início e fim.
-- Responde falando só a linha de resumo; fila de fala, apelidos falados e hotwords com os nomes das sessões.
+* Custom **"Alfred"** wake word (`alfred.onnx`, openWakeWord) with a live score meter for tuning
+* Local speech: Whisper `large-v3-turbo` transcription and Kokoro pt-BR voice, loaded on the GPU on demand with CPU fallback
+* Early transcription on short pauses, a spoken acknowledgement as soon as you stop talking, start and end chimes
+* Speaks only the summary line; speech queue, spoken aliases and Whisper hotwords with session names
 
-### Agente principal
-- Alfred sobre o Claude Code CLI, com conversa diária retomada e botão "Nova conversa".
-- Lê e-mail, agenda, web, navegador, arquivos da home (nunca segredos) e issues do GitHub, sem shell nem edição ([ADR 0003](docs/adr/0003-main-agent-without-exec-tools.md)).
-- Fala o que está fazendo enquanto pensa.
+### Main agent
 
-### Sessões e projetos
-- Sessões nomeadas em paralelo (geral, implementação, sistema), cada uma presa a um projeto e a um ambiente.
-- Projetos e ambientes espelhando os git worktrees; `iniciar_feature` abre branch, worktree e sessão de uma vez.
-- Delegação por voz ("manda o backend fazer…"), fila por sessão, retratos gerados e descrições curtas.
+* Alfred runs on the Claude Code CLI, with a resumed daily conversation and a "new conversation" button
+* Reads mail, calendar, the web, the browser, home files (never secrets) and GitHub issues, with no shell or edit tools ([ADR 0003](docs/adr/0003-main-agent-without-exec-tools.md))
+* Says what it is doing while it thinks
 
-### Painel e app desktop
-- Painel em vidro (estilo visionOS): orbe 3D que reage à voz, transcrição com tempos, sessões, projetos e configurações.
-- Uso e limites do plano em anéis, modelo e effort por tipo de agente, MCPs ligáveis por sessão.
-- App desktop em Tauri: barra de título própria, tray e pílula flutuante com a esfera e barras de frequência enquanto o Alfred ouve, pensa ou fala ([ADR 0012](docs/adr/0012-desktop-shell-tauri.md)).
-- Lançador no menu do sistema (`make install-launcher`).
+### Sessions and projects
+
+* Named sessions in parallel (general, implementation, system), each tied to a project and a workspace
+* Workspaces mirror git worktrees; `iniciar_feature` opens branch, worktree and session in one go
+* Voice delegation ("tell the backend to…"), per-session queue, generated portraits and short descriptions
+
+### Panel and desktop app
+
+* Glass panel (visionOS style): 3D orb that reacts to the voice, transcript with timings, sessions, projects and settings
+* Plan usage and limits as rings, model and effort per agent kind, MCP toggles per session
+* Tauri desktop app: custom title bar, tray and a floating pill with the orb and frequency bars while Alfred listens, thinks or speaks ([ADR 0012](docs/adr/0012-desktop-shell-tauri.md))
+* Desktop menu launcher (`make install-launcher`)

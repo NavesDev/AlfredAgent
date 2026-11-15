@@ -5,7 +5,7 @@ DESKTOP := apps/desktop
 # Web targets are no-ops if apps/web is missing.
 WEB_RUN = $(if $(wildcard $(WEB)/package.json),cd $(WEB) &&,@true)
 
-.PHONY: help setup dev dev-server dev-web dev-desktop test lint fmt gen-api build build-desktop install-launcher release
+.PHONY: help setup dev dev-server dev-web dev-desktop test lint fmt gen-api build build-desktop install-launcher
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
@@ -62,7 +62,3 @@ install-launcher: ## Add an "Alfred" app to the desktop menu (start/stop + open 
 		> ~/.local/share/applications/alfred.desktop
 	@update-desktop-database ~/.local/share/applications 2>/dev/null || true
 	@echo "Installed ~/.local/share/applications/alfred.desktop"
-
-release: ## Cut a release on main: bump versions, CHANGELOG, commit and tag (VERSION=x.y.z)
-	@test -n "$(VERSION)" || (echo "usage: make release VERSION=x.y.z" && exit 1)
-	scripts/release.sh $(VERSION)
