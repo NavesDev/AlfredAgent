@@ -18,7 +18,8 @@ from tests.test_sessions import Env, settle
 class Tools:
     def __init__(self, env: Env, home: Path) -> None:
         self.env, self.home = env, home
-        self.projects = Projects(env.db, env.sessions._bus, FakeGit())
+        self.git = FakeGit()
+        self.projects = Projects(env.db, env.sessions._bus, self.git)
         self.list = session_tools(env.sessions, self.projects)
 
     async def call(self, name: str, args: dict[str, Any]) -> str:
@@ -49,6 +50,7 @@ def test_every_tool_is_allowed_without_asking(tools: Tools) -> None:
         "apagar_ambiente",
         "definir_apelidos",
         "definir_descricao",
+        "ver_ambiente",
     }
     assert {f"mcp__{SERVER}__{n}" for n in names} <= set(permissions.ALLOWED)
     assert not {"Bash", "Edit", "Write"} & set(permissions.ALLOWED)
@@ -239,3 +241,31 @@ async def test_descriptions_by_voice_show_up_when_listing_projects(tools: Tools)
     assert "200" in too_long
     assert "SaaS de cobrança recorrente" in listed and "API em Spring Boot" in listed
     assert describe_tool("mcp__alfred__definir_descricao") == "Ajustando uma descrição"
+
+
+async def test_ver_ambiente_tells_branch_changes_and_commits(tools: Tools, tmp_path: Path) -> None:
+    (tmp_path / "back").mkdir()
+    tools.git.dirty = True
+    await tools.call("criar_projeto", {"nome": "Recurve"})
+    await tools.call(
+        "criar_ambiente", {"projeto": "Recurve", "nome": "back", "pasta": str(tmp_path / "back")}
+    )
+
+    text = await tools.call("ver_ambiente", {"projeto": "Recurve", "ambiente": "back"})
+
+    assert "main" in text and "2 arquivos alterados" in text and "add login" in text
+
+
+async def test_ver_ambiente_speaks_the_error(tools: Tools, tmp_path: Path) -> None:
+    await tools.call("criar_projeto", {"nome": "Recurve"})
+    assert "não tem o ambiente" in await tools.call(
+        "ver_ambiente", {"projeto": "Recurve", "ambiente": "nada"}
+    )
+    (tmp_path / "solto").mkdir()
+    await tools.call(
+        "criar_ambiente", {"projeto": "Recurve", "nome": "solto", "pasta": str(tmp_path / "solto")}
+    )
+    tools.git.fail = True
+    assert "not a git repository" in await tools.call(
+        "ver_ambiente", {"projeto": "Recurve", "ambiente": "solto"}
+    )

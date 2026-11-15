@@ -30,11 +30,7 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
             return str(e)
 
     def workspace_id(project_name: str, name: str) -> int:
-        found = projects.find(project_name)
-        ws = next((w for w in found.workspaces if w.name.lower() == name.strip().lower()), None)
-        if ws is None:
-            raise ProjectError(f"O projeto {found.name} não tem o ambiente {name}.")
-        return ws.id
+        return projects.workspace(project_name, name).id
 
     @sdk.tool(
         "criar_sessao",
@@ -307,6 +303,31 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
         return await _speak(run)
 
     delegates = [kind.delegate_tool(delegate) for kind in KINDS.values()]
+
+    @sdk.tool(
+        "ver_ambiente",
+        "Mostra o estado git de um ambiente: branch, quantos arquivos estão alterados e os "
+        "últimos commits. Use para verificações, sem abrir sessão.",
+        {
+            "type": "object",
+            "properties": {"projeto": {"type": "string"}, "ambiente": {"type": "string"}},
+            "required": ["projeto", "ambiente"],
+        },
+    )
+    async def ver_ambiente(args: Result) -> Result:
+        async def run() -> str:
+            ws, git = await projects.summary(str(args["projeto"]), str(args["ambiente"]))
+            changed = (
+                "nada alterado"
+                if git.changed == 0
+                else f"{git.changed} arquivo{'s' if git.changed > 1 else ''} "
+                f"alterado{'s' if git.changed > 1 else ''}"
+            )
+            commits = "; ".join(git.commits) or "sem commits"
+            return f"{ws.name}: branch {git.branch}, {changed}. Últimos commits: {commits}."
+
+        return await _speak(run)
+
     return [
         *delegates,
         criar_sessao,
@@ -320,6 +341,7 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
         apagar_ambiente,
         definir_apelidos,
         definir_descricao,
+        ver_ambiente,
     ]
 
 

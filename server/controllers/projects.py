@@ -9,6 +9,7 @@ from typing import Protocol
 from errors import ProjectError, ProjectInUse, ProjectNotFound
 from events import EventBus
 from infra import git as real_git
+from infra.git import GitSummary
 from models import project
 from models import session as records
 from models.project import Project, Workspace
@@ -18,6 +19,7 @@ class Git(Protocol):
     async def add_worktree(self, parent: Path, name: str) -> tuple[Path, str]: ...
     async def remove_worktree(self, path: Path, force: bool) -> None: ...
     async def is_dirty(self, path: Path) -> bool: ...
+    async def summary(self, path: Path) -> GitSummary: ...
 
 
 class Projects:
@@ -101,6 +103,17 @@ class Projects:
         )
         self._publish_updated(project_id)
         return ws
+
+    def workspace(self, project_name: str, name: str) -> Workspace:
+        found = self.find(project_name)
+        ws = next((w for w in found.workspaces if w.name.lower() == name.strip().lower()), None)
+        if ws is None:
+            raise ProjectNotFound(f"O projeto {found.name} não tem o ambiente {name}.")
+        return ws
+
+    async def summary(self, project_name: str, name: str) -> tuple[Workspace, GitSummary]:
+        ws = self.workspace(project_name, name)
+        return ws, await self._git.summary(Path(ws.path))
 
     def update_workspace(self, id: int, description: str) -> Workspace:
         if project.get_workspace(self._db, id) is None:

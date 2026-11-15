@@ -5,6 +5,7 @@ import pytest
 from controllers.projects import Projects
 from errors import GitError, ProjectError, ProjectInUse, ProjectNotFound
 from events import EventBus
+from infra.git import GitSummary
 from models import session as records
 from tests.conftest import drain
 from tests.test_sessions import Env, settle
@@ -27,6 +28,11 @@ class FakeGit:
 
     async def is_dirty(self, path: Path) -> bool:
         return self.dirty
+
+    async def summary(self, path: Path) -> GitSummary:
+        if self.fail:
+            raise GitError("fatal: not a git repository")
+        return GitSummary("main", 2 if self.dirty else 0, ["a1b2c3d add login", "9f8e7d6 init"])
 
 
 def make(env: Env, git: FakeGit | None = None) -> Projects:
