@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.0](https://github.com/NavesDev/AlfredAgent/compare/v0.1.0...v0.2.0) (2026-11-15)
+
+
+### Features
+
+* self-update from release tags ([06a5bc6](https://github.com/NavesDev/AlfredAgent/commit/06a5bc6b948d96badab8ce7b04638bfa47c5ce88))
+* **server:** check for new release tags and start the self-update ([545facb](https://github.com/NavesDev/AlfredAgent/commit/545facb0cee8471d9911e58248e9fbdc8c784743))
+* **update:** update script that installs a release tag and rolls back on failure ([c989a02](https://github.com/NavesDev/AlfredAgent/commit/c989a0291168a43f075f64a635cb7fb7c3544104))
+* **web:** updates section and a control bar pill for new releases ([92d18cb](https://github.com/NavesDev/AlfredAgent/commit/92d18cbb9b02038001cab604b520e270263a4498))
+
 ## [0.1.0](https://github.com/NavesDev/AlfredAgent/releases/tag/v0.1.0) (2026-11-15)
 
 First release: end-to-end voice, Claude Code sessions per project, web panel and desktop app.
