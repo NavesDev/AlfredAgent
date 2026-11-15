@@ -14,8 +14,8 @@ from infra.claude.activity import describe_tool
 from infra.claude.alfred import AlfredAgent
 from infra.claude.tools import SERVER, session_tools
 from infra.github import Issue
-from tests.test_projects import FakeGit
 from tests.conftest import drain
+from tests.test_projects import FakeGit
 from tests.test_sessions import Env, settle
 
 

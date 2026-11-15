@@ -14,6 +14,7 @@ from errors import GitError, GitHubError, ProjectError, ResultError, SessionErro
 from infra import github as real_github
 from infra.claude.agents import KINDS
 from models.project import MAX_DESCRIPTION
+from models.result import PresentMode
 
 if TYPE_CHECKING:
     from controllers.projects import Projects
@@ -520,7 +521,7 @@ def session_tools(
         async def run() -> str:
             if results is None:
                 return "Não consigo mostrar resultados agora."
-            mode = "ampliado" if args.get("modo") == "ampliado" else "card"
+            mode: PresentMode = "ampliado" if args.get("modo") == "ampliado" else "card"
             if args.get("caminho"):
                 results.present_path(str(args["caminho"]), mode)
             elif args.get("sessao"):
