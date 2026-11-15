@@ -97,9 +97,11 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 |---|---|---|
 | RF-60 | Dashboard (`/`): sessões, confirmações pendentes, conversa ao vivo, tarefas abertas | F6 |
 | RF-61 | Telas `/projects`, `/projects/:id`, `/tasks`, `/activity` | F6 |
-| RF-62 | Atualização em tempo real via WebSocket (eventos do bus, incluindo `voice_state` e `audio_level` para animações) | F1 (`/ws`), F6 (painel) |
+| RF-62 | Atualização em tempo real via WebSocket (eventos do bus, incluindo `voice_state` e `audio_level` com nível e bandas de frequência para animações) | F1 (`/ws`), F6 (painel) |
 | RF-63 | CommandBar (Ctrl+K) para falar com o Alfred digitando | F6 |
 | RF-64 | Acessível em localhost e pelo celular na rede local | F6 |
+| RF-65 | App desktop (Tauri) com a mesma UI do painel, barra de título própria e tray; fechar esconde no tray ([ADR 0012](adr/0012-desktop-shell-tauri.md)) | Desktop |
+| RF-66 | Visualizador de voz flutuante (mini esfera + barras) no centro-baixo da tela enquanto a voz não está em espera e o app está minimizado ou no tray; não captura clique | Desktop |
 
 ## Requisitos não funcionais
 
@@ -136,7 +138,6 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 
 ## Fora de escopo no MVP
 
-- App desktop com Tauri
 - Sandbox das sessões de código
 - Acesso pela internet
 - Múltiplos usuários
@@ -160,7 +161,7 @@ Cada fase entrega algo usável sozinho.
 
 1. **Timeout de permissão duplicado na spec:** `permissions.timeout_s` e `limits.timeout_permissao_s`. Proposta: manter só `permissions.timeout_s`.
 2. **Chaves do config em português** (`limites`, `max_sessoes_ativas`) contrariam "config em inglês". Proposta: `limits.max_active_sessions`.
-3. **Canal `key`:** qual tecla/dispositivo? Atalho global no desktop exige Tauri (fora do MVP). Proposta: tecla no terminal do server ou botão no painel até lá.
+3. **Canal `key`:** qual tecla/dispositivo? Atalho global no desktop pode vir no app Tauri (ADR 0012). Proposta: tecla no terminal do server ou botão no painel até lá.
 4. ~~**Fila por sessão:** persistida em SQLite ou só em memória?~~ Resolvido: a fila fica em memória; projetos, sessões e configurações vão pro SQLite e a conversa volta pelo resume.
 5. **Rotação diária da conversa do `alfred`:** em que horário vira o dia, e o que acontece com uma conversa em andamento?
 6. **Autenticação do painel na rede local:** nenhuma no MVP? Qualquer um na LAN poderia aprovar confirmações via `web`.

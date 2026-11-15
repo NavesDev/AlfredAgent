@@ -154,7 +154,7 @@ Regras do front:
 - Telas: `/` (dashboard: sessões, confirmações pendentes, conversa ao vivo e tarefas abertas), `/projects`, `/projects/:id`, `/tasks` e `/activity`.
 - O CommandBar manda texto pro mesmo router da voz (`POST /api/commands`), pra usar o Alfred digitando quando não dá pra falar.
 
-**Desktop (`apps/desktop`).** Reservado pro Tauri embrulhar o mesmo `apps/web` (bandeja, atalho global, notificação nativa). A arquitetura dele fica pra depois.
+**Desktop (`apps/desktop`).** Tauri v2 embrulha o mesmo `apps/web` ([ADR 0012](adr/0012-desktop-shell-tauri.md)): janela sem decoração com barra de título própria, fechar esconde no tray, e um visualizador de voz flutuante (mini esfera + barras) aparece no centro-baixo da tela quando o Alfred ouve, pensa ou fala com o app minimizado ou no tray. Atalho global e notificação nativa ficam pra depois.
 
 Pontos-chave do `config.yaml`:
 
@@ -184,4 +184,4 @@ Cada fase entrega algo usável sozinho:
 6. Painel web: `apps/web` com sessões, tarefas, log e confirmação por clique.
 7. Polimento: wake word Alfred treinada, ajuste do `initial_prompt`, fallback pro Haiku.
 
-Fora de escopo no MVP: app desktop com Tauri, sandbox das sessões, acesso pela internet, várias pessoas usando e TTS com clonagem de voz.
+Fora de escopo no MVP: sandbox das sessões, acesso pela internet, várias pessoas usando e TTS com clonagem de voz.

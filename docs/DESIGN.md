@@ -104,3 +104,10 @@ Remodelação do painel web no estilo de vidro da Apple (visionOS). Este documen
 - **Foto das sessões:** retrato 3D. Enquanto o retrato não existe, a sessão mostra o monograma (iniciais num degradê estável pelo nome). Geração: [ADR 0009](adr/0009-session-portraits-via-mcp.md).
 - **Bonecos do mapa:** saíram, junto com a opção "Tamanho dos agentes no mapa" (`figure_scale`).
 - **Permissões:** o cartão não tem Negar/Permitir; a confirmação continua por voz, como manda a SPEC.
+
+## App desktop
+
+- **Barra de título:** faixa transparente de 40px sobre o ambiente, que arrasta a janela (duplo clique maximiza). Ponto de conexão + "Alfred" à esquerda; botões redondos de vidro de 28px (minimizar, maximizar/restaurar, fechar) à direita. Só aparece no Tauri.
+- **Janela:** cantos de 12px, sem cantos quando maximizada.
+- **Visualizador flutuante:** pílula escura de vidro com a mini esfera em CSS (32px) e 9 barras brancas arredondadas, como o [Bar Visualizer](https://ui.elevenlabs.io/docs/components/bar-visualizer) da ElevenLabs UI (MIT). Ouvindo e falando: altura de cada barra segue a banda de frequência. Pensando: barras baixas com uma onda passando. Entra com fade e escala.
+

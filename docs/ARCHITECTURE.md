@@ -88,7 +88,7 @@ alfred/
 │       └── ws.py              # pushes events to the web app
 ├── apps/
 │   ├── web/                   # React + TypeScript + Vite
-│   └── desktop/               # Tauri (future)
+│   └── desktop/               # Tauri v2 shell: main window, overlay, tray (ADR 0012)
 ├── docs/
 └── Makefile
 ```

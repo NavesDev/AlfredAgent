@@ -28,7 +28,7 @@ Tecnologias do Alfred e o motivo de cada escolha. Mudanças relevantes viram um 
 | Testes | pytest + pytest-asyncio (server), Vitest + Testing Library (web) |
 | Lint/format | ruff + mypy (server), ESLint + Prettier (web) |
 | Gerenciador de pacotes (Node) | pnpm |
-| Desktop (futuro) | Tauri |
+| Desktop | Tauri v2 (WebKitGTK no Linux), carregando o `apps/web` ([ADR 0012](adr/0012-desktop-shell-tauri.md)) |
 
 ## Server
 
