@@ -257,3 +257,37 @@ async def test_results_of_a_deleted_session_go_with_it(env: Env) -> None:
     session.delete_session(env.db, "Design")
     assert env.db.execute("SELECT COUNT(*) FROM result").fetchone()[0] == 0
     assert result.list_results(env.db, None) == []
+
+
+async def test_open_goes_through_the_guard(env: Env) -> None:
+    opened: list[tuple[Path, bool]] = []
+
+    async def fake_open(path: Path, reveal: bool) -> None:
+        opened.append((path, reveal))
+
+    env.results._open = fake_open
+    png = env.file("a.png")
+    view = await env.results.record("Design", f"APRESENTAR: {png}", None, None)
+    assert view is not None
+
+    await env.results.open(view.id, 0, reveal=True)
+    assert opened == [(png, True)]
+
+    png.unlink()
+    with pytest.raises(FileGone):
+        await env.results.open(view.id, 0, reveal=False)
+    assert len(opened) == 1
+
+
+async def test_an_open_failure_becomes_a_result_error(env: Env) -> None:
+    from errors import OpenerError, ResultError
+
+    async def broken(path: Path, reveal: bool) -> None:
+        raise OpenerError("xdg-open: no app")
+
+    env.results._open = broken
+    png = env.file("a.png")
+    view = await env.results.record("Design", f"APRESENTAR: {png}", None, None)
+    assert view is not None
+    with pytest.raises(ResultError, match="Não consegui abrir"):
+        await env.results.open(view.id, 0, reveal=False)

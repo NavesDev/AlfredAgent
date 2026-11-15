@@ -374,3 +374,26 @@ def test_settings_overlay_position(api: Api) -> None:
     assert ok.json()["overlay_position"] == "bottom_center"
     assert bad.status_code == 422
     assert api.get("/api/settings").json()["overlay_position"] == "bottom_center"
+
+
+def test_open_a_file_on_this_computer_only(results_api: Any, tmp_path: Path) -> None:
+    api = results_api
+    opened: list[tuple[Path, bool]] = []
+
+    async def fake_open(path: Path, reveal: bool) -> None:
+        opened.append((path, reveal))
+
+    api.results._open = fake_open
+    (api.home / "a.png").write_bytes(b"PNG!")
+    rid = _record(api, f"APRESENTAR: {api.home / 'a.png'}")
+
+    assert api.post(f"/api/results/{rid}/files/0/open", json={"reveal": True}).status_code == 204
+    assert api.post(f"/api/results/{rid}/files/3/open", json={}).status_code == 404
+    assert opened == [(api.home / "a.png", True)]
+
+
+def test_open_is_refused_to_a_phone(phone_api: Any) -> None:
+    api = phone_api
+    (api.home / "a.png").write_bytes(b"PNG!")
+    rid = _record(api, f"APRESENTAR: {api.home / 'a.png'}")
+    assert api.post(f"/api/results/{rid}/files/0/open", json={}).status_code == 403

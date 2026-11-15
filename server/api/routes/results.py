@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from controllers.results import Results
-from errors import FileGone, ResultNotFound, ResultNotReadable, SessionNotFound
+from errors import FileGone, ResultError, ResultNotFound, ResultNotReadable, SessionNotFound
 from models.result import MAX_PER_SESSION, PresentMode, ResultView
 
 router = APIRouter(prefix="/api/results", tags=["results"])
@@ -20,6 +20,10 @@ presentation = APIRouter(prefix="/api/presentation", tags=["results"])
 
 class Present(BaseModel):
     mode: PresentMode
+
+
+class Open(BaseModel):
+    reveal: bool = False  # show it in its folder instead of opening it
 
 
 def _results(request: Request) -> Results:
@@ -72,6 +76,23 @@ async def get_file(result_id: int, index: int, request: Request) -> FileResponse
     except FileGone as e:
         raise HTTPException(410, str(e)) from e
     return FileResponse(path, headers={"Cache-Control": "no-store"})
+
+
+@router.post("/{result_id}/files/{index}/open", status_code=204)
+async def open_file(result_id: int, index: int, body: Open, request: Request) -> Response:
+    if not _loopback(request):
+        raise HTTPException(403, "Arquivos só no computador.")
+    try:
+        await _results(request).open(result_id, index, body.reveal)
+    except ResultNotFound as e:
+        raise HTTPException(404, str(e)) from e
+    except ResultNotReadable as e:
+        raise HTTPException(403, str(e)) from e
+    except FileGone as e:
+        raise HTTPException(410, str(e)) from e
+    except ResultError as e:
+        raise HTTPException(502, str(e)) from e
+    return Response(status_code=204)
 
 
 @router.post("/{result_id}/present", status_code=204)

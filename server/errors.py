@@ -79,3 +79,7 @@ class ResultNotReadable(ResultError):
 
 class FileGone(ResultError):
     """The result's file was deleted after it was recorded."""
+
+
+class OpenerError(AlfredError):
+    """xdg-open or the file manager failed or is missing. The message is the tool's stderr."""

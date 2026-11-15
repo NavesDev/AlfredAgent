@@ -7,12 +7,22 @@ or a file it found. Every file passes the read guard when recorded and again whe
 import logging
 import os
 import sqlite3
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Protocol
 
-from errors import FileGone, GitError, ResultNotFound, ResultNotReadable, SessionNotFound
+from errors import (
+    FileGone,
+    GitError,
+    OpenerError,
+    ResultError,
+    ResultNotFound,
+    ResultNotReadable,
+    SessionNotFound,
+)
 from events import EventBus
 from infra import git as real_git
+from infra import opener
 from infra.claude.permissions import readable
 from infra.claude.summary import parse_presentation, parse_resumo, strip_control
 from models import result as records
@@ -32,9 +42,15 @@ class Git(Protocol):
 
 class Results:
     def __init__(
-        self, db: sqlite3.Connection, bus: EventBus, home: Path, git: Git = real_git
+        self,
+        db: sqlite3.Connection,
+        bus: EventBus,
+        home: Path,
+        git: Git = real_git,
+        open_path: Callable[[Path, bool], Awaitable[None]] = opener.open_path,
     ) -> None:
         self._db, self._bus, self._home, self._git = db, bus, home, git
+        self._open = open_path
 
     async def head(self, cwd: Path) -> str | None:
         """Where a task starts, for its change report."""
@@ -114,6 +130,15 @@ class Results:
         if not path.is_file():
             raise FileGone("Arquivo não existe mais.")
         return path
+
+    async def open(self, result_id: int, index: int, reveal: bool) -> None:
+        """Opens the file in its default app, or shows it in its folder; guard checked again."""
+        path = self.file(result_id, index)
+        try:
+            await self._open(path, reveal)
+        except OpenerError as e:
+            log.warning("could not open %s: %s", path, e)
+            raise ResultError("Não consegui abrir o arquivo.") from e
 
     # --- internals ---------------------------------------------------------------------------
 
