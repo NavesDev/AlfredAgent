@@ -14,6 +14,7 @@ When a session finished, Alfred only spoke its summary. Seeing the generated ima
 - **Alfred shows on request:** the `apresentar` tool shows a session's last result or a file Alfred found (a result of `source = alfred`), as a card or in the expanded view; `fechar_apresentacao` closes it.
 - **Same guard as Alfred's reads (ADR 0011):** a file enters a result only if it is inside the home, resolved through symlinks, and does not match the secret rules. The guard runs when the result is recorded and again on every request for the file; anything outside is dropped and logged.
 - **Files never leave the computer:** `GET /api/results/{id}/files/{i}` answers only loopback clients (403 otherwise). A panel opened from another device shows title, summary and report text only. The API never returns a file's path.
+- **The server opens files:** "Abrir no app" and "Pasta" call `POST /api/results/{id}/files/{i}/open` (loopback only, guard checked again); the server runs `xdg-open`, or `org.freedesktop.FileManager1.ShowItems` over D-Bus to show it in its folder. The desktop shell needs no opener plugin nor a file scope.
 - **Presentation:** `result_presented` on the bus. With the panel out of sight the overlay pill grows into the card; with it in sight, the panel shows the card. The expanded view is its own window. The overlay is bigger (340×600) and only the visible rectangle the page reports takes the mouse.
 - **One anchor for everything that floats:** the overlay opens at a preset from Settings (`overlay_position`); the pill is no longer dragged.
 

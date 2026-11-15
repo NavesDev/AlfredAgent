@@ -333,6 +333,7 @@ flowchart TD
 | `GET/PUT /api/settings` | Model and effort per kind, limits, disabled MCPs, favorite image generator, overlay position preset |
 | `GET /api/results?session=`, `GET /api/results/{id}` | A session's results (newest first, up to 30) and one result |
 | `GET /api/results/{id}/files/{index}` | A result's file; loopback clients only (403 otherwise), 410 when it no longer exists |
+| `POST /api/results/{id}/files/{index}/open` | Opens the file in its default app, or its folder with `reveal`; loopback only, done by the server so the path never leaves it |
 | `POST /api/results/{id}/present`, `POST /api/presentation/close` | Shows a result (`card` or `ampliado`) and closes what is shown |
 | `GET/POST/PATCH /api/tasks` | Tasks |
 | `GET /api/confirmations`, `POST /api/confirmations/{id}` | Pending confirmations |

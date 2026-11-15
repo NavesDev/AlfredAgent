@@ -101,6 +101,7 @@ Redesign of the web panel in Apple's glass style (visionOS). This document guide
 - [Sessions, with the three picture options](https://claude.ai/artifact/VZXzh69Zen2HUiJtNBvyEs)
 - [Projects, Project and Settings](https://claude.ai/artifact/TRisX7cDuLVeakNfrFvKVL)
 - [Font, icon and result presentation (v3)](https://claude.ai/artifact/1v5NGLoRGVnSA8s3kJML4j)
+- [Result states, history and pill position](https://claude.ai/artifact/PWfYEnrmR3vCHgRi1jrpLf)
 
 ## Decisions
 
@@ -122,6 +123,7 @@ References: Dynamic Island / Live Activities (card), Quick Look (expanded view),
 - **Card:** the pill grows into a 300px card in its corner (it grows down when anchored on top, up when at the bottom); 22px corners, the pill's dark glass. Header: mini orb, session name and time, "1 de N", close (✕). Body by type: image/GIF 16:9 `cover`, muted looping video, report (summary and up to 3 changed files with +/−, then "+N"), document preview. Buttons: "Ampliar" (primary), "Abrir no app", "Pasta" (desktop only).
 - **Behavior:** never takes keyboard focus; leaves after 30s without interaction (hover pauses); a new result replaces it. With the panel in sight the same card shows at the panel's top right instead.
 - **Expanded view:** a separate glass window, 70% of the monitor, centered, with arrows, a thumbnail strip and Esc to close.
-- **Types:** PDF through `pdfjs-dist`; Markdown through `react-markdown` + `remark-gfm` without raw HTML; HTML in a sandboxed iframe without same-origin; text up to 1 MB in a monospaced block; anything else a file card with "Abrir no app".
+- **States:** loading shimmer in the media slot; a missing file shows "Arquivo não existe mais" without open buttons; an unknown type is a file card whose main button is "Abrir no app"; HTML carries an "Isolado" badge; long Markdown fades out at the bottom of the card.
+- **Types:** PDF through `pdfjs-dist` (first page on the card, every page expanded); Markdown through `react-markdown` + `remark-gfm` without raw HTML; HTML in a sandboxed iframe without same-origin; text up to 1 MB in a monospaced block; anything else a file card with "Abrir no app".
 - **Other device:** title, summary and report text only, with "Arquivos só no computador".
 - **History:** under the session card, the session's results with a thumbnail and time; a missing file shows "Arquivo não existe mais".
