@@ -9,6 +9,7 @@ http/https (block_local_urls), no file outside the home (guard_local_paths) and 
 
 import os
 from collections.abc import Awaitable, Callable
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -111,6 +112,44 @@ async def block_local_urls(
 Hook = Callable[[Any, str | None, HookContext], Awaitable[HookJSONOutput]]
 
 
+def _inside(root: Path, raw: str | Path) -> bool:
+    """The real path (relative to the home, through symlinks and '..') stays in the home."""
+    path = Path(os.path.expanduser(raw))
+    return (root / path).resolve().is_relative_to(root)
+
+
+def _secret(path: Path, home: Path) -> bool:
+    """Matches a SECRET_RULES glob: ~/<dir>/** below that dir, ~/<file> exactly, and
+    **/<name> on any part of the path (stricter than a file name match: fail-closed)."""
+    rel = path.relative_to(home)
+    for rule in SECRET_RULES:
+        glob = rule.removeprefix("Read(").removesuffix(")")
+        if glob.startswith("**/"):
+            if any(fnmatch(part, glob[3:]) for part in rel.parts):
+                return True
+        elif glob.endswith("/**"):
+            if rel.is_relative_to(glob[2:-3]):
+                return True
+        elif rel == Path(glob[2:]):
+            return True
+    return False
+
+
+def readable(path: Path, home: Path) -> bool:
+    """A file Alfred could Read: absolute, inside the home after resolving symlinks, and not a
+    secret by its given path nor by its real one (ADR 0011, 0014)."""
+    root = home.resolve()
+    if not path.is_absolute() or not _inside(root, path):
+        return False
+    given = Path(os.path.normpath(path))
+    real = path.resolve()
+    return not any(
+        p.is_relative_to(base) and _secret(p, base)
+        for p in (given, real)
+        for base in (home, root)
+    )
+
+
 def path_guard(home: Path) -> Hook:
     """PreToolUse for Read, Glob and Grep: the real path must stay inside the home.
 
@@ -119,8 +158,7 @@ def path_guard(home: Path) -> Hook:
     root = home.resolve()
 
     def inside(raw: str) -> bool:
-        path = Path(os.path.expanduser(raw))
-        return (root / path).resolve().is_relative_to(root)
+        return _inside(root, raw)
 
     def allowed(tool: str, args: dict[str, Any]) -> bool:
         if tool == "Read":
