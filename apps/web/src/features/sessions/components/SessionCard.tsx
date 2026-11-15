@@ -3,10 +3,11 @@ import type { SessionView } from '../../../api/events'
 import { RotateCcw, Trash, X } from '../../../components/icons'
 import { ModelSelect } from '../../../components/ModelSelect'
 import { formatTokens } from '../../../lib/format'
-import { EFFORTS, field } from '../../../lib/sessionForm'
+import { EFFORT_OPTIONS } from '../../../lib/sessionForm'
 import { contextLevel, gradientFor, initials, presence, type Tone } from '../../../lib/presence'
 import { Description } from '../../../components/Description'
 import type { SessionChange } from '../hooks/useSessionActions'
+import { Picker } from '../../../components/Picker'
 
 const CONFIRM_MS = 4000
 const PILL: Record<Tone, string> = {
@@ -141,17 +142,15 @@ export function SessionCard({ session: s, onClose, onClear, onDelete, onChange, 
               onChange={(model) => model !== s.model && onChange({ model })}
             />
           </div>
-          <select
-            aria-label="Effort"
-            value={s.effort ?? ''}
-            onChange={(e) => onChange({ effort: e.target.value })}
-            className={`${field} py-1 text-xs`}
-          >
-            <option value="">padrão</option>
-            {EFFORTS.map((e) => (
-              <option key={e}>{e}</option>
-            ))}
-          </select>
+          <div className="w-28 shrink-0">
+            <Picker
+              label="Effort"
+              compact
+              value={s.effort ?? ''}
+              onChange={(effort) => onChange({ effort })}
+              options={EFFORT_OPTIONS}
+            />
+          </div>
         </dd>
         {s.subagents.length > 0 && (
           <>

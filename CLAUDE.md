@@ -12,7 +12,7 @@ Alfred: voice assistant (Python server) that routes spoken commands to a main ag
 
 ## Rules
 
-- Code, identifiers, config keys, commits: English. Docs and user-facing speech: pt-BR.
+- Everything in the repo is English (code, commits, docs, README, CHANGELOG). Only text spoken or shown to the user is pt-BR.
 - Server layers: `models` (no voice/Claude) → `infra` (external world) → `controllers` (only place joining both) → `api`. Don't add extra layers or interfaces.
 - Never block the asyncio loop; audio/STT/TTS live in threads in `infra/audio`.
 - The main agent (`infra/claude/alfred.py`) must never get Bash/Edit/Write tools (ADR 0003).

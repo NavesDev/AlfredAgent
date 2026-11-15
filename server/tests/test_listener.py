@@ -7,6 +7,7 @@ import pytest
 from config import Listener as ListenerConfig
 from errors import AudioError
 from events import Event, EventBus
+from infra.audio import BANDS
 from infra.audio.listener import FRAME, Listener, load_vad
 from tests.conftest import drain
 
@@ -200,6 +201,7 @@ async def test_publishes_mic_level_while_listening(bus: EventBus) -> None:
 
     levels = await events(queue, "audio_level")
     assert levels and levels[0]["source"] == "mic" and 0 < levels[0]["level"] <= 1
+    assert len(levels[0]["bands"]) == BANDS
 
 
 async def test_empty_transcript_returns_to_idle(bus: EventBus) -> None:

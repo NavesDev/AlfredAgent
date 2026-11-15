@@ -1,56 +1,56 @@
-# Arquitetura
+# Architecture
 
-Visão técnica do Alfred. Requisitos em [REQUIREMENTS.md](REQUIREMENTS.md), tecnologias em [STACK.md](STACK.md).
+Alfred's technical view. Requirements in [REQUIREMENTS.md](REQUIREMENTS.md), technologies in [STACK.md](STACK.md).
 
-## Visão geral
+## Overview
 
-Um processo Python (asyncio) roda o loop de voz, os agentes e a API. A fala desce pela cadeia local até o roteador. Comandos de sistema são resolvidos ali mesmo; o resto vai para o agente principal ou para uma sessão nomeada, que conversam com o Claude na nuvem e devolvem só a linha de resumo para o Kokoro falar.
+One Python process (asyncio) runs the voice loop, the agents and the API. Speech goes down the local chain to the router. System commands are resolved right there; the rest goes to the main agent or to a named session, which talk to Claude in the cloud and return only the summary line for Kokoro to speak.
 
 ```mermaid
 flowchart LR
-    mic([Microfone]) --> ww[openWakeWord]
+    mic([Microphone]) --> ww[openWakeWord]
     ww --> vad[Silero VAD]
     vad --> stt[faster-whisper]
     stt --> router{Router}
-    web([Painel web<br/>CommandBar]) -->|POST /api/commands| router
+    web([Web panel<br/>CommandBar]) -->|POST /api/commands| router
 
-    router -->|interrupção / sistema| ctrl[Controllers]
-    router -->|"&lt;nome&gt;: ..."| sess[Sessões nomeadas]
-    router -->|resto| alfred[Agente principal<br/>alfred]
+    router -->|interruption / system| ctrl[Controllers]
+    router -->|"&lt;name&gt;: ..."| sess[Named sessions]
+    router -->|rest| alfred[Main agent<br/>alfred]
 
-    alfred -->|tools internas| ctrl
+    alfred -->|internal tools| ctrl
     alfred -->|delegar| sess
-    alfred --> cloud[(Claude API<br/>MCP Gmail / Calendar<br/>WebSearch)]
+    alfred --> cloud[(Claude API<br/>Gmail / Calendar MCP<br/>WebSearch)]
     sess --> cloud
-    sess --> repo[(Worktrees git)]
+    sess --> repo[(git worktrees)]
 
     ctrl --> db[(SQLite)]
     ctrl --> bus[[Event bus]]
     alfred --> bus
     sess --> bus
 
-    bus --> talker[Kokoro + fila de fala]
+    bus --> talker[Kokoro + speech queue]
     bus --> ws[WebSocket]
-    talker --> spk([Alto-falante])
+    talker --> spk([Speaker])
     ws --> web
 ```
 
-Local: tudo à esquerda da nuvem. Nuvem: raciocínio (Claude) e integrações (Gmail, Calendar, web).
+Local: everything left of the cloud. Cloud: reasoning (Claude) and integrations (Gmail, Calendar, web).
 
-## Camadas do server
+## Server layers
 
-| Camada | Responsabilidade | Pode importar |
+| Layer | Responsibility | May import |
 |---|---|---|
-| `models/` | Dados e SQLite. Não sabe nada de voz nem de Claude | — |
-| `infra/` | Mundo externo: microfone, alto-falante, Claude, git | `models` (só tipos) |
-| `controllers/` | Lógica de decisão. Único lugar que junta `models` com `infra` | `models`, `infra`, `events` |
-| `api/` | Expõe controllers e eventos ao painel | `controllers`, `events` |
-| `events.py` | Bus em memória (pub/sub) | — |
-| `main.py` | Composição: sobe threads de áudio, loop dos agentes e API | tudo |
+| `models/` | Data and SQLite. Knows nothing about voice or Claude | — |
+| `infra/` | Outside world: microphone, speaker, Claude, git | `models` (types only) |
+| `controllers/` | Decision logic. The only place that joins `models` with `infra` | `models`, `infra`, `events` |
+| `api/` | Exposes controllers and events to the panel | `controllers`, `events` |
+| `events.py` | In-memory bus (pub/sub) | — |
+| `main.py` | Composition: starts the audio threads, the agents' loop and the API | everything |
 
-Sem interfaces nem camadas extras. Trocar Whisper ou Kokoro é mexer só em `listener.py` ou `talker.py`.
+No interfaces or extra layers. Swapping Whisper or Kokoro only touches `listener.py` or `talker.py`.
 
-## Estrutura de pastas
+## Folder structure
 
 ```text
 alfred/
@@ -81,27 +81,27 @@ alfred/
 │   │   │   ├── portrait.py    # one-shot agent that paints session portraits
 │   │   │   ├── permissions.py # permission gates
 │   │   │   └── tools.py       # internal tools for Alfred
-│   │   └── git.py             # git worktree add/remove/list, estado, watcher de .git/worktrees
+│   │   └── git.py             # git worktree add/remove/list, state, watcher of .git/worktrees
 │   └── api/
 │       ├── app.py             # FastAPI + serves the web build
 │       ├── routes/            # projects, sessions, tasks, confirmations, commands
 │       └── ws.py              # pushes events to the web app
 ├── apps/
 │   ├── web/                   # React + TypeScript + Vite
-│   └── desktop/               # Tauri (future)
+│   └── desktop/               # Tauri v2 shell: main window, overlay, tray (ADR 0012)
 ├── docs/
 └── Makefile
 ```
 
-## Threads e concorrência
+## Threads and concurrency
 
 ```mermaid
 flowchart TB
     subgraph T1[Thread: listener]
         cap[sounddevice stream] --> wwd[wake word + VAD] --> whisper[faster-whisper]
     end
-    subgraph Loop[Loop asyncio principal]
-        router2[router] --> agents[agentes / sessões]
+    subgraph Loop[Main asyncio loop]
+        router2[router] --> agents[agents / sessions]
         agents --> bus2[event bus]
         api2[FastAPI + WS]
     end
@@ -109,83 +109,83 @@ flowchart TB
         kokoro[Kokoro + playback]
     end
     whisper -->|call_soon_threadsafe| router2
-    bus2 -->|fila de fala| kokoro
+    bus2 -->|speech queue| kokoro
 ```
 
-- Captura e wake word ficam sempre ligados, com custo quase zero de CPU.
-- O Whisper roda numa thread própria (`stt`). A wake word já carrega o modelo na GPU; numa pausa de 400 ms ele transcreve o áudio até ali, e esse palpite vira o comando se ninguém voltar a falar. O microfone é ignorado enquanto o texto final é aguardado.
-- Whisper e Kokoro usam a GPU sob demanda e caem para a CPU com ela ocupada (`infra/audio/device.py`, [ADR 0010](adr/0010-voice-models-on-demand-gpu.md)).
-- O Kokoro consome uma fila de fala com prioridade; barge-in limpa a fila e para o playback.
-- Interrupções ("para") são casadas no próprio listener/router antes de qualquer `await` longo, para agir em milissegundos.
+- Capture and wake word are always on, at near-zero CPU cost.
+- Whisper runs in its own thread (`stt`). The wake word already loads the model on the GPU; on a 400 ms pause it transcribes the audio so far, and that guess becomes the command if nobody speaks again. The microphone is ignored while the final text is awaited.
+- Whisper and Kokoro use the GPU on demand and fall back to the CPU when it is busy (`infra/audio/device.py`, [ADR 0010](adr/0010-voice-models-on-demand-gpu.md)).
+- Kokoro consumes a priority speech queue; barge-in clears the queue and stops playback.
+- Interruptions ("para") match in the listener/router itself before any long `await`, to act in milliseconds.
 
-## Fluxo de um comando
+## Flow of a command
 
 ```mermaid
 sequenceDiagram
-    participant U as Usuário
+    participant U as User
     participant L as listener
     participant R as router
     participant A as alfred
-    participant S as sessão "backend"
+    participant S as "backend" session
     participant B as event bus
     participant T as talker
 
     U->>L: "Alfred, manda o backend fazer a tarefa de reembolso"
     L->>R: transcript
     R->>B: transcript
-    R->>R: não é interrupção nem atalho
+    R->>R: not an interruption or shortcut
     R->>A: prompt
     A->>A: tool tasks.find("reembolso")
-    A->>S: delegar("backend", tarefa)
+    A->>S: delegar("backend", task)
     A->>B: task_updated (in_progress)
     A-->>B: alfred_reply "RESUMO: mandei pro backend."
-    B->>T: fala
+    B->>T: speech
     S-->>B: session_status busy … idle
-    S-->>B: alfred_reply "backend terminou: <resumo>"
-    B->>T: fala (entra na fila se usuário estiver falando)
+    S-->>B: alfred_reply "backend terminou: <summary>"
+    B->>T: speech (queued if the user is talking)
     B->>B: task_updated (done)
 ```
 
-## Roteamento
+## Routing
 
-Ordem de avaliação no `controllers/router.py`:
+Evaluation order in `controllers/router.py`:
 
-1. **Interrupções** (regex): `para`, `<sessão>, para`, `para tudo`. Agem mesmo com tudo ocupado.
-2. **Comandos de sistema** (gramática fixa, sem token): foco, status, listar, fechar sessão etc. Os que não casarem com segurança caem no agente principal, que tem as mesmas tools.
-3. **Atalho explícito**: `<nome>:` ou `<nome>,` no início, onde `<nome>` casa com nome/apelido de sessão (rapidfuzz ≥ ~85). Vai direto para a sessão.
-4. **Agente principal**: todo o resto.
+1. **Interruptions** (regex): `para`, `<session>, para`, `para tudo`. They act even when everything is busy.
+2. **System commands** (fixed grammar, no tokens): focus, status, list, close a session, etc. Those that do not match safely fall to the main agent, which has the same tools.
+3. **Explicit shortcut**: `<name>:` or `<name>,` at the start, where `<name>` matches a session name/alias (rapidfuzz ≥ ~85). Goes straight to the session.
+4. **Main agent**: everything else.
 
-Sessão ocupada não recebe dois prompts ao mesmo tempo: cada sessão tem uma fila FIFO. O router publica o aviso "tá ocupado, coloquei na fila".
+A busy session never gets two prompts at once: each session has a FIFO queue. The router publishes the "tá ocupado, coloquei na fila" notice.
 
-## Agentes
+## Agents
 
-### Agente principal (`alfred`)
+### Main agent (`alfred`)
 
-- Sessão fixa, não presa a repositório.
-- Tools: WebSearch, WebFetch, Read, Glob, Grep, MCP Gmail, MCP Calendar e o MCP in-process de `infra/claude/tools.py` (projetos, sessões, worktrees, tarefas, `delegar`, `ver_ambiente`, `iniciar_feature`).
-- **Sem Bash, Edit e Write.** Quem lê conteúdo externo nunca executa comando.
-- Lê a home (`cwd`), menos arquivos secretos; o hook `guard_local_paths` nega caminho fora dela. Pergunta e verificação ele responde lendo; implementação e análise grande vão para sessão ([ADR 0011](adr/0011-main-agent-local-read.md)).
-- Tarefas no computador vão pela tool `delegar` para a sessão `sistema`, com Bash e auto mode, sem e-mail nem web ([ADR 0006](adr/0006-system-session-for-computer-tasks.md)).
-- Cada tipo de agente (`AgentKind` em `infra/claude/agents.py`) gera sua tool `delegar_<tipo>`; o Alfred cria, lista, limpa e apaga sessões por voz ([ADR 0007](adr/0007-polymorphic-agent-kinds.md)).
-- Até a fase 5: auto mode do Claude Code decide as permissões, com leituras liberadas, sem Bash/Edit/Write e sem URLs fora de http/https ([ADR 0005](adr/0005-main-agent-auto-mode.md)).
-- Modelo Sonnet por padrão; perguntas simples podem cair no Haiku.
-- Conhece a sessão em foco e o projeto atual (injetados no contexto).
-- Uma conversa por dia: o `claude_session_id` da sessão `alfred` rotaciona diariamente.
-- Cliente persistente (`ClaudeSDKClient`): o CLI fica aberto entre perguntas e é reaberto quando o dia vira ou após erro.
+- Fixed session, not tied to a repository.
+- Tools: WebSearch, WebFetch, Read, Glob, Grep, Gmail MCP, Calendar MCP and the in-process MCP in `infra/claude/tools.py` (projects, sessions, worktrees, tasks, `delegar`, `ver_ambiente`, `iniciar_feature`).
+- **No Bash, Edit or Write.** Whoever reads external content never runs commands.
+- Reads the home (`cwd`), except secret files; the `guard_local_paths` hook denies paths outside it. Questions and checks it answers by reading; implementation and large analysis go to a session ([ADR 0011](adr/0011-main-agent-local-read.md)).
+- Tasks on the computer go through the `delegar` tool to the `sistema` session, which has Bash and auto mode, without mail or web ([ADR 0006](adr/0006-system-session-for-computer-tasks.md)).
+- Each agent kind (`AgentKind` in `infra/claude/agents.py`) gets its own `delegar_<kind>` tool; Alfred creates, lists, clears and deletes sessions by voice ([ADR 0007](adr/0007-polymorphic-agent-kinds.md)).
+- Until phase 5: Claude Code's auto mode decides permissions, with reads allowed, no Bash/Edit/Write and no URLs other than http/https ([ADR 0005](adr/0005-main-agent-auto-mode.md)).
+- Sonnet by default; simple questions may go to Haiku.
+- Knows the focused session and the current project (injected into the context).
+- One conversation per day: the `alfred` session's `claude_session_id` rotates daily.
+- Persistent client (`ClaudeSDKClient`): the CLI stays open between questions and reopens when the day turns or after an error.
 
-### Sessões nomeadas
+### Named sessions
 
-- Uma instância do Agent SDK por sessão, com `cwd` = path do ambiente (ou a home, para `geral` sem ambiente).
-- Tipos: `geral` (shell e arquivos, isolada) e `implementacao` (harness completo do Claude Code, preso a um ambiente; [ADR 0008](adr/0008-implementation-agent-full-harness.md)). Modelo e effort vêm de `agent_settings`, com override por sessão.
-- Subagentes nativos (`TaskStarted/Progress/NotificationMessage`) viram eventos `subagent_*`; as mensagens com `parent_tool_use_id` não contam como atividade da sessão.
-- A fase (`exploring`, `editing`, `running`) vem do nome da tool (`activity.phase_of`).
-- Auto mode do Claude Code + gate `canUseTool` do `permissions.py`.
-- `system_prompt` exige começar com `RESUMO:` (até 2 frases, sem código nem caminhos longos), falado assim que chega.
-- `claude_session_id` persistido para resume após reinício.
-- Retrato: um agente de uma pergunta, só com os MCPs do usuário, gera a foto da sessão ao criar e no boot; o gerador favorito (`image_mcp`) restringe as tools ([ADR 0009](adr/0009-session-portraits-via-mcp.md)).
-- Vagas: `max_active_sessions` conta processos `claude` abertos. Sem vaga, a sessão ociosa há mais tempo fecha o processo; se todas trabalham, a tarefa espera. Sessão ociosa por `idle_minutes` fecha sozinha e retoma pelo `claude_session_id`.
+- One Agent SDK instance per session, with `cwd` = the workspace path (or the home, for `geral` with no workspace).
+- Kinds: `geral` (shell and files, isolated) and `implementacao` (full Claude Code harness, tied to a workspace; [ADR 0008](adr/0008-implementation-agent-full-harness.md)). Model and effort come from `agent_settings`, with a per-session override.
+- Native subagents (`TaskStarted/Progress/NotificationMessage`) become `subagent_*` events; messages with `parent_tool_use_id` do not count as session activity.
+- The phase (`exploring`, `editing`, `running`) comes from the tool name (`activity.phase_of`).
+- Claude Code's auto mode + the `canUseTool` gate in `permissions.py`.
+- `system_prompt` requires starting with `RESUMO:` (up to 2 sentences, no code or long paths), spoken as soon as it arrives.
+- `claude_session_id` persisted for resume after a restart.
+- Portrait: a one-question agent, with only the user's MCPs, paints the session's picture on creation and at boot; the favorite generator (`image_mcp`) narrows the tools ([ADR 0009](adr/0009-session-portraits-via-mcp.md)).
+- Slots: `max_active_sessions` counts open `claude` processes. With no free slot, the session idle the longest closes its process; if all are working, the task waits. A session idle for `idle_minutes` closes on its own and resumes through `claude_session_id`.
 
-## Modelo de dados
+## Data model
 
 ```mermaid
 erDiagram
@@ -198,12 +198,12 @@ erDiagram
         int id PK
         text name UK
         json aliases
-        int default_workspace_id FK "ambiente padrão"
+        int default_workspace_id FK "default workspace"
     }
     WORKSPACE {
         int id PK
         int project_id FK
-        text name "único no projeto"
+        text name "unique in the project"
         text path
         text kind "folder | worktree"
         int parent_id FK "worktree"
@@ -212,7 +212,7 @@ erDiagram
     }
     SESSION {
         int id PK
-        int workspace_id FK "opcional para geral"
+        int workspace_id FK "optional for geral"
         text name UK
         text kind "geral | implementacao"
         text model "override"
@@ -222,106 +222,106 @@ erDiagram
     }
     TASK {
         int id PK
-        int project_id FK "opcional"
+        int project_id FK "optional"
         text title
         text status "open | in_progress | done"
         text priority "low | medium | high"
-        int session_id FK "opcional"
+        int session_id FK "optional"
         datetime created_at
     }
 ```
 
-Configurações em `agent_settings` (modelo e effort por tipo: `alfred`, `geral`, `implementacao`) e `app_settings` (`max_active_sessions`, `idle_minutes`, `mcp_disabled`, `image_mcp`, `implementation_mode`); o `config.yaml` só semeia na primeira vez. Status e fila das sessões ficam em memória.
+Settings live in `agent_settings` (model and effort per kind: `alfred`, `geral`, `implementacao`) and `app_settings` (`max_active_sessions`, `idle_minutes`, `mcp_disabled`, `image_mcp`, `implementation_mode`); `config.yaml` only seeds them the first time. Session status and queues live in memory.
 
-Ambientes espelham os worktrees do git: `Projects.watch_worktrees` observa por inotify o `.git/worktrees/` de cada repo e sincroniza só o repo que mudou; ao iniciar, sincroniza tudo uma vez.
+Workspaces mirror git worktrees: `Projects.watch_worktrees` watches each repo's `.git/worktrees/` through inotify and syncs only the repo that changed; at startup it syncs everything once.
 
-Tabelas auxiliares previstas: `audit_log` (toda tool call), `confirmation` (pedidos pendentes/respondidos), `session_summary` (último `RESUMO:` por sessão).
+Planned auxiliary tables: `audit_log` (every tool call), `confirmation` (pending/answered requests), `session_summary` (last `RESUMO:` per session).
 
 ## Event bus
 
-`events.py` é um pub/sub em memória. Controllers e agentes publicam; `talker` e `ws.py` consomem. Voz e tela ficam em paridade sem duplicar lógica.
+`events.py` is an in-memory pub/sub. Controllers and agents publish; `talker` and `ws.py` consume. Voice and screen stay in parity without duplicated logic.
 
-| Evento | Payload principal | Consumidores |
+| Event | Main payload | Consumers |
 |---|---|---|
-| `transcript` | texto, origem (voz/painel) | ws |
-| `alfred_reply` | sessão, resumo, texto completo | talker (só resumo), ws |
-| `alfred_cleared` | — (conversa do dia esquecida) | ws |
-| `session_created` | snapshot da sessão | ws |
-| `session_status` | snapshot da sessão (status, tarefa, atividade, fila, tokens, último resumo) | ws |
-| `session_cleared` | snapshot da sessão | ws |
-| `session_deleted` | nome | ws |
-| `subagent_started` / `_progress` / `_finished` | sessão, id, tipo, descrição, última tool, status | ws |
-| `project_created` / `_updated` / `_deleted` | projeto com ambientes (ou id) | ws |
-| `settings_updated` | configurações | ws |
-| `mcp_servers_seen` | sessão, nomes dos MCPs carregados | settings (sugestões da tela) |
-| `portrait_updated` | sessão | sessions (republica o status) |
-| `task_updated` | tarefa | ws |
-| `permission_request` | id, sessão, ação, descrição, canal | talker, ws |
-| `permission_resolved` | id, aprovado, canal | ws |
+| `transcript` | text, source (voice/panel) | ws |
+| `alfred_reply` | session, summary, full text | talker (summary only), ws |
+| `alfred_cleared` | — (the day's conversation forgotten) | ws |
+| `session_created` | session snapshot | ws |
+| `session_status` | session snapshot (status, task, activity, queue, tokens, last summary) | ws |
+| `session_cleared` | session snapshot | ws |
+| `session_deleted` | name | ws |
+| `subagent_started` / `_progress` / `_finished` | session, id, kind, description, last tool, status | ws |
+| `project_created` / `_updated` / `_deleted` | project with workspaces (or id) | ws |
+| `settings_updated` | settings | ws |
+| `mcp_servers_seen` | session, names of the loaded MCPs | settings (screen suggestions) |
+| `portrait_updated` | session | sessions (republishes the status) |
+| `task_updated` | task | ws |
+| `permission_request` | id, session, action, description, channel | talker, ws |
+| `permission_resolved` | id, approved, channel | ws |
 
-## Erros
+## Errors
 
-Exceções em camadas, todas em `server/errors.py`:
+Layered exceptions, all in `server/errors.py`:
 
 ```text
 AlfredError
-├── ConfigError        # config.yaml inválido            → fatal na inicialização
-├── DependencyError    # CLI claude, microfone, modelos   → fatal na inicialização
-├── AudioError         # falha em captura/STT/TTS         → recuperável
-└── AgentError         # falha/timeout no Agent SDK       → recuperável
+├── ConfigError        # invalid config.yaml              → fatal at startup
+├── DependencyError    # claude CLI, microphone, models   → fatal at startup
+├── AudioError         # capture/STT/TTS failure          → recoverable
+└── AgentError         # Agent SDK failure/timeout        → recoverable
 ```
 
-Regras:
+Rules:
 
-- **`infra` traduz:** exceção de biblioteca externa vira a exceção da camada com `raise XError(...) from e`. Nada de `except Exception` engolindo erro.
-- **`controllers` decide:** captura `AudioError`/`AgentError` no limite do turno, publica `error` no bus, fala a mensagem curta e volta a `idle`.
-- **`main` encerra:** `ConfigError`/`DependencyError` imprimem a mensagem e saem com código 1.
-- **Fail-fast:** tudo que pode falhar é verificado na inicialização, antes de abrir o microfone: config válido, `claude` no `PATH`, dispositivo de áudio, modelos (Whisper, Kokoro, wake word) carregados de forma eager. Nada é carregado sob demanda no primeiro comando.
-- Exceção inesperada dentro de thread de áudio: loga com traceback, publica `error`, a thread segue. No loop principal, derruba o processo.
+- **`infra` translates:** an external library exception becomes the layer's exception with `raise XError(...) from e`. No `except Exception` swallowing errors.
+- **`controllers` decides:** catches `AudioError`/`AgentError` at the turn boundary, publishes `error` on the bus, speaks the short message and goes back to `idle`.
+- **`main` exits:** `ConfigError`/`DependencyError` print the message and exit with code 1.
+- **Fail-fast:** everything that can fail is checked at startup, before opening the microphone: valid config, `claude` on the `PATH`, audio device, models (Whisper, Kokoro, wake word). Nothing is loaded on demand on the first command.
+- An unexpected exception inside an audio thread: logged with the traceback, `error` published, the thread keeps going. In the main loop, it brings the process down.
 
-## Permissões
+## Permissions
 
 ```mermaid
 flowchart TD
     call[tool call] --> deny{denylist?}
-    deny -->|sim| no[negado]
-    deny -->|não| taint{turno contaminado<br/>e efeito colateral?}
-    taint -->|sim| ask
-    taint -->|não| sens{ação sensível?}
-    sens -->|sim| ask[permission_request<br/>canal configurado]
-    sens -->|não| ok[permitido]
-    ask -->|aprovado| ok
-    ask -->|negado / timeout 60s| no
+    deny -->|yes| no[denied]
+    deny -->|no| taint{tainted turn<br/>and side effect?}
+    taint -->|yes| ask
+    taint -->|no| sens{sensitive action?}
+    sens -->|yes| ask[permission_request<br/>configured channel]
+    sens -->|no| ok[allowed]
+    ask -->|approved| ok
+    ask -->|denied / 60s timeout| no
     ok --> audit[(audit_log)]
     no --> audit
 ```
 
-- **Denylist:** `sudo`, `rm -rf` fora do worktree, escrita fora do ambiente.
-- **Sensíveis:** push, apagar arquivo, instalar dependência, enviar e-mail, mexer na agenda.
-- **Turno contaminado:** se o turno leu e-mail ou web, qualquer efeito colateral exige confirmação (defesa contra prompt injection).
-- **Canais:** `voice`, `key`, `web`, `voice+key`, configuráveis por ação. Um "pode" falado não prova que foi você, por isso ações críticas usam `key`.
-- Sessão aguardando fica `waiting_permission`. Confirmação pode vir por voz ou por `POST /api/confirmations/{id}`.
+- **Denylist:** `sudo`, `rm -rf` outside the worktree, writes outside the workspace.
+- **Sensitive:** push, deleting a file, installing a dependency, sending mail, changing the calendar.
+- **Tainted turn:** if the turn read mail or the web, any side effect needs confirmation (defense against prompt injection).
+- **Channels:** `voice`, `key`, `web`, `voice+key`, configurable per action. A spoken "yes" does not prove it was you, so critical actions use `key`.
+- A waiting session is `waiting_permission`. Confirmation can come by voice or through `POST /api/confirmations/{id}`.
 
 ## API
 
-| Rota | Uso |
+| Route | Use |
 |---|---|
-| `GET/POST /api/projects`, `GET/PATCH/DELETE /api/projects/{id}` | Projetos e ambientes |
-| `POST /api/projects/{id}/workspaces`, `POST /api/projects/{id}/worktrees`, `PATCH /api/workspaces/{id}`, `DELETE /api/workspaces/{id}?force=` | Pastas e worktrees (PATCH muda a descrição) |
-| `POST /api/alfred/clear` | Esquece a conversa do dia do Alfred (espera a resposta em andamento) |
-| `GET/POST /api/sessions`, `PATCH /api/sessions/{name}`, `POST …/clear`, `DELETE …` | Sessões |
-| `GET/POST /api/sessions/{name}/portrait` | Retrato da sessão (POST gera de novo) |
-| `GET/PUT /api/settings` | Modelos e effort por tipo, limites, MCPs desligados, gerador de imagem favorito |
-| `GET/POST/PATCH /api/tasks` | Tarefas |
-| `GET /api/confirmations`, `POST /api/confirmations/{id}` | Confirmações pendentes |
-| `POST /api/commands` | Texto para o mesmo router da voz |
-| `WS /ws` | Stream de eventos do bus |
+| `GET/POST /api/projects`, `GET/PATCH/DELETE /api/projects/{id}` | Projects and workspaces |
+| `POST /api/projects/{id}/workspaces`, `POST /api/projects/{id}/worktrees`, `PATCH /api/workspaces/{id}`, `DELETE /api/workspaces/{id}?force=` | Folders and worktrees (PATCH changes the description) |
+| `POST /api/alfred/clear` | Forgets Alfred's conversation of the day (waits for the reply in progress) |
+| `GET/POST /api/sessions`, `PATCH /api/sessions/{name}`, `POST …/clear`, `DELETE …` | Sessions |
+| `GET/POST /api/sessions/{name}/portrait` | Session portrait (POST paints it again) |
+| `GET/PUT /api/settings` | Model and effort per kind, limits, disabled MCPs, favorite image generator |
+| `GET/POST/PATCH /api/tasks` | Tasks |
+| `GET /api/confirmations`, `POST /api/confirmations/{id}` | Pending confirmations |
+| `POST /api/commands` | Text into the same router as the voice |
+| `WS /ws` | Bus event stream |
 
-Em dev, o Vite faz proxy de `/api` e `/ws` para o server. Em produção, o FastAPI serve o `dist/` na mesma porta.
+In dev, Vite proxies `/api` and `/ws` to the server. In production, FastAPI serves `dist/` on the same port.
 
 ## Web (`apps/web`)
 
-Organizado por feature; cada feature repete o esqueleto `pages/`, `components/`, `hooks/` (só o que precisa).
+Organized by feature; each feature repeats the `pages/`, `components/`, `hooks/` skeleton (only what it needs).
 
 ```text
 apps/web/src/
@@ -331,19 +331,19 @@ apps/web/src/
 ├── features/
 │   ├── sessions/  projects/  settings/  tasks/  confirmations/
 │   ├── activity/  command/  dashboard/
-├── components/                  # ui/ (shadcn), layout/
+├── components/                  # layout/, shared controls
 ├── hooks/useEvents.ts           # WebSocket → updates the cache
 ├── lib/
 └── styles/globals.css
 ```
 
-Regras:
+Rules:
 
-- Todo acesso à API fica nos hooks da feature (TanStack Query). Componentes só chamam o hook e renderizam.
-- Feature importa de `api/`, `components/`, `hooks/`, `lib/`, nunca de outra feature. Exceção: `dashboard`.
-- Componente usado por duas features sobe para `components/`. Tipo específico de feature vai em `types.ts` na raiz dela.
-- Sem gerenciador de estado global: servidor no TanStack Query, o resto em `useState`.
+- All API access lives in the feature hooks (TanStack Query). Components only call the hook and render.
+- A feature imports from `api/`, `components/`, `hooks/`, `lib/`, never from another feature. Exception: `dashboard`.
+- A component used by two features moves up to `components/`. A feature-specific type goes in `types.ts` at its root.
+- No global state manager: server state in TanStack Query, the rest in `useState`.
 
-## Decisões
+## Decisions
 
-Ver [adr/](adr/).
+See [adr/](adr/).

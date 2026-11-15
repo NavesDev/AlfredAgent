@@ -19,6 +19,28 @@ type Props = {
   custom?: { label: string; placeholder: string }
 }
 
+const MENU_H = 340
+const MENU_W = 256
+
+/** Opens up or right-aligned when the clipping box (a scroll parent or the window) is short. */
+function placement(el: HTMLElement) {
+  const box = el.getBoundingClientRect()
+  let clip = { top: 0, bottom: window.innerHeight, right: window.innerWidth }
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const style = getComputedStyle(p)
+    if (/(auto|scroll|hidden)/.test(style.overflowY + style.overflowX)) {
+      const r = p.getBoundingClientRect()
+      clip = { top: r.top, bottom: r.bottom, right: r.right }
+      break
+    }
+  }
+  const below = clip.bottom - box.bottom
+  return {
+    up: below < MENU_H && box.top - clip.top > below,
+    right: box.left + MENU_W > clip.right,
+  }
+}
+
 export function Picker({
   value,
   onChange,
@@ -33,6 +55,7 @@ export function Picker({
   const [active, setActive] = useState(0)
   const [typed, setTyped] = useState('')
   const root = useRef<HTMLDivElement>(null)
+  const [place, setPlace] = useState({ up: false, right: false })
   const listId = useId()
   const current = options.find((o) => o.id === value)
 
@@ -48,6 +71,7 @@ export function Picker({
     setOpen(false)
   }
   const toggle = () => {
+    if (!open && root.current) setPlace(placement(root.current))
     setActive(
       Math.max(
         0,
@@ -96,7 +120,9 @@ export function Picker({
       </button>
 
       {open && (
-        <div className="absolute right-0 left-0 z-30 mt-1.5 min-w-64 glass-menu rounded-2xl p-1.5">
+        <div
+          className={`absolute z-30 min-w-64 glass-menu rounded-2xl p-1.5 ${place.up ? 'bottom-full mb-1.5' : 'top-full mt-1.5'} ${place.right ? 'right-0' : 'left-0 w-full'}`}
+        >
           <ul
             id={listId}
             role="listbox"

@@ -1,168 +1,169 @@
-# Requisitos
+# Requirements
 
-Derivado de [SPEC.md](SPEC.md). Em caso de conflito, a spec vence até este documento ser atualizado.
+Derived from [SPEC.md](SPEC.md). On conflict, the spec wins until this document is updated.
 
-Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = regra de negócio. Cada item indica a fase do roadmap (F1–F7) em que entra.
+Conventions: **RF** = functional requirement, **RNF** = non-functional, **RN** = business rule. Each item names the roadmap phase (F1–F7) it lands in.
 
-## Glossário
+## Glossary
 
-| Termo | Significado |
+| Term | Meaning |
 |---|---|
-| Wake word | Palavra que ativa a escuta ("Alfred", apelido "Alfredo") |
-| Agente principal | Sessão fixa `alfred`: responde, pesquisa, coordena. Não edita código |
-| Sessão nomeada | Sessão do Claude Code presa a um ambiente; o nome é o "endereço" do comando |
-| Projeto | Agrupador de ambientes e sessões (nome + apelidos) |
-| Ambiente | Pasta de um projeto (com ou sem git) ou um `git worktree` criado a partir de outra. No código, `workspace` |
-| Sessão em foco | Sessão que recebe comandos de código sem nome explícito |
-| Linha `RESUMO:` | Última linha de cada resposta, até 2 frases, a única lida em voz alta |
-| Turno contaminado | Turno em que o agente leu conteúdo externo (e-mail, web) |
-| Comando de sistema | Comando resolvido pelo roteador por regex, sem chamar modelo |
+| Wake word | Word that turns listening on ("Alfred", alias "Alfredo") |
+| Main agent | Fixed `alfred` session: answers, searches, coordinates. Never edits code |
+| Named session | Claude Code session tied to a workspace; its name is the command's "address" |
+| Project | Groups workspaces and sessions (name + aliases) |
+| Workspace | A project folder (with or without git) or a `git worktree` created from another one. Called "ambiente" in the UI and by voice |
+| Focused session | Session that gets code commands with no explicit name |
+| `RESUMO:` line | Line that opens each reply, up to 2 sentences, the only one read aloud |
+| Tainted turn | Turn in which the agent read external content (mail, web) |
+| System command | Command the router resolves by regex, without calling a model |
 
-## Requisitos funcionais
+## Functional requirements
 
-### Voz
+### Voice
 
-| ID | Requisito | Fase |
+| ID | Requirement | Phase |
 |---|---|---|
-| RF-01 | Escutar continuamente e ativar com a wake word configurável (`alfred.onnx`, treinado com `server/wakeword/train/`) | F1 |
-| RF-02 | Detectar fim de fala com VAD e transcrever localmente com Whisper (pt, `initial_prompt` com jargão, `hotwords` com os nomes e apelidos atuais de sessões e projetos) | F1 |
-| RF-03 | Falar respostas com Kokoro (voz e velocidade configuráveis) | F1 |
-| RF-04 | Ler em voz alta apenas a linha `RESUMO:`, que abre a resposta e é falada assim que chega (streaming); nunca output bruto, código ou caminhos longos | F1 |
-| RF-05 | Se a resposta não trouxer `RESUMO:`, gerar resumo com Haiku | F7 |
-| RF-06 | Barge-in: wake word durante a fala interrompe o áudio imediatamente | F5 |
-| RF-07 | Fila de fala: notificações não atropelam o usuário falando nem outro áudio; aviso de sessão que chega durante um turno do Alfred espera o turno acabar, e cada aviso abre com o nome da sessão ("Recurve terminou: …") | F5 |
-| RF-08 | Bip curto ao detectar a wake word e outro ao parar de gravar | F1 |
+| RF-01 | Listen continuously and wake on the configurable wake word (`alfred.onnx`, trained with `server/wakeword/train/`) | F1 |
+| RF-02 | Detect end of speech with VAD and transcribe locally with Whisper (pt, `initial_prompt` with jargon, `hotwords` with the current session and project names and aliases) | F1 |
+| RF-03 | Speak replies with Kokoro (configurable voice and speed) | F1 |
+| RF-04 | Read aloud only the `RESUMO:` line, which opens the reply and is spoken as soon as it arrives (streaming); never raw output, code or long paths | F1 |
+| RF-05 | If the reply has no `RESUMO:`, write a summary with Haiku | F7 |
+| RF-06 | Barge-in: the wake word during speech cuts the audio immediately | F5 |
+| RF-07 | Speech queue: notifications never talk over the user or other audio; a session notice that arrives during an Alfred turn waits for the turn to end, and each notice opens with the session name ("Recurve terminou: …") | F5 |
+| RF-08 | Short chime when the wake word fires and another when recording stops | F1 |
 
-### Roteamento
+### Routing
 
-| ID | Requisito | Fase |
+| ID | Requirement | Phase |
 |---|---|---|
-| RF-10 | Interrupções por regex, mesmo com o Alfred ocupado: "para" (cala e cancela o Alfred), "<sessão>, para", "para tudo" | F3 |
-| RF-11 | Atalho explícito: frase começando com `<nome>:` ou `<nome>,` de sessão conhecida vai direto para a sessão | F3 |
-| RF-12 | Resolução de nome por apelidos + fuzzy match (rapidfuzz, corte ~85%). Sessões e projetos têm apelidos falados; apelido na transcrição vira o nome real antes de ir ao Alfred, e cada comando leva a lista de nomes conhecidos para o Alfred corrigir nome mal transcrito | F3 |
-| RF-13 | Todo o resto vai para o agente principal | F1 |
-| RF-14 | Comando para sessão ocupada entra na fila da sessão e o Alfred avisa ("backend tá ocupado, coloquei na fila") | F3 |
-| RF-15 | Comandos digitados no painel (`POST /api/commands`) passam pelo mesmo roteador da voz | F6 |
+| RF-10 | Regex interruptions, even while Alfred is busy: "para" (silences and cancels Alfred), "<session>, para", "para tudo" | F3 |
+| RF-11 | Explicit shortcut: a sentence starting with `<name>:` or `<name>,` of a known session goes straight to that session | F3 |
+| RF-12 | Name resolution by aliases + fuzzy match (rapidfuzz, ~85% cutoff). Sessions and projects have spoken aliases; an alias in the transcript becomes the real name before reaching Alfred, and each command carries the list of known names so Alfred can fix a mistranscribed name | F3 |
+| RF-13 | Everything else goes to the main agent | F1 |
+| RF-14 | A command for a busy session goes into the session's queue and Alfred says so ("backend tá ocupado, coloquei na fila") | F3 |
+| RF-15 | Commands typed on the panel (`POST /api/commands`) go through the same router as the voice | F6 |
 
-### Agente principal
+### Main agent
 
-| ID | Requisito | Fase |
+| ID | Requirement | Phase |
 |---|---|---|
-| RF-20 | Responder dúvidas de forma curta e falável | F1 |
-| RF-21 | Pesquisar na web com WebSearch/WebFetch do Agent SDK | F2 |
-| RF-22 | Ler, resumir, buscar e rascunhar e-mails (MCP Gmail) | F2 |
-| RF-23 | Ler e consultar eventos (MCP Google Calendar) | F2 |
-| RF-24 | Enviar/responder e-mail e alterar eventos somente após confirmação, lendo destinatário e resumo antes | F5 |
-| RF-25 | Expor o orquestrador via tools internas (MCP in-process): projetos, sessões, worktrees, tarefas, `delegar` | F3–F4 |
-| RF-26 | `delegar(sessao, tarefa)`: envia trabalho a uma sessão nomeada e avisa ao terminar | F3 |
-| RF-27 | Comando de código sem nome de sessão vira `delegar(foco, ...)` | F3 |
-| RF-28 | Uma conversa por dia: histórico do dia na mesma sessão, nova sessão a cada dia | F1 |
-| RF-29 | Ler, listar e buscar arquivos da home (menos arquivos secretos) e o estado git de um ambiente, para responder perguntas e verificações sem delegar, e as issues do GitHub do repo de um ambiente ([ADR 0011](adr/0011-main-agent-local-read.md)) | F4 |
+| RF-20 | Answer questions briefly and in a speakable way | F1 |
+| RF-21 | Search the web with the Agent SDK's WebSearch/WebFetch | F2 |
+| RF-22 | Read, summarize, search and draft mail (Gmail MCP) | F2 |
+| RF-23 | Read and query events (Google Calendar MCP) | F2 |
+| RF-24 | Send/reply to mail and change events only after confirmation, reading the recipient and a summary first | F5 |
+| RF-25 | Expose the orchestrator through internal tools (in-process MCP): projects, sessions, worktrees, tasks, `delegar` | F3–F4 |
+| RF-26 | `delegar(sessao, tarefa)`: sends work to a named session and reports when it is done | F3 |
+| RF-27 | A code command with no session name becomes `delegar(focus, ...)` | F3 |
+| RF-28 | One conversation per day: the day's history in the same session, a new session every day | F1 |
+| RF-29 | Read, list and search home files (except secret files) and a workspace's git state, to answer questions and checks without delegating, plus the GitHub issues of a workspace's repo ([ADR 0011](adr/0011-main-agent-local-read.md)) | F4 |
 
-### Sessões, projetos e tarefas
+### Sessions, projects and tasks
 
-| ID | Requisito | Fase |
+| ID | Requirement | Phase |
 |---|---|---|
-| RF-30 | Criar, listar, focar, consultar status e fechar sessões nomeadas por voz | F3 |
-| RF-31 | Ler o status de todas as sessões numa frase ("Alfred, status") | F3 |
-| RF-32 | Ler o último resumo de uma sessão ("backend, o que você fez?") | F3 |
-| RF-33 | Interromper a execução de uma sessão ou de todas | F3 |
-| RF-34 | Cadastrar e listar projetos com apelidos | F4 |
-| RF-34a | Projeto, ambiente e sessão têm descrição curta, editável no painel e por voz; é contexto do Alfred para decidir onde delegar | F4 |
-| RF-35 | Criar worktree (`git worktree add <path> -b <branch>`) e cadastrar o ambiente; remover com `git worktree remove` | F4 |
-| RF-36 | "Nova sessão X no projeto Y, worktree Z" cria o worktree se não existir e a sessão | F4 |
-| RF-36a | Projeto tem ambiente padrão; ambiente tem modo de implementação (`worktree` ou `ambiente`), com padrão global. O modo orienta o Alfred, que decide se cria worktree e o nome da branch (padrões do repo, issue) e cria worktree, ambiente e sessão sem perguntar | F4 |
-| RF-36b | Ambientes espelham os worktrees do git: criado fora vira ambiente; removido fora apaga o ambiente e as sessões dele | F4 |
-| RF-37 | Retomar sessões após reiniciar o assistente via `claude_session_id` (resume) | F4 |
-| RF-38 | Criar, listar, concluir e priorizar tarefas, com ou sem projeto | F4 |
-| RF-39 | Delegar uma tarefa marca-a como `in_progress`; ao fim da sessão, vira `done` automaticamente | F4 |
-| RF-40 | Ao terminar, a sessão notifica por voz: "backend terminou: <resumo>" | F3 |
+| RF-30 | Create, list, focus, check status of and close named sessions by voice | F3 |
+| RF-31 | Read the status of every session in one sentence ("Alfred, status") | F3 |
+| RF-32 | Read a session's last summary ("backend, o que você fez?") | F3 |
+| RF-33 | Interrupt one session's run or all of them | F3 |
+| RF-34 | Register and list projects with aliases | F4 |
+| RF-34a | Projects, workspaces and sessions have a short description, editable on the panel and by voice; it is Alfred's context to decide where to delegate | F4 |
+| RF-35 | Create a worktree (`git worktree add <path> -b <branch>`) and register the workspace; remove it with `git worktree remove` | F4 |
+| RF-36 | "Nova sessão X no projeto Y, worktree Z" creates the worktree if missing and the session | F4 |
+| RF-36a | A project has a default workspace; a workspace has an implementation mode (`worktree` or `ambiente`), with a global default. The mode guides Alfred, which decides whether to create a worktree and the branch name (repo conventions, issue) and creates the worktree, workspace and session without asking | F4 |
+| RF-36b | Workspaces mirror git worktrees: one created outside becomes a workspace; one removed outside deletes the workspace and its sessions | F4 |
+| RF-37 | Resume sessions after the assistant restarts through `claude_session_id` (resume) | F4 |
+| RF-38 | Create, list, complete and prioritize tasks, with or without a project | F4 |
+| RF-39 | Delegating a task marks it `in_progress`; when the session finishes, it becomes `done` automatically | F4 |
+| RF-40 | When it finishes, the session notifies by voice: "backend terminou: <summary>" | F3 |
 
-### Permissões e auditoria
+### Permissions and audit
 
-| ID | Requisito | Fase |
+| ID | Requirement | Phase |
 |---|---|---|
-| RF-50 | Denylist sempre negada: `sudo`, `rm -rf` fora do worktree, escrita fora do ambiente | F5 |
-| RF-51 | Ações sensíveis (push, apagar arquivo, instalar dependência, enviar e-mail, mexer na agenda) pedem confirmação | F5 |
-| RF-52 | Canal de confirmação configurável por ação: `voice`, `key`, `web`, `voice+key` | F5 |
-| RF-53 | Turno contaminado: qualquer ação com efeito colateral exige confirmação | F5 |
-| RF-54 | Sem resposta dentro do timeout (60 s) = negado | F5 |
-| RF-55 | Sessão aguardando confirmação fica com status `waiting_permission` | F5 |
-| RF-56 | Toda tool call vai para um log de auditoria | F5 |
-| RF-57 | Confirmação respondível por voz ou por clique no painel (`POST /api/confirmations/{id}`) | F6 |
+| RF-50 | Always-denied denylist: `sudo`, `rm -rf` outside the worktree, writes outside the workspace | F5 |
+| RF-51 | Sensitive actions (push, deleting a file, installing a dependency, sending mail, changing the calendar) ask for confirmation | F5 |
+| RF-52 | Confirmation channel configurable per action: `voice`, `key`, `web`, `voice+key` | F5 |
+| RF-53 | Tainted turn: any action with side effects needs confirmation | F5 |
+| RF-54 | No answer within the timeout (60 s) = denied | F5 |
+| RF-55 | A session waiting for confirmation has the `waiting_permission` status | F5 |
+| RF-56 | Every tool call goes to an audit log | F5 |
+| RF-57 | Confirmation answerable by voice or by clicking on the panel (`POST /api/confirmations/{id}`) | F6 |
 
-### Painel web
+### Web panel
 
-| ID | Requisito | Fase |
+| ID | Requirement | Phase |
 |---|---|---|
-| RF-60 | Dashboard (`/`): sessões, confirmações pendentes, conversa ao vivo, tarefas abertas | F6 |
-| RF-61 | Telas `/projects`, `/projects/:id`, `/tasks`, `/activity` | F6 |
-| RF-62 | Atualização em tempo real via WebSocket (eventos do bus, incluindo `voice_state` e `audio_level` para animações) | F1 (`/ws`), F6 (painel) |
-| RF-63 | CommandBar (Ctrl+K) para falar com o Alfred digitando | F6 |
-| RF-64 | Acessível em localhost e pelo celular na rede local | F6 |
+| RF-60 | Dashboard (`/`): sessions, pending confirmations, live conversation, open tasks | F6 |
+| RF-61 | Screens `/projects`, `/projects/:id`, `/tasks`, `/activity` | F6 |
+| RF-62 | Real-time updates over WebSocket (bus events, including `voice_state` and `audio_level` with level and frequency bands for animations) | F1 (`/ws`), F6 (panel) |
+| RF-63 | CommandBar (Ctrl+K) to talk to Alfred by typing | F6 |
+| RF-64 | Reachable on localhost and from the phone on the local network | F6 |
+| RF-65 | Desktop app (Tauri) with the panel's UI, its own title bar and a tray; closing hides it in the tray ([ADR 0012](adr/0012-desktop-shell-tauri.md)) | Desktop |
+| RF-66 | Floating voice visualizer (mini orb + bars) at the bottom center of the screen while the voice is not idle and the app is minimized or in the tray; it does not capture clicks | Desktop |
 
-## Requisitos não funcionais
+## Non-functional requirements
 
-| ID | Requisito |
+| ID | Requirement |
 |---|---|
-| RNF-01 | **Privacidade de áudio:** captura, wake word, STT e TTS 100% locais; áudio nunca sai da máquina |
-| RNF-02 | **Memória:** ≤ 3 GB de RAM total com 3 sessões ativas (Whisper na GPU reduz ~2 GB) |
-| RNF-03 | **Latência de interrupção:** comandos "para" agem em milissegundos, sem chamar modelo |
-| RNF-04 | **Custo:** comandos de sistema não gastam tokens; Sonnet por padrão, Haiku para perguntas simples e resumos |
-| RNF-05 | **Concorrência:** um processo asyncio; áudio, STT e TTS em threads próprias, sem bloquear o loop dos agentes |
-| RNF-06 | **Segurança:** agente principal sem Bash/Edit — quem lê conteúdo externo nunca executa comando |
-| RNF-07 | **Resiliência:** reinício do processo não perde projetos, sessões, tarefas nem conversas (SQLite + resume) |
-| RNF-08 | **Substituibilidade:** trocar Whisper ou Kokoro mexe só em `listener.py` ou `talker.py`; trocar wake word é trocar o modelo |
-| RNF-09 | **Paridade voz/tela:** toda ação e evento disponível por voz aparece no painel e vice-versa, via event bus |
-| RNF-10 | **Idioma:** interação em pt-BR; código, pastas e config em inglês |
-| RNF-11 | **Rede:** painel apenas na rede local; sem acesso pela internet no MVP |
+| RNF-01 | **Audio privacy:** capture, wake word, STT and TTS 100% local; audio never leaves the machine |
+| RNF-02 | **Memory:** ≤ 3 GB of total RAM with 3 active sessions (Whisper on the GPU saves ~2 GB) |
+| RNF-03 | **Interruption latency:** "para" commands act in milliseconds, without calling a model |
+| RNF-04 | **Cost:** system commands spend no tokens; Sonnet by default, Haiku for simple questions and summaries |
+| RNF-05 | **Concurrency:** one asyncio process; audio, STT and TTS in their own threads, never blocking the agents' loop |
+| RNF-06 | **Security:** main agent without Bash/Edit — whoever reads external content never runs commands |
+| RNF-07 | **Resilience:** a process restart loses no projects, sessions, tasks or conversations (SQLite + resume) |
+| RNF-08 | **Replaceability:** swapping Whisper or Kokoro only touches `listener.py` or `talker.py`; changing the wake word means changing the model |
+| RNF-09 | **Voice/screen parity:** every action and event available by voice shows on the panel and vice versa, through the event bus |
+| RNF-10 | **Language:** interaction in pt-BR; everything in the repo in English |
+| RNF-11 | **Network:** panel on the local network only; no internet access in the MVP |
 
-## Regras de negócio
+## Business rules
 
-| ID | Regra |
+| ID | Rule |
 |---|---|
-| RN-01 | Nome de sessão é único no sistema todo |
-| RN-02 | Existe sempre uma sessão fixa `alfred` (agente principal), não presa a repositório |
-| RN-03 | O agente principal nunca edita código; trabalho em repositório sempre via `delegar` |
-| RN-04 | Máximo de processos `claude` abertos ao mesmo tempo (padrão 3, editável na tela de configurações). Sessão ociosa por `idle_minutes` fecha o processo e retoma a conversa na próxima tarefa; sem vaga, a tarefa espera numa fila |
-| RN-05 | Status de sessão: `idle`, `busy`, `waiting_permission`, `error` |
-| RN-06 | Status de tarefa: `open`, `in_progress`, `done`; prioridade `low`, `medium`, `high` |
-| RN-07 | Tarefa sem projeto é pessoal ("pagar boleto") |
-| RN-08 | Fechar sessão encerra a execução mas mantém o histórico |
-| RN-09 | E-mail é sempre lido resumido, nunca na íntegra |
-| RN-10 | Ler e-mail/agenda roda direto; escrever exige confirmação |
-| RN-11 | Ambiente tem `kind` `folder` (qualquer pasta) ou `worktree` (com `parent_id` e `branch`) |
-| RN-11a | Descrição de projeto e ambiente é opcional, com no máximo 200 caracteres |
+| RN-01 | A session name is unique across the whole system |
+| RN-02 | There is always a fixed `alfred` session (main agent), not tied to a repository |
+| RN-03 | The main agent never edits code; repository work always goes through `delegar` |
+| RN-04 | A maximum number of `claude` processes open at once (default 3, editable on the settings screen). A session idle for `idle_minutes` closes its process and resumes the conversation on the next task; with no free slot, the task waits in a queue |
+| RN-05 | Session status: `idle`, `busy`, `waiting_permission`, `error` |
+| RN-06 | Task status: `open`, `in_progress`, `done`; priority `low`, `medium`, `high` |
+| RN-07 | A task with no project is personal ("pagar boleto") |
+| RN-08 | Closing a session ends its run but keeps the history |
+| RN-09 | Mail is always read as a summary, never in full |
+| RN-10 | Reading mail/calendar runs right away; writing needs confirmation |
+| RN-11 | A workspace has `kind` `folder` (any folder) or `worktree` (with `parent_id` and `branch`) |
+| RN-11a | Project and workspace descriptions are optional, 200 characters at most |
 
-## Fora de escopo no MVP
+## Out of scope for the MVP
 
-- App desktop com Tauri
-- Sandbox das sessões de código
-- Acesso pela internet
-- Múltiplos usuários
-- TTS com clonagem de voz
+- Sandboxing code sessions
+- Access over the internet
+- Multiple users
+- Voice-cloning TTS
 
-## Roadmap do MVP
+## MVP roadmap
 
-Cada fase entrega algo usável sozinho.
+Each phase delivers something usable on its own.
 
-| Fase | Entrega | Critério de pronto |
+| Phase | Delivery | Done when |
 |---|---|---|
-| F1 | Voz de ponta a ponta + wake word `alfred.onnx` treinada + `/ws` de eventos | "Alfred, qual a diferença entre JWT e sessão?" é respondido falando, só o `RESUMO:`; eventos de estado no `/ws` |
-| F2 | Assistente geral | Web, Gmail e Calendar funcionando por voz |
-| F3 | Sessões nomeadas | 2+ sessões em paralelo, atalho `<nome>:`, foco, status, fila, interrupção |
-| F4 | Projetos, worktrees e tarefas | Criar worktree + sessão por voz, delegar tarefa, resume após reinício |
-| F5 | Permissões | Confirmação por canal, denylist, turno contaminado, barge-in, fila de notificações, auditoria |
-| F6 | Painel web | Telas listadas em RF-60/61, confirmação por clique, CommandBar |
-| F7 | Polimento | Wake word refinada com gravações do usuário, verifier opcional com a voz do usuário, `initial_prompt` ajustado, fallback Haiku |
+| F1 | End-to-end voice + trained `alfred.onnx` wake word + `/ws` events | "Alfred, qual a diferença entre JWT e sessão?" is answered out loud, only the `RESUMO:`; state events on `/ws` |
+| F2 | General assistant | Web, Gmail and Calendar working by voice |
+| F3 | Named sessions | 2+ sessions in parallel, `<name>:` shortcut, focus, status, queue, interruption |
+| F4 | Projects, worktrees and tasks | Create a worktree + session by voice, delegate a task, resume after a restart |
+| F5 | Permissions | Per-channel confirmation, denylist, tainted turn, barge-in, notification queue, audit |
+| F6 | Web panel | Screens listed in RF-60/61, confirmation by click, CommandBar |
+| F7 | Polish | Wake word refined with the user's recordings, optional verifier with the user's voice, tuned `initial_prompt`, Haiku fallback |
 
-## Questões em aberto
+## Open questions
 
-1. **Timeout de permissão duplicado na spec:** `permissions.timeout_s` e `limits.timeout_permissao_s`. Proposta: manter só `permissions.timeout_s`.
-2. **Chaves do config em português** (`limites`, `max_sessoes_ativas`) contrariam "config em inglês". Proposta: `limits.max_active_sessions`.
-3. **Canal `key`:** qual tecla/dispositivo? Atalho global no desktop exige Tauri (fora do MVP). Proposta: tecla no terminal do server ou botão no painel até lá.
-4. ~~**Fila por sessão:** persistida em SQLite ou só em memória?~~ Resolvido: a fila fica em memória; projetos, sessões e configurações vão pro SQLite e a conversa volta pelo resume.
-5. **Rotação diária da conversa do `alfred`:** em que horário vira o dia, e o que acontece com uma conversa em andamento?
-6. **Autenticação do painel na rede local:** nenhuma no MVP? Qualquer um na LAN poderia aprovar confirmações via `web`.
-7. **Licença** do projeto.
-8. **Uso da assinatura via Agent SDK:** a fase 1 autentica pelo login do Claude Code; confirmar que o uso pessoal é aceito pelos termos, senão migrar para `ANTHROPIC_API_KEY`.
+1. **Permission timeout duplicated in the spec:** `permissions.timeout_s` and `limits.timeout_permissao_s`. Proposal: keep only `permissions.timeout_s`.
+2. **Config keys in Portuguese** (`limites`, `max_sessoes_ativas`) contradict "config in English". Proposal: `limits.max_active_sessions`.
+3. **`key` channel:** which key/device? A global desktop shortcut may come with the Tauri app (ADR 0012). Proposal: a key in the server terminal or a button on the panel until then.
+4. ~~**Per-session queue:** persisted in SQLite or in memory only?~~ Resolved: the queue lives in memory; projects, sessions and settings go to SQLite and the conversation comes back through resume.
+5. **Daily rotation of the `alfred` conversation:** at what time does the day turn, and what happens to a conversation in progress?
+6. **Panel authentication on the local network:** none in the MVP? Anyone on the LAN could approve confirmations through `web`.
+7. The project's **license**.
+8. **Subscription use through the Agent SDK:** phase 1 authenticates with the Claude Code login; confirm personal use is allowed by the terms, otherwise move to `ANTHROPIC_API_KEY`.

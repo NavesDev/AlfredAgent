@@ -1,104 +1,104 @@
 # Stack
 
-Tecnologias do Alfred e o motivo de cada escolha. Mudanças relevantes viram um [ADR](adr/).
+Alfred's technologies and the reason for each choice. Relevant changes become an [ADR](adr/).
 
-## Visão geral
+## Overview
 
-| Camada | Tecnologia |
+| Layer | Technology |
 |---|---|
-| Runtime do server | Python 3.11+, asyncio, um processo só |
-| Gerenciador de pacotes (Python) | uv + `pyproject.toml` |
-| Agentes | Claude Agent SDK (Python), usando o CLI `claude` logado (harness do Claude Code) |
-| Modelos | Sonnet (padrão), Haiku (perguntas simples e resumos de fallback) |
-| Integrações | MCP Gmail, MCP Google Calendar, WebSearch/WebFetch nativos do SDK |
-| Tools internas | Servidor MCP in-process (tools Python definidas no próprio código) |
-| Wake word | openWakeWord (modelo `alfred.onnx` treinado) |
+| Server runtime | Python 3.11+, asyncio, a single process |
+| Package manager (Python) | uv + `pyproject.toml` |
+| Agents | Claude Agent SDK (Python), using the logged-in `claude` CLI (Claude Code harness) |
+| Models | Sonnet (default), Haiku (simple questions and fallback summaries) |
+| Integrations | Gmail MCP, Google Calendar MCP, the SDK's native WebSearch/WebFetch |
+| Internal tools | In-process MCP server (Python tools defined in the code itself) |
+| Wake word | openWakeWord (trained `alfred.onnx` model) |
 | VAD | Silero VAD |
-| STT | faster-whisper `large-v3-turbo`, `int8_float16` na GPU sob demanda, `int8` na CPU ([ADR 0010](adr/0010-voice-models-on-demand-gpu.md)) |
-| TTS | Kokoro (`pf_dora` ou `pm_alex`), GPU sob demanda ou CPU |
-| Áudio I/O | sounddevice (PortAudio) |
+| STT | faster-whisper `large-v3-turbo`, `int8_float16` on the GPU on demand, `int8` on the CPU ([ADR 0010](adr/0010-voice-models-on-demand-gpu.md)) |
+| TTS | Kokoro (`pf_dora` or `pm_alex`), GPU on demand or CPU |
+| Audio I/O | sounddevice (PortAudio) |
 | Fuzzy match | rapidfuzz |
-| Persistência | SQLite |
-| API | FastAPI + Uvicorn, WebSocket nativo |
-| Front | React + TypeScript + Vite |
-| UI | Tailwind CSS + shadcn/ui; esfera do Alfred: Strands (React Bits, WebGL2) com versão em CSS |
-| Estado do servidor no front | TanStack Query |
-| Cliente tipado | openapi-typescript + openapi-fetch (tipos gerados do OpenAPI do FastAPI) |
-| Rotas | React Router |
-| Testes | pytest + pytest-asyncio (server), Vitest + Testing Library (web) |
-| Lint/format | ruff + mypy (server), ESLint + Prettier (web) |
-| Gerenciador de pacotes (Node) | pnpm |
-| Desktop (futuro) | Tauri |
+| Persistence | SQLite |
+| API | FastAPI + Uvicorn, native WebSocket |
+| Front end | React + TypeScript + Vite |
+| UI | Tailwind CSS; Alfred's orb: Strands (React Bits, WebGL2) with a CSS version |
+| Server state on the front end | TanStack Query |
+| Typed client | openapi-typescript + openapi-fetch (types generated from FastAPI's OpenAPI) |
+| Routing | React Router |
+| Tests | pytest + pytest-asyncio (server), Vitest + Testing Library (web) |
+| Lint/format | ruff + mypy (server), oxlint + tsc + Prettier (web), clippy + rustfmt (desktop) |
+| Package manager (Node) | pnpm |
+| Desktop | Tauri v2 (WebKitGTK on Linux), loading `apps/web` ([ADR 0012](adr/0012-desktop-shell-tauri.md)) |
 
 ## Server
 
-**Python 3.11+ com asyncio.** O ecossistema de voz local (faster-whisper, Kokoro, openWakeWord, Silero) é Python, e o Agent SDK tem SDK Python de primeira classe. Um processo só simplifica o MVP: o event bus fica em memória e não há IPC.
+**Python 3.11+ with asyncio.** The local voice ecosystem (faster-whisper, Kokoro, openWakeWord, Silero) is Python, and the Agent SDK has a first-class Python SDK. A single process keeps the MVP simple: the event bus lives in memory and there is no IPC.
 
-**Threads para áudio.** Captura, STT e TTS são CPU/GPU-bound ou bloqueantes. Rodam em threads próprias e conversam com o loop via `asyncio.Queue` / `loop.call_soon_threadsafe`, para não travar os agentes.
+**Threads for audio.** Capture, STT and TTS are CPU/GPU-bound or blocking. They run in their own threads and talk to the loop through `asyncio.Queue` / `loop.call_soon_threadsafe`, so they never block the agents.
 
-**Claude Agent SDK.** Dá sessões com resume, `canUseTool` para o gate de permissões, auto mode, WebSearch/WebFetch e servidores MCP (externos e in-process). Cada sessão nomeada é uma instância do SDK com `cwd` no ambiente.
+**Claude Agent SDK.** Provides sessions with resume, `canUseTool` for the permission gate, auto mode, WebSearch/WebFetch and MCP servers (external and in-process). Each named session is an SDK instance with `cwd` in its workspace.
 
-**SQLite.** Um usuário, uma máquina, poucas escritas. Sem servidor de banco para manter. Acesso via `sqlite3`/`aiosqlite` direto ou SQLModel — decisão na fase 3.
+**SQLite.** One user, one machine, few writes. No database server to maintain.
 
-**FastAPI.** Async nativo (mesmo loop do resto), WebSocket embutido e OpenAPI automático, que alimenta os tipos do front.
+**FastAPI.** Native async (the same loop as everything else), built-in WebSocket and automatic OpenAPI, which feeds the front-end types.
 
-**rapidfuzz.** Whisper erra nomes próprios ("backend" → "bequi end"). Apelidos + fuzzy match com corte ~85% resolvem sem chamar modelo.
+**rapidfuzz.** Whisper gets proper names wrong ("backend" → "bequi end"). Aliases + fuzzy match with a ~85% cutoff solve it without calling a model.
 
-## Voz
+## Voice
 
-| Componente | RAM aprox. | Quando pesa |
+| Component | Approx. RAM | When it weighs |
 |---|---|---|
-| openWakeWord + Silero | ~150 MB | Sempre ligado, CPU quase zero |
-| faster-whisper large-v3-turbo | ~1,1 GB de VRAM (`int8_float16`), ~2 GB de RAM no fallback de CPU | Da wake word até 30 s depois do último comando |
-| Kokoro | ~350 MB de VRAM ou ~400 MB de RAM | Até 10 s depois da última fala |
-| Contextos CUDA | ~470 MB de VRAM | Enquanto o Alfred roda |
-| Sessões Claude Code (3) | ~0,5–1 GB | Enquanto rodam tarefas |
+| openWakeWord + Silero | ~150 MB | Always on, near-zero CPU |
+| faster-whisper large-v3-turbo | ~1.1 GB of VRAM (`int8_float16`), ~2 GB of RAM on the CPU fallback | From the wake word until 30 s after the last command |
+| Kokoro | ~350 MB of VRAM or ~400 MB of RAM | Until 10 s after the last speech |
+| CUDA contexts | ~470 MB of VRAM | While Alfred runs |
+| Claude Code sessions (3) | ~0.5–1 GB | While running tasks |
 
-- **faster-whisper `large-v3-turbo` int8:** melhor relação qualidade/velocidade em pt. `initial_prompt` com o jargão (Spring, Liferay, endpoint, worktree, commit, nomes das sessões) melhora termos técnicos. Se a máquina apertar, trocar para `medium` é uma linha no config.
-- **Kokoro:** TTS local leve, com vozes em português. 8 s de fala em 0,14 s na GPU, 2,3 s na CPU.
-- **GPU sob demanda:** a GPU é dividida com o serviço de imagens. Whisper e Kokoro sobem quando usados, soltam a VRAM ociosos e caem para a CPU se ela estiver ocupada ([ADR 0010](adr/0010-voice-models-on-demand-gpu.md)). torch vem do índice `cu126`, cujos wheels `nvidia-*` (cuBLAS, cuDNN 9) também servem ao CTranslate2.
-- **openWakeWord:** permite treinar a wake word própria ("Alfred") e roda em CPU com custo quase zero.
+- **faster-whisper `large-v3-turbo` int8:** best quality/speed trade-off in Portuguese. An `initial_prompt` with the jargon (Spring, Liferay, endpoint, worktree, commit, session names) improves technical terms. If the machine gets tight, switching to `medium` is one config line.
+- **Kokoro:** light local TTS with Portuguese voices. 8 s of speech in 0.14 s on the GPU, 2.3 s on the CPU.
+- **GPU on demand:** the GPU is shared with the image service. Whisper and Kokoro load when used, release the VRAM when idle and fall back to the CPU if it is busy ([ADR 0010](adr/0010-voice-models-on-demand-gpu.md)). torch comes from the `cu126` index, whose `nvidia-*` wheels (cuBLAS, cuDNN 9) also serve CTranslate2.
+- **openWakeWord:** lets us train our own wake word ("Alfred") and runs on the CPU at near-zero cost.
 
 ## Web
 
-- **Vite + React + TS:** dev server rápido, build estático servido pelo FastAPI em produção (porta única).
-- **TanStack Query:** todo estado do servidor; o WebSocket só atualiza o cache. Sem Redux/Zustand.
-- **openapi-typescript + openapi-fetch:** `api/schema.ts` gerado do FastAPI; contrato único entre server e front, sem tipos duplicados à mão.
-- **shadcn/ui + Tailwind:** componentes copiados para o repo, sem dependência de biblioteca de UI fechada.
-- **Strands (React Bits):** a esfera do Alfred, copiada para o repo (MIT + Commons Clause). WebGL2 puro, sem three.js; onde não há WebGL2 entra a versão em CSS. Direção visual em [DESIGN.md](DESIGN.md).
+- **Vite + React + TS:** fast dev server, static build served by FastAPI in production (single port).
+- **TanStack Query:** all server state; the WebSocket only updates the cache. No Redux/Zustand.
+- **openapi-typescript + openapi-fetch:** `api/schema.ts` generated from FastAPI; one contract between server and front end, no hand-duplicated types.
+- **Tailwind:** components live in the repo, with no closed UI library dependency.
+- **Strands (React Bits):** Alfred's orb, copied into the repo (MIT + Commons Clause). Plain WebGL2, no three.js; where WebGL2 is missing, the CSS version takes over. Visual direction in [DESIGN.md](DESIGN.md).
 
-## Versões mínimas
+## Minimum versions
 
-| Ferramenta | Versão |
+| Tool | Version |
 |---|---|
 | Python | 3.11 |
 | Node.js | 20 LTS |
 | pnpm | 9 |
 | Git | 2.40 |
-| Driver NVIDIA (opcional) | CUDA 12+ |
+| NVIDIA driver (optional) | CUDA 12+ |
 
-## Configuração
+## Configuration
 
-Arquivo único `server/config.yaml` (versionado apenas como `config.example.yaml`). Pontos principais:
+A single `server/config.yaml` file (versioned only as `config.example.yaml`). Main points:
 
 ```yaml
 whisper:
   model: large-v3-turbo
-  device: cuda          # cuda | cpu; fallback para CPU com a GPU ocupada
+  device: cuda          # cuda | cpu; CPU fallback while the GPU is busy
   compute_type: int8_float16
   language: pt
   initial_prompt: "Spring, Liferay, endpoint, worktree, commit, backend, frontend"
-  idle_s: 30            # solta a GPU depois disso sem uso
+  idle_s: 30            # releases the GPU after this long unused
 
 kokoro:
-  voice: pf_dora        # ou pm_alex
+  voice: pf_dora        # or pm_alex
   speed: 1.1
   device: cuda
   idle_s: 10
 
 wakeword:
   name: Alfred
-  model: wakeword/alfred.onnx  # treinado em wakeword/train
+  model: wakeword/alfred.onnx  # trained in wakeword/train
   threshold: 0.5
   aliases: [alfred, alfredo]
 
@@ -113,7 +113,7 @@ permissions:
     delete_file: voice
     install_dependency: voice
   tainted_turn: key
-  timeout_s: 60                    # sem resposta = negado
+  timeout_s: 60                    # no answer = denied
 ```
 
-Autenticação do Claude vem do login do Claude Code. Segredos (credenciais Google, API key se um dia trocar) ficam em variáveis de ambiente / `.env`, nunca no YAML.
+Claude authentication comes from the Claude Code login. Secrets (Google credentials, an API key if that ever changes) live in environment variables / `.env`, never in the YAML.

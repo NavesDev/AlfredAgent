@@ -1,18 +1,18 @@
-# 0001 — Voz local, raciocínio na nuvem
+# 0001 — Local voice, cloud reasoning
 
-- **Status:** Aceito
-- **Data:** 2026-10-01
+- **Status:** Accepted
+- **Date:** 2026-10-01
 
-## Contexto
+## Context
 
-O Alfred escuta continuamente. Mandar áudio para a nuvem expõe tudo que é dito perto do microfone e adiciona latência e custo. Por outro lado, rodar um LLM competente localmente junto dos ambientes de dev estoura o orçamento de ≤ 3 GB de RAM.
+Alfred listens continuously. Sending audio to the cloud exposes everything said near the microphone and adds latency and cost. On the other hand, running a capable LLM locally next to the dev environments blows the ≤ 3 GB RAM budget.
 
-## Decisão
+## Decision
 
-Wake word (openWakeWord), VAD (Silero), STT (faster-whisper) e TTS (Kokoro) rodam 100% locais. Só texto transcrito sai da máquina, para o Claude e para as integrações (Gmail, Calendar, web).
+Wake word (openWakeWord), VAD (Silero), STT (faster-whisper) and TTS (Kokoro) run 100% locally. Only transcribed text leaves the machine, to Claude and to the integrations (Gmail, Calendar, web).
 
-## Consequências
+## Consequences
 
-- Áudio nunca sai da máquina.
-- Qualidade de transcrição depende do Whisper local: mitigado com `initial_prompt`, apelidos e fuzzy match.
-- Pico de ~2 GB de RAM (ou VRAM) no STT; `medium` como plano B.
+- Audio never leaves the machine.
+- Transcription quality depends on the local Whisper: mitigated with `initial_prompt`, aliases and fuzzy match.
+- A ~2 GB RAM (or VRAM) peak during STT; `medium` as plan B.

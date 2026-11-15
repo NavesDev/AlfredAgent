@@ -45,7 +45,7 @@ type Props = {
   clearing?: boolean
   transcript: boolean
   onTranscript: () => void
-  /** Extra controls at the end (usage meter, demo). */
+  /** Extra controls at the end (usage meter). */
   children?: ReactNode
 }
 

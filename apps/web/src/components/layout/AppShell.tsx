@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import { useConnection } from '../../hooks/useEvents'
+import { isDesktop } from '../../lib/desktop'
 import { NavRail } from './NavRail'
+import { TitleBar } from './TitleBar'
 
 /** Out-of-focus graphite shapes, so the glass panels have something to blur. */
 function Room() {
@@ -18,10 +20,14 @@ function Room() {
 /** Every page: the room, the nav rail on the left (top on phones) and the page's panels. */
 export function AppShell({ children }: { children: ReactNode }) {
   const connection = useConnection()
+  const desktop = isDesktop()
   return (
-    <div className="relative h-full overflow-hidden text-ink">
+    <div className="relative flex h-full flex-col overflow-hidden text-ink">
       <Room />
-      <div className="relative flex h-full flex-col gap-4 p-4 md:flex-row md:items-stretch md:gap-6 md:p-8">
+      {desktop && <TitleBar connection={connection} />}
+      <div
+        className={`relative flex min-h-0 flex-1 flex-col gap-4 p-4 md:flex-row md:items-stretch md:gap-6 md:p-8 ${desktop ? 'pt-1 md:pt-2' : ''}`}
+      >
         <div className="flex shrink-0 justify-center md:items-center">
           <NavRail connection={connection} />
         </div>

@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import type { Project } from '../api/events'
-import { EFFORTS, field, KINDS, type NewSession } from '../lib/sessionForm'
+import { EFFORT_OPTIONS, field, KINDS, type NewSession } from '../lib/sessionForm'
 import { ModelSelect } from './ModelSelect'
+import { Picker } from './Picker'
 
 // Used by the projects pages and by the project hub on the dashboard. It only renders and
 // reports; each feature passes its own data and mutation.
@@ -39,18 +40,14 @@ export function NewSessionForm({ projects, projectId, pending, error, onSubmit, 
   return (
     <form onSubmit={submit} className="flex flex-col gap-2 text-sm">
       <div className="flex gap-2">
-        <select
-          aria-label="Tipo"
-          value={kind}
-          onChange={(e) => setKind(e.target.value)}
-          className={field}
-        >
-          {KINDS.map((k) => (
-            <option key={k.kind} value={k.kind}>
-              {k.label}
-            </option>
-          ))}
-        </select>
+        <div className="w-40 shrink-0">
+          <Picker
+            label="Tipo"
+            value={kind}
+            onChange={setKind}
+            options={KINDS.map((k) => ({ id: k.kind, label: k.label }))}
+          />
+        </div>
         <input
           aria-label="Nome"
           placeholder="nome (ex: back)"
@@ -60,24 +57,22 @@ export function NewSessionForm({ projects, projectId, pending, error, onSubmit, 
           autoFocus
         />
       </div>
-      <select
-        aria-label="Ambiente"
-        value={workspace ?? ''}
-        onChange={(e) => setWorkspace(e.target.value ? Number(e.target.value) : null)}
-        className={field}
-      >
-        {!needsWorkspace && <option value="">sem ambiente (home)</option>}
-        {scoped.map((p) => (
-          <optgroup key={p.id} label={p.name}>
-            {p.workspaces.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-                {w.branch ? ` · ⎇ ${w.branch}` : ''}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
+      <Picker
+        label="Ambiente"
+        value={workspace == null ? '' : String(workspace)}
+        onChange={(id) => setWorkspace(id ? Number(id) : null)}
+        options={[
+          ...(needsWorkspace ? [] : [{ id: '', label: 'sem ambiente (home)' }]),
+          ...scoped.flatMap((p) =>
+            p.workspaces.map((w) => ({
+              id: String(w.id),
+              label: w.name,
+              hint: w.branch ? `⎇ ${w.branch}` : undefined,
+              group: p.name,
+            })),
+          ),
+        ]}
+      />
       <div className="flex gap-2">
         <div className="min-w-0 flex-1">
           <ModelSelect
@@ -87,17 +82,14 @@ export function NewSessionForm({ projects, projectId, pending, error, onSubmit, 
             onChange={setModel}
           />
         </div>
-        <select
-          aria-label="Effort"
-          value={effort}
-          onChange={(e) => setEffort(e.target.value)}
-          className={field}
-        >
-          <option value="">effort padrão</option>
-          {EFFORTS.map((e) => (
-            <option key={e}>{e}</option>
-          ))}
-        </select>
+        <div className="w-36 shrink-0">
+          <Picker
+            label="Effort"
+            value={effort}
+            onChange={setEffort}
+            options={[{ id: '', label: 'effort padrão' }, ...EFFORT_OPTIONS.slice(1)]}
+          />
+        </div>
       </div>
       {error && <p className="text-xs text-[#ff9a92]">{error}</p>}
       <div className="flex justify-end gap-2">

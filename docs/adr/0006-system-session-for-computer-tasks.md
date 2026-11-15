@@ -1,21 +1,21 @@
-# 0006 — Tarefas no computador vão para a sessão "sistema"
+# 0006 — Computer tasks go to the "sistema" session
 
-- **Status:** Aceito
-- **Data:** 2026-10-11
+- **Status:** Accepted
+- **Date:** 2026-10-11
 
-## Contexto
+## Context
 
-O Alfred não tem Bash (ADR 0003), então não conseguia fazer nada no computador (girar a tela, contar projetos, mexer em arquivos) e chegou a ler arquivos por `file://` no navegador. Dar Bash a ele juntaria no mesmo agente quem lê e-mail/web e quem executa comandos.
+Alfred has no Bash (ADR 0003), so it could not do anything on the computer (rotate the screen, count projects, handle files) and even read files through `file://` in the browser. Giving it Bash would put whoever reads mail/web and whoever runs commands in the same agent.
 
-## Decisão
+## Decision
 
-- Antecipa parte da fase 3: uma sessão nomeada `sistema` (`infra/claude/session.py`), um Claude Code persistente com `Bash`, `Read`, `Edit`, `Write`, `Glob`, `Grep`, `cwd` na home e `permission_mode="auto"`.
-- A sessão não carrega MCPs (`strict_mcp_config`) nem configurações do usuário (`setting_sources=[]`), e não tem WebSearch/WebFetch: conteúdo externo não chega direto a ela.
-- O Alfred ganha a tool in-process `delegar(tarefa)` (`infra/claude/tools.py`). Ela enfileira a tarefa em `controllers/sessions.py` e volta na hora; a sessão roda em segundo plano, uma tarefa por vez, e o resumo é falado quando termina.
-- O prompt do Alfred manda descrever a tarefa com as próprias palavras, nunca colando texto de e-mails ou páginas.
+- Brings part of phase 3 forward: a named session `sistema` (`infra/claude/session.py`), a persistent Claude Code with `Bash`, `Read`, `Edit`, `Write`, `Glob`, `Grep`, `cwd` in the home and `permission_mode="auto"`.
+- The session loads no MCPs (`strict_mcp_config`) or user settings (`setting_sources=[]`), and has no WebSearch/WebFetch: external content never reaches it directly.
+- Alfred gets the in-process tool `delegar(tarefa)` (`infra/claude/tools.py`). It queues the task in `controllers/sessions.py` and returns at once; the session runs in the background, one task at a time, and the summary is spoken when it finishes.
+- Alfred's prompt tells it to describe the task in its own words, never pasting text from mail or pages.
 
-## Consequências
+## Consequences
 
-- O Alfred passa a fazer tarefas no computador por voz, sem travar a conversa.
-- Risco que sobra: um e-mail ou página pode convencer o Alfred a delegar algo ruim. Mitigações: a regra de não colar conteúdo externo e o classificador do auto mode na sessão.
-- Uma sessão só por enquanto; sessões por projeto, worktrees e o limite `max_active_sessions` continuam na fase 3.
+- Alfred now does computer tasks by voice without blocking the conversation.
+- Remaining risk: a mail or page may convince Alfred to delegate something bad. Mitigations: the rule against pasting external content and the auto mode classifier in the session.
+- A single session for now; per-project sessions, worktrees and the `max_active_sessions` limit stay in phase 3.

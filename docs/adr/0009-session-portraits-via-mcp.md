@@ -1,28 +1,28 @@
-# 0009 — Retratos das sessões gerados por um agente com os MCPs do usuário
+# 0009 — Session portraits painted by an agent with the user's MCPs
 
-- **Status:** Aceito
-- **Data:** 2026-11-14
+- **Status:** Accepted
+- **Date:** 2026-11-14
 
-## Contexto
+## Context
 
-O painel mostra uma foto por sessão: um retrato 3D estilo massinha (`docs/DESIGN.md`), com o monograma enquanto ele não existe. O usuário já tem geradores de imagem como servidores MCP no Claude Code (hoje o `imagens-local`, na GPU), e pode trocar ou somar outros. Amarrar o Alfred à API de um serviço específico obrigaria código novo a cada gerador.
+The panel shows a picture per session: a clay-style 3D portrait (`docs/DESIGN.md`), with the monogram while it does not exist. The user already has image generators as MCP servers in Claude Code (today `imagens-local`, on the GPU), and may swap or add others. Tying Alfred to one service's API would require new code for each generator.
 
-## Decisão
+## Decision
 
-- **Quem gera:** um agente de uma só pergunta (`infra/claude/portrait.py`, `query()` do Agent SDK), com o modelo do Alfred. Ele recebe um prompt simples (nome da sessão, tipo, projeto e ambiente com as descrições, estilo do retrato) e usa o gerador de imagem que achar entre os MCPs do usuário.
-- **Ferramentas:** só MCPs. `tools=[]` tira todas as tools nativas (sem Bash, Read, Write, web). O server lê os MCPs de escopo usuário do Claude Code (`mcpServers` em `~/.claude.json`) e passa só eles (`mcp_servers` + `strict_mcp_config`), com `setting_sources=[]`: sem hooks, plugins, CLAUDE.md nem conectores do claude.ai (Gmail, Drive). `allowed_tools` libera os servidores carregados e `permission_mode="dontAsk"` nega o resto.
-- **Gerador favorito (`image_mcp`, em `app_settings`):**
-  - definido: só esse servidor é carregado;
-  - vazio ("Automático"): carrega todos os servidores de usuário ligados (fora de `mcp_disabled`) e o modelo escolhe o gerador. Na primeira geração que dá certo, o servidor usado vira o favorito. O painel troca o favorito ou volta para "Automático", escolhendo entre os servidores de usuário (`image_mcp_servers`).
-- **Imagem:** vem do bloco de imagem do resultado da tool MCP; se o gerador só devolver um caminho, o agente responde `IMAGEM: <caminho>`. O server aceita só PNG, JPEG ou WebP (pelos bytes iniciais), até 20 MB, e copia para `data/portraits/<id da sessão>.<ext>`.
-- **Quando:** ao criar a sessão e, no boot, para as sessões sem retrato. Uma geração por vez, numa fila em segundo plano (`controllers/portraits.py`), que nunca bloqueia a criação. `POST /api/sessions/{name}/portrait` pede de novo.
-- **Falha** (serviço fora do ar, nenhum gerador, imagem inválida): fica o monograma e o erro vai para o log; tenta de novo no próximo boot ou quando pedirem.
-- **Servir:** `GET /api/sessions/{name}/portrait`; `SessionView.portrait` traz essa URL com `?v=<mtime>` (ou `null`). O evento `portrait_updated` faz a sessão republicar o status.
+- **Who paints:** a one-question agent (`infra/claude/portrait.py`, the Agent SDK's `query()`), with Alfred's model. It gets a simple prompt (session name, kind, project and workspace with their descriptions, portrait style) and uses whatever image generator it finds among the user's MCPs.
+- **Tools:** MCPs only. `tools=[]` removes every native tool (no Bash, Read, Write, web). The server reads Claude Code's user-scope MCPs (`mcpServers` in `~/.claude.json`) and passes only those (`mcp_servers` + `strict_mcp_config`), with `setting_sources=[]`: no hooks, plugins, CLAUDE.md or claude.ai connectors (Gmail, Drive). `allowed_tools` allows the loaded servers and `permission_mode="dontAsk"` denies the rest.
+- **Favorite generator (`image_mcp`, in `app_settings`):**
+  - set: only that server is loaded;
+  - empty ("Automático"): loads every enabled user server (outside `mcp_disabled`) and the model picks the generator. On the first successful generation, the server used becomes the favorite. The panel changes the favorite or goes back to "Automático", picking among the user servers (`image_mcp_servers`).
+- **Image:** comes from the image block in the MCP tool result; if the generator only returns a path, the agent answers `IMAGEM: <path>`. The server accepts only PNG, JPEG or WebP (by the leading bytes), up to 20 MB, and copies it to `data/portraits/<session id>.<ext>`.
+- **When:** on session creation and, at boot, for sessions without a portrait. One generation at a time, in a background queue (`controllers/portraits.py`) that never blocks creation. `POST /api/sessions/{name}/portrait` asks again.
+- **Failure** (service down, no generator, invalid image): the monogram stays and the error goes to the log; it tries again on the next boot or on request.
+- **Serving:** `GET /api/sessions/{name}/portrait`; `SessionView.portrait` carries that URL with `?v=<mtime>` (or `null`). The `portrait_updated` event makes the session republish its status.
 
-## Consequências
+## Consequences
 
-- Trocar de gerador é configurar outro MCP no Claude Code, sem mudar o Alfred.
-- **Risco aceito:** sem favorito, a primeira geração pode chamar qualquer MCP de usuário ligado; o prompt só pede uma imagem e não traz conteúdo externo. Depois do primeiro acerto, o favorito restringe ao gerador.
-- MCPs de plugin ou do claude.ai não servem de gerador; o gerador precisa estar em `claude mcp add --scope user`.
-- O teste real com o `imagens-local` levou ~2 min na primeira geração (carga do modelo na GPU).
-- Cada retrato gasta uma chamada curta do modelo do Alfred, além do tempo de GPU.
+- Switching generators means configuring another MCP in Claude Code, without changing Alfred.
+- **Accepted risk:** with no favorite, the first generation may call any enabled user MCP; the prompt only asks for an image and carries no external content. After the first success, the favorite narrows it to the generator.
+- Plugin or claude.ai MCPs do not work as generators; the generator must be added with `claude mcp add --scope user`.
+- The real test with `imagens-local` took ~2 min on the first generation (model load on the GPU).
+- Each portrait costs one short call to Alfred's model, plus GPU time.

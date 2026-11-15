@@ -1,24 +1,24 @@
-# 0005 — Agente principal no auto mode do Claude Code
+# 0005 — Main agent in Claude Code's auto mode
 
-- **Status:** Aceito
-- **Data:** 2026-10-11
-- Substitui o [0004](0004-main-agent-read-only-plus-browser.md)
+- **Status:** Accepted
+- **Date:** 2026-10-11
+- Supersedes [0004](0004-main-agent-read-only-plus-browser.md)
 
-## Contexto
+## Context
 
-Com a lista fixa do ADR 0004, o Alfred não conseguia agir (enviar e-mail, criar evento, usar o Drive) e o gate de confirmação da fase 5 ainda não existe. Também apareceu um furo: pelo navegador ele lia arquivos locais com `file://`.
+With ADR 0004's fixed list, Alfred could not act (send mail, create an event, use Drive) and the phase 5 confirmation gate does not exist yet. A hole also showed up: through the browser it read local files with `file://`.
 
-## Decisão
+## Decision
 
-- `permission_mode="auto"`: leituras de Gmail/Agenda, web e navegador rodam direto (`ALLOWED`); qualquer outra tool vai para o classificador do auto mode, que aprova ou nega cada chamada.
-- Limites fixos, fora do classificador:
-  - sem Bash, Edit ou Write (ADR 0003);
-  - hook `PreToolUse` (`block_local_urls`) nega qualquer `url` que não seja http/https, em qualquer tool;
-  - `upload_file` do navegador escondido.
-- O auto mode exige Sonnet ou Opus; com Haiku o CLI cai para o modo padrão e nega tudo fora de `ALLOWED`.
+- `permission_mode="auto"`: Gmail/Calendar reads, web and browser run right away (`ALLOWED`); any other tool goes to the auto mode classifier, which approves or denies each call.
+- Fixed limits, outside the classifier:
+  - no Bash, Edit or Write (ADR 0003);
+  - a `PreToolUse` hook (`block_local_urls`) denies any `url` that is not http/https, in any tool;
+  - the browser's `upload_file` is hidden.
+- Auto mode requires Sonnet or Opus; with Haiku the CLI falls back to the default mode and denies everything outside `ALLOWED`.
 
-## Consequências
+## Consequences
 
-- O Alfred pode enviar e-mail, mexer na agenda e no Drive se o classificador aprovar, sem confirmação sua.
-- Prompt injection em e-mail ou página continua sendo o risco principal; a defesa passa a ser o classificador mais a instrução de tratar conteúdo externo como dado.
-- Quando o gate da fase 5 existir, ações sensíveis (`send_email` etc.) devem voltar a pedir confirmação por canal configurado.
+- Alfred can send mail and change the calendar and Drive if the classifier approves, without your confirmation.
+- Prompt injection in a mail or page remains the main risk; the defense becomes the classifier plus the instruction to treat external content as data.
+- When the phase 5 gate exists, sensitive actions (`send_email` etc.) should go back to asking for confirmation on the configured channel.

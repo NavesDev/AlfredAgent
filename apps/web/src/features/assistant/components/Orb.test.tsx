@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { Orb } from './Orb'
 
-const level = { current: { value: 0, at: 0 } }
+const level = { current: { value: 0, bands: [], at: 0 } }
 
 describe('Orb', () => {
   it('falls back to the CSS orb when WebGL2 is missing', () => {

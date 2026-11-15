@@ -1,6 +1,19 @@
+<div align="center">
+
 # Alfred
 
-Assistente pessoal por voz para a rotina de dev. Tira dúvidas, pesquisa na web, lê e-mail e agenda, controla tarefas e gerencia várias sessões do Claude Code em paralelo — cada uma com nome próprio, presa a um projeto e a um worktree.
+**A voice assistant for the developer's day.** It talks back, searches the web, reads your mail and calendar, and runs several Claude Code sessions in parallel, each with its own name, project and worktree.
+
+[![Release](https://img.shields.io/github/v/release/NavesDev/AlfredAgent?include_prereleases&label=release)](CHANGELOG.md)
+![Python](https://img.shields.io/badge/python-3.11+-3776AB?logo=python&logoColor=white)
+![React](https://img.shields.io/badge/react-19-61DAFB?logo=react&logoColor=black)
+![Tauri](https://img.shields.io/badge/tauri-2-24C8DB?logo=tauri&logoColor=white)
+
+<img src="docs/assets/home.jpg" alt="Alfred's main screen: 3D orb, session list and control bar" width="100%">
+
+</div>
+
+Alfred listens in Brazilian Portuguese:
 
 ```text
 "Alfred, backend: cria o endpoint de cancelamento"
@@ -8,74 +21,101 @@ Assistente pessoal por voz para a rotina de dev. Tira dúvidas, pesquisa na web,
 "Alfred, manda o backend fazer a tarefa de reembolso"
 ```
 
-O Alfred escuta continuamente com wake word, transcreve localmente (Whisper), decide para onde mandar o comando, conversa com o Claude na nuvem e responde falando (Kokoro) só a linha de resumo.
+## Features
 
-> **Status:** fase 1 (voz de ponta a ponta). Wake word: **"Alfred"** (modelo próprio, ainda em validação com voz real). Veja o [roadmap](docs/REQUIREMENTS.md#roadmap-do-mvp).
+- 🎙️ **Hands-free:** custom "Alfred" wake word, local transcription (Whisper) and spoken replies (Kokoro) that say only the summary.
+- 🧠 **One entry point:** the same Alfred answers questions, searches the web and reads mail, calendar, files and GitHub issues.
+- 🧑‍💻 **Claude Code sessions by voice:** named sessions in parallel, each tied to a project and a workspace (git worktree); delegate with "tell the backend to…".
+- 🌿 **Projects and worktrees:** workspaces mirror your worktrees; one sentence opens a branch, a worktree and a session.
+- 🔒 **Safe by default:** the main agent has no shell or edit tools; voice stays 100% local, reasoning runs in the cloud.
+- 🪟 **Panel and desktop app:** glass panel with a 3D orb that reacts to the voice, plan usage as rings, and a Tauri app with a tray and a floating voice pill.
 
-## Objetivos
+## Screens
 
-- **Hands-free:** escuta contínua com wake word, sem teclado.
-- **Um ponto de entrada só:** o mesmo "Alfred" serve pro dia a dia e pra código.
-- **Voz 100% local:** Whisper + Kokoro; raciocínio e integrações rodam na nuvem.
-- **Organizado por voz:** projetos, worktrees, sessões nomeadas e tarefas.
-- **Leve:** alvo de ≤ 3 GB de RAM no total, rodando junto dos ambientes de dev.
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/session.jpg" alt="Session card with portrait, model and effort"><br><sub><b>Session:</b> portrait, workspace, model and effort</sub></td>
+    <td width="50%"><img src="docs/assets/projects.jpg" alt="Projects with their workspaces and sessions"><br><sub><b>Projects:</b> workspaces and sessions of each one</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/assets/settings.jpg" alt="Settings with plan usage and limits"><br><sub><b>Settings:</b> plan usage and limits, models, open sessions and MCPs</sub></td>
+  </tr>
+</table>
 
-## Documentação
+## How it works
 
-| Documento | Conteúdo |
-|---|---|
-| [docs/SPEC.md](docs/SPEC.md) | Spec original do produto (fonte da verdade) |
-| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | Requisitos funcionais, não funcionais, regras de negócio e roadmap |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Componentes, fluxo de um comando, modelo de dados, event bus, permissões |
-| [docs/STACK.md](docs/STACK.md) | Tecnologias escolhidas, versões e motivo de cada uma |
-| [docs/adr/](docs/adr/) | Registro de decisões de arquitetura (ADRs) |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Como rodar, convenções de código, commits e PRs |
-
-## Estrutura do repositório
-
-```text
-alfred/
-├── server/        # Python 3.11+: voz + agentes + API (FastAPI)
-├── apps/
-│   ├── web/       # React + TypeScript + Vite (painel)
-│   └── desktop/   # Tauri (futuro)
-├── docs/          # spec, requisitos, arquitetura, stack, ADRs
-└── Makefile       # make dev = server + vite juntos
+```mermaid
+flowchart LR
+  mic["🎙️ Microphone"] --> wake["Wake word<br/>Alfred"] --> stt["Whisper<br/>(local)"] --> router{Router}
+  router -->|question| alfred["Alfred agent<br/>(Claude, read-only)"]
+  router -->|"&lt;session&gt;: task"| sessions["Claude Code sessions<br/>(worktrees)"]
+  alfred --> tts["Kokoro<br/>(local)"] --> speaker["🔊 Spoken summary"]
+  sessions --> tts
+  router -. /ws events .-> panel["Web panel / desktop app"]
 ```
 
-Detalhes em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#estrutura-de-pastas).
+## Requirements
 
-## Requisitos de máquina
-
-- Linux ou macOS com microfone e alto-falante
-- Python 3.11+ e [uv](https://docs.astral.sh/uv/)
-- Node.js 20+ e pnpm
+- Linux or macOS with a microphone and speakers
+- Python 3.11+ and [uv](https://docs.astral.sh/uv/)
+- Node.js 20+ and pnpm
 - Git 2.40+ (worktrees)
-- Sistema: `libportaudio2`, `espeak-ng`
-- Opcional: GPU NVIDIA com driver CUDA 12+ (Whisper em ~0,3 s em vez de ~6 s; cai para a CPU se a GPU estiver ocupada)
-- [Claude Code](https://claude.com/claude-code) instalado e logado (`claude`)
-- Para e-mail/agenda: credenciais Google
+- System packages: `libportaudio2`, `espeak-ng`
+- Optional: NVIDIA GPU with CUDA 12+ drivers (Whisper in ~0.3 s instead of ~6 s; falls back to the CPU when the GPU is busy)
+- [Claude Code](https://claude.com/claude-code) installed and logged in (`claude`)
+- For mail and calendar: Google credentials
 
-## Começando
+## Getting started
 
 ```bash
 sudo apt install libportaudio2
 git clone <repo> alfred && cd alfred
-make setup        # instala dependências (uv sync + pnpm install)
+make setup        # installs dependencies (uv sync + pnpm install)
 cp server/config.example.yaml server/config.yaml
-make dev          # sobe voz + agente + API + painel (Vite)
+make dev          # starts voice + agent + API + panel (Vite)
 ```
 
-A primeira execução baixa os modelos (Whisper ~1,6 GB, Kokoro ~330 MB). Diga **"Alfred"**, espere um instante e faça a pergunta. Se não acordar bem, `wakeword.model: hey_jarvis` no `config.yaml` volta ao modelo pronto.
+The first run downloads the models (Whisper ~1.6 GB, Kokoro ~330 MB). Say **"Alfred"**, wait a moment and ask. If it does not wake up reliably, `wakeword.model: hey_jarvis` in `config.yaml` switches to the stock model.
 
-Painel em http://localhost:5173: um orbe 3D que reage ao estado (ouvindo, transcrevendo, pensando, falando) e ao volume do microfone/voz. O botão **Transcrição** (ou tecla `T`) abre o histórico com o que foi ouvido, as tools usadas, o que foi falado, a resposta completa e os tempos (STT, 1ª fala, resposta); **Copiar** exporta em Markdown para avaliar. **Demo** simula uma conversa sem o servidor.
+The panel runs at http://localhost:5173. **Transcript** (or the `T` key) opens the history: what was heard, the tools used, what was spoken, the full reply and the timings; **Copy** exports it as Markdown.
 
-Eventos crus em tempo real (estado da voz, nível de áudio, progresso do agente):
+**Desktop app** (Linux/X11, [ADR 0012](docs/adr/0012-desktop-shell-tauri.md)): needs Rust and the Tauri libraries (`libwebkit2gtk-4.1-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`). With `make dev` running, `make dev-desktop` opens the window; `make build-desktop` builds the binary that `make install-launcher` opens instead of the browser. Closing the window keeps Alfred in the tray; while minimized or in the tray, a pill with the orb and bars shows at the bottom center of the screen when Alfred listens, thinks or speaks.
+
+Raw real-time events (voice state, audio level, agent progress):
 
 ```bash
 websocat ws://localhost:8000/ws
 ```
 
-## Licença
+## Documentation
 
-A definir.
+| Document | Contents |
+|---|---|
+| [docs/SPEC.md](docs/SPEC.md) | Product spec (source of truth) |
+| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | Requirements, business rules and roadmap |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, command flow, data, events, permissions |
+| [docs/STACK.md](docs/STACK.md) | Technologies and why each one |
+| [docs/DESIGN.md](docs/DESIGN.md) | Visual direction of the panel and the desktop app |
+| [docs/adr/](docs/adr/) | Architecture decision records |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Conventions, commits, PRs and releases |
+| [CHANGELOG.md](CHANGELOG.md) | What changed in each version |
+
+## Repository layout
+
+```text
+alfred/
+├── server/        # Python 3.11+: voice + agents + API (FastAPI)
+├── apps/
+│   ├── web/       # React + TypeScript + Vite (panel)
+│   └── desktop/   # Tauri v2: panel window, voice pill, tray
+├── docs/          # spec, requirements, architecture, stack, ADRs
+└── Makefile       # make dev = server + Vite together
+```
+
+## Releases
+
+[SemVer](https://semver.org/) with `vX.Y.Z` tags, cut by [release-please](https://github.com/googleapis/release-please) from Conventional Commits. Notes in [CHANGELOG.md](CHANGELOG.md) and on the [releases page](https://github.com/NavesDev/AlfredAgent/releases).
+
+## License
+
+To be defined.

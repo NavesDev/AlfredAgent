@@ -14,6 +14,12 @@ export const KINDS = [
 ]
 export const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max']
 
+/** Effort as dropdown options, the CLI default first. */
+export const EFFORT_OPTIONS = [
+  { id: '', label: 'padrão' },
+  ...EFFORTS.map((e) => ({ id: e, label: e })),
+]
+
 export const field =
   'rounded-xl bg-well px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-3 focus:ring-2 focus:ring-apple-blue/60'
 

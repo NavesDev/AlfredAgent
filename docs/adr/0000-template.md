@@ -1,16 +1,16 @@
-# NNNN — Título da decisão
+# NNNN — Decision title
 
-- **Status:** Proposto | Aceito | Substituído por NNNN
-- **Data:** AAAA-MM-DD
+- **Status:** Proposed | Accepted | Superseded by NNNN
+- **Date:** YYYY-MM-DD
 
-## Contexto
+## Context
 
-Qual problema ou força motivou a decisão.
+What problem or force drove the decision.
 
-## Decisão
+## Decision
 
-O que foi decidido.
+What was decided.
 
-## Consequências
+## Consequences
 
-O que fica mais fácil, o que fica mais difícil, o que precisa ser feito.
+What gets easier, what gets harder, what needs to be done.

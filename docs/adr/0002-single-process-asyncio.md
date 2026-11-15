@@ -1,19 +1,19 @@
-# 0002 — Server em um processo asyncio com event bus em memória
+# 0002 — Server in one asyncio process with an in-memory event bus
 
-- **Status:** Aceito
-- **Data:** 2026-10-01
+- **Status:** Accepted
+- **Date:** 2026-10-01
 
-## Contexto
+## Context
 
-Voz, agentes, API e WebSocket precisam compartilhar estado (sessões, foco, fila de fala, confirmações pendentes). É um sistema de um usuário, uma máquina.
+Voice, agents, API and WebSocket need to share state (sessions, focus, speech queue, pending confirmations). It is a one-user, one-machine system.
 
-## Decisão
+## Decision
 
-Um processo Python com asyncio roda o loop dos agentes e o FastAPI. Áudio, STT e TTS rodam em threads próprias. Eventos circulam por um pub/sub em memória (`events.py`) consumido pelo `talker` e pelo `ws.py`.
+One Python process with asyncio runs the agents' loop and FastAPI. Audio, STT and TTS run in their own threads. Events flow through an in-memory pub/sub (`events.py`) consumed by `talker` and `ws.py`.
 
-## Consequências
+## Consequences
 
-- Sem IPC, broker nem serialização entre serviços.
-- Voz e painel ficam em paridade naturalmente.
-- Crash do processo derruba tudo; persistência em SQLite e resume do Agent SDK cobrem o reinício.
-- Escalar para múltiplos usuários exigiria rever esta decisão (fora do escopo do MVP).
+- No IPC, broker or serialization between services.
+- Voice and panel stay in parity naturally.
+- A process crash takes everything down; SQLite persistence and the Agent SDK's resume cover the restart.
+- Scaling to multiple users would require revisiting this decision (out of the MVP's scope).

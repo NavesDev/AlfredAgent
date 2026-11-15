@@ -36,7 +36,7 @@ type Base = { ts: number }
 export type AlfredEvent = Base &
   (
     | { type: 'voice_state'; state: VoiceState }
-    | { type: 'audio_level'; source: 'mic' | 'tts'; level: number }
+    | { type: 'audio_level'; source: 'mic' | 'tts'; level: number; bands?: number[] }
     | { type: 'transcript'; text: string; source: 'voice' | 'web' }
     | { type: 'alfred_reply'; session: string; text: string; summary: string }
     | { type: 'alfred_cleared' }
@@ -87,10 +87,3 @@ export type AlfredEvent = Base &
   )
 
 export type EventOf<T extends AlfredEvent['type']> = Extract<AlfredEvent, { type: T }>
-
-/** An event before the server stamps it, e.g. for the demo script. */
-export type UnstampedEvent = AlfredEvent extends infer E
-  ? E extends AlfredEvent
-    ? Omit<E, 'ts'>
-    : never
-  : never

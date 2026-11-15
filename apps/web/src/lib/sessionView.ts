@@ -1,6 +1,6 @@
 import type { SessionView } from '../api/events'
 
-/** A complete SessionView with neutral defaults, for the demo and tests. */
+/** A complete SessionView with neutral defaults, for tests. */
 export const sessionView = (name: string, over: Partial<SessionView> = {}): SessionView => ({
   name,
   aliases: [],
