@@ -28,15 +28,14 @@ def test_empty_reply_gives_empty_summary() -> None:
 
 # --- presentation lines (ADR 0014) ---------------------------------------------------------
 
+
 def test_apresentar_with_a_file_shows_it() -> None:
     text = "RESUMO: Gerei o retrato.\nAPRESENTAR: /home/u/retrato.png"
     assert parse_presentation(text) == Presentation(True, ["/home/u/retrato.png"], False)
 
 
 def test_guardar_records_without_showing() -> None:
-    assert parse_presentation("RESUMO: Feito.\nGUARDAR: relatório") == Presentation(
-        False, [], True
-    )
+    assert parse_presentation("RESUMO: Feito.\nGUARDAR: relatório") == Presentation(False, [], True)
 
 
 def test_items_split_by_semicolon_and_cleaned() -> None:

@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 
 from controllers.projects import Projects
+from controllers.results import Results
 from controllers.settings import SettingsUpdate
 from errors import AgentError, GitHubError, SessionNotFound
 from events import EventBus
@@ -14,6 +15,7 @@ from infra.claude.alfred import AlfredAgent
 from infra.claude.tools import SERVER, session_tools
 from infra.github import Issue
 from tests.test_projects import FakeGit
+from tests.conftest import drain
 from tests.test_sessions import Env, settle
 
 
@@ -37,8 +39,12 @@ class Tools:
             self.gh_calls.append(("issues", repo, (search, state)))
             return [Issue(12, "Login quebra", labels=["bug"]), Issue(13, "Doc", labels=[])]
 
+        self.results = Results(env.db, env.sessions._bus, home)
         self.list = session_tools(
-            env.sessions, self.projects, github=SimpleNamespace(issue=issue, issues=issues)
+            env.sessions,
+            self.projects,
+            github=SimpleNamespace(issue=issue, issues=issues),
+            results=self.results,
         )
 
     async def call(self, name: str, args: dict[str, Any]) -> str:
@@ -74,6 +80,8 @@ def test_every_tool_is_allowed_without_asking(tools: Tools) -> None:
         "definir_ambiente_padrao",
         "ver_issue",
         "listar_issues",
+        "apresentar",
+        "fechar_apresentacao",
     }
     assert {f"mcp__{SERVER}__{n}" for n in names} <= set(permissions.ALLOWED)
     assert not {"Bash", "Edit", "Write"} & set(permissions.ALLOWED)
@@ -433,3 +441,61 @@ async def test_a_too_long_description_creates_no_session(tools: Tools) -> None:
     text = await tools.call("criar_sessao", {"tipo": "geral", "nome": "x", "descricao": "y" * 201})
 
     assert "200" in text and "x" not in {v.name for v in tools.env.sessions.list()}
+
+
+# --- results (ADR 0014) ----------------------------------------------------------------------
+
+
+async def test_apresentar_shows_a_file_alfred_found(tools: Tools) -> None:
+    queue = tools.env.sessions._bus.subscribe()
+    (tools.home / "x.pdf").write_bytes(b"%PDF")
+
+    text = await tools.call(
+        "apresentar", {"caminho": str(tools.home / "x.pdf"), "modo": "ampliado"}
+    )
+    await settle()
+
+    assert text == "Mostrei na tela."
+    [shown] = [e for e in drain(queue) if e["type"] == "result_presented"]
+    assert (shown["mode"], shown["result"]["source"]) == ("ampliado", "alfred")
+
+
+async def test_apresentar_refuses_secrets_and_missing_results(tools: Tools) -> None:
+    (tools.home / ".env").write_text("TOKEN=1")
+
+    assert await tools.call("apresentar", {"caminho": str(tools.home / ".env")}) == (
+        "Não tenho acesso a esse arquivo."
+    )
+    assert await tools.call("apresentar", {"sessao": "sistema"}) == (
+        "A sessão sistema ainda não tem resultado."
+    )
+    assert await tools.call("apresentar", {"sessao": "nada"}) == "Não existe sessão chamada nada."
+    assert "qual sessão" in await tools.call("apresentar", {})
+
+
+async def test_apresentar_the_last_result_of_a_session(tools: Tools) -> None:
+    await tools.results.record("sistema", "RESUMO: ok\nGUARDAR: relatório", None, None)
+    queue = tools.env.sessions._bus.subscribe()
+
+    assert await tools.call("apresentar", {"sessao": "Sistema"}) == "Mostrei na tela."
+    await settle()
+
+    [shown] = [e for e in drain(queue) if e["type"] == "result_presented"]
+    assert shown["mode"] == "card"
+
+
+async def test_fechar_apresentacao(tools: Tools) -> None:
+    queue = tools.env.sessions._bus.subscribe()
+
+    assert await tools.call("fechar_apresentacao", {}) == "Fechei."
+    await settle()
+
+    assert [e["type"] for e in drain(queue)] == ["presentation_closed"]
+
+
+async def test_without_results_the_tools_refuse(tools: Tools) -> None:
+    bare = session_tools(tools.env.sessions, tools.projects)
+    for name in ("apresentar", "fechar_apresentacao"):
+        tool = next(t for t in bare if t.name == name)
+        response = await tool.handler({"sessao": "sistema"})
+        assert response["content"][0]["text"] == "Não consigo mostrar resultados agora."

@@ -81,6 +81,8 @@ ALLOWED = [
             "definir_ambiente_padrao",
             "ver_issue",
             "listar_issues",
+            "apresentar",
+            "fechar_apresentacao",
         )
     ),
 ]
@@ -144,9 +146,7 @@ def readable(path: Path, home: Path) -> bool:
     given = Path(os.path.normpath(path))
     real = path.resolve()
     return not any(
-        p.is_relative_to(base) and _secret(p, base)
-        for p in (given, real)
-        for base in (home, root)
+        p.is_relative_to(base) and _secret(p, base) for p in (given, real) for base in (home, root)
     )
 
 
