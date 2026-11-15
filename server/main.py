@@ -25,6 +25,7 @@ from infra.audio.listener import Listener, OpenWakeWord, load_vad, load_whisper
 from infra.audio.talker import Talker, load_kokoro, open_speaker
 from infra.claude.agents import AgentKind, SessionContext
 from infra.claude.alfred import AlfredAgent, check_cli
+from infra.claude.mcp import mcp_server_names
 from infra.claude.portrait import paint, user_mcp_servers
 from infra.claude.session import CodingSession
 from infra.claude.state import DailyState
@@ -51,7 +52,12 @@ async def serve(config: Config) -> None:
 
     db = open_db(config.storage.db_path)
     settings_model.seed(db, config.seed_defaults())
-    settings = Settings(db, bus, image_servers=lambda: list(user_mcp_servers()))
+    settings = Settings(
+        db,
+        bus,
+        image_servers=lambda: list(user_mcp_servers()),
+        mcp_servers=lambda: mcp_server_names(Path.home()),
+    )
 
     def new_session(kind: AgentKind, context: Callable[[], SessionContext]) -> CodingSession:
         return CodingSession(bus, kind, context)

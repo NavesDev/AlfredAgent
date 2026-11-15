@@ -109,3 +109,43 @@ async def test_image_mcp_servers_lists_the_user_servers(bus: EventBus) -> None:
     s = Settings(db, bus, image_servers=lambda: ["shoogle", "imagens-local"])
 
     assert s.get().image_mcp_servers == ["imagens-local", "shoogle"]
+
+
+async def test_known_mcp_servers_include_the_user_servers_before_any_session(bus: EventBus) -> None:
+    db = open_db(":memory:")
+    model.seed(db, DEFAULTS)
+    s = Settings(db, bus, image_servers=lambda: ["shoogle", "imagens-local"])
+
+    assert s.get().known_mcp_servers == ["imagens-local", "shoogle"]
+
+
+async def test_lists_the_mcp_servers_the_cli_reports_at_start(bus: EventBus) -> None:
+    async def servers() -> list[str]:
+        return ["plugin:expo:expo", "claude.ai Gmail"]
+
+    db = open_db(":memory:")
+    model.seed(db, DEFAULTS)
+    s = Settings(db, bus, mcp_servers=servers)
+    worker = asyncio.create_task(s.run())
+    for _ in range(5):
+        await asyncio.sleep(0)
+    worker.cancel()
+
+    assert s.get().known_mcp_servers == ["claude.ai Gmail", "plugin:expo:expo"]
+
+
+async def test_a_failing_mcp_listing_still_takes_session_reports(bus: EventBus) -> None:
+    async def servers() -> list[str]:
+        raise RuntimeError("no cli")
+
+    db = open_db(":memory:")
+    model.seed(db, DEFAULTS)
+    s = Settings(db, bus, mcp_servers=servers)
+    worker = asyncio.create_task(s.run())
+    await asyncio.sleep(0)
+    bus.publish("mcp_servers_seen", session="back", names=["gmail"])
+    for _ in range(5):
+        await asyncio.sleep(0)
+    worker.cancel()
+
+    assert s.get().known_mcp_servers == ["gmail"]
