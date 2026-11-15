@@ -1,86 +1,86 @@
-# Projetos, workspaces e agente de implementação (design)
+# Projects, workspaces and the implementation agent (design)
 
-- **Data:** 2026-10-11
-- **Status:** Implementado
+- **Date:** 2026-10-11
+- **Status:** Implemented
 - **Branch:** `feat/projects-implementation`
-- **Requisitos cobertos:** RF-30 (criar pela tela), RF-34, RF-35, RF-36, RF-37, RF-61 (parcial: `/projects`, `/projects/:id`), RNF-07; RN-01, RN-04, RN-11
-- **Mockup das animações:** [assets/2026-10-11-butler-mockup.html](assets/2026-10-11-butler-mockup.html) (abrir no navegador; as opções escolhidas estão listadas em [Animação do mordomo](#animação-do-mordomo))
+- **Requirements covered:** RF-30 (create from the screen), RF-34, RF-35, RF-36, RF-37, RF-61 (partial: `/projects`, `/projects/:id`), RNF-07; RN-01, RN-04, RN-11
+- **Animation mockup:** [assets/2026-10-11-butler-mockup.html](assets/2026-10-11-butler-mockup.html) (open in the browser; the chosen options are listed under [Butler animation](#butler-animation))
 
-## Objetivo
+## Goal
 
-1. **Projetos e workspaces.** Projeto é só um agrupador com nome e apelidos. Workspace é uma pasta qualquer, com git opcional. Um projeto pode ter um workspace pro back e outro pro front. Worktrees são workspaces criados a partir de um workspace git.
-2. **Sessões presas a projeto e local.** Toda sessão pode pertencer a um workspace (e portanto a um projeto). O CRUD de sessões é o mesmo de hoje e ganha `workspace`.
-3. **Agente de implementação.** Novo tipo `implementacao` com o harness completo do Claude Code: CLAUDE.md, skills, plugins, hooks, MCPs, todas as tools.
-4. **Modelos configuráveis.** Modelo e effort por tipo de agente (`alfred`, `geral`, `implementacao`), editáveis em runtime na tela de configurações, com override por sessão.
-5. **Subagentes visíveis.** Subagentes nativos do Claude Code aparecem como satélites efêmeros do nó da sessão.
-6. **Persistência.** SQLite para tudo; sessões retomam a conversa depois de reiniciar (resume).
-7. **UI.** Constelação agrupada por projeto, o mordomo animado no tipo implementação, telas `/projects`, `/projects/:id` e `/settings`.
+1. **Projects and workspaces.** A project only groups things, with a name and aliases. A workspace is any folder, with optional git. A project can have one workspace for the back end and another for the front end. Worktrees are workspaces created from a git workspace.
+2. **Sessions tied to a project and a place.** Every session may belong to a workspace (and so to a project). Session CRUD stays the same as today and gains `workspace`.
+3. **Implementation agent.** New `implementacao` kind with the full Claude Code harness: CLAUDE.md, skills, plugins, hooks, MCPs, every tool.
+4. **Configurable models.** Model and effort per agent kind (`alfred`, `geral`, `implementacao`), editable at runtime on the settings screen, with a per-session override.
+5. **Visible subagents.** Claude Code's native subagents show as ephemeral satellites of the session node.
+6. **Persistence.** SQLite for everything; sessions resume the conversation after a restart (resume).
+7. **UI.** Constellation grouped by project, the animated butler on the implementation kind, `/projects`, `/projects/:id` and `/settings` screens.
 
-## Decisões
+## Decisions
 
-| Tema | Decisão |
+| Topic | Decision |
 |---|---|
-| Fatiamento | Uma spec e um branch só cobrindo tudo |
-| Projeto | Agrupador: `name` + `aliases`. Sem `repo_path` nem `base_branch` (muda a SPEC) |
-| Workspace | Pasta qualquer, `kind` `folder` ou `worktree`. Sem validação de git ao cadastrar |
-| Worktree | `git worktree add <pai>-wt/<nome> -b <nome>` a partir do HEAD do workspace pai |
-| Apagar workspace | `folder`: só sai do cadastro, a pasta fica. `worktree`: `git worktree remove`; recusa se houver mudança não commitada, a menos que force |
-| Sessões por workspace | Várias, livre. Mesmo CRUD de hoje |
-| Sessão `geral` | Workspace opcional (vira o `cwd`); sem workspace, `cwd` é a home |
-| Sessão `implementacao` | Workspace obrigatório |
-| Persistência | `sqlite3` da stdlib em `models/db.py`. Resume via `claude_session_id` |
-| Modelos | Padrão por tipo na tabela `agent_settings`, editável em `/settings`; override por sessão. O `config.yaml` só semeia na primeira vez |
-| Effort | Mesmo esquema do modelo; vazio = padrão do Claude Code |
-| Harness da implementação | `setting_sources=["user","project","local"]`, preset `claude_code` no prompt, todas as tools, `skills="all"`, `permission_mode="auto"` |
-| MCPs da implementação | Todos carregados por padrão; a tela de configurações tem uma lista de servidores desligados. O prompt manda usar MCP externo só quando a tarefa pedir |
-| Subagentes | Efêmeros, só visuais, sem CRUD nem voz |
-| Limite | `max_active_sessions` conta processos `claude` vivos, não o cadastro. Editável em `/settings` |
-| Ociosidade | Sessão ociosa por `idle_minutes` (padrão 10) desconecta sozinha e retoma por resume na próxima tarefa |
-| Identidade na tela | Aglomerados: losango do projeto entre o Alfred e as sessões dele |
-| Criação pela tela | Rotas `/projects`, `/projects/:id`, `/settings` + menu "nova sessão aqui" ao clicar no losango |
-| Segurança | O Alfred continua sem Bash/Edit/Write (ADR 0003). O risco do harness completo vai para a ADR 0008 |
+| Slicing | One spec and one branch covering everything |
+| Project | Grouping: `name` + `aliases`. No `repo_path` or `base_branch` (changes the SPEC) |
+| Workspace | Any folder, `kind` `folder` or `worktree`. No git validation on registration |
+| Worktree | `git worktree add <parent>-wt/<name> -b <name>` from the parent workspace's HEAD |
+| Delete a workspace | `folder`: only unregistered, the folder stays. `worktree`: `git worktree remove`; refuses with uncommitted changes unless forced |
+| Sessions per workspace | Several, freely. Same CRUD as today |
+| `geral` session | Optional workspace (becomes the `cwd`); without one, `cwd` is the home |
+| `implementacao` session | Workspace required |
+| Persistence | The stdlib's `sqlite3` in `models/db.py`. Resume through `claude_session_id` |
+| Models | Default per kind in the `agent_settings` table, editable in `/settings`; per-session override. `config.yaml` only seeds the first time |
+| Effort | Same scheme as the model; empty = Claude Code's default |
+| Implementation harness | `setting_sources=["user","project","local"]`, `claude_code` preset prompt, every tool, `skills="all"`, `permission_mode="auto"` |
+| Implementation MCPs | All loaded by default; the settings screen has a list of disabled servers. The prompt says to use an external MCP only when the task asks for it |
+| Subagents | Ephemeral, visual only, no CRUD or voice |
+| Limit | `max_active_sessions` counts live `claude` processes, not registrations. Editable in `/settings` |
+| Idleness | A session idle for `idle_minutes` (default 10) disconnects on its own and resumes on the next task |
+| Identity on screen | Clusters: the project's diamond between Alfred and its sessions |
+| Creating from the screen | `/projects`, `/projects/:id`, `/settings` routes + a "new session here" menu when clicking the diamond |
+| Security | Alfred still has no Bash/Edit/Write (ADR 0003). The full harness's risk goes to ADR 0008 |
 
-## Dados (`server/models/`)
+## Data (`server/models/`)
 
-### Tabelas
+### Tables
 
-| Tabela | Campos |
+| Table | Fields |
 |---|---|
-| `project` | `id`, `name` (único, sem diferenciar maiúsculas), `aliases` (json), `created_at` |
-| `workspace` | `id`, `project_id`, `name` (único dentro do projeto), `path`, `kind` (`folder` \| `worktree`), `parent_id` (opcional, só worktree), `branch` (opcional), `created_at` |
-| `session` | `id`, `name` (único global, RN-01), `kind`, `workspace_id` (opcional), `model` (opcional), `effort` (opcional), `claude_session_id` (opcional), `protected`, `created_at` |
-| `agent_settings` | `kind` (PK: `alfred`, `geral`, `implementacao`), `model`, `effort` (opcional) |
+| `project` | `id`, `name` (unique, case-insensitive), `aliases` (json), `created_at` |
+| `workspace` | `id`, `project_id`, `name` (unique within the project), `path`, `kind` (`folder` \| `worktree`), `parent_id` (optional, worktree only), `branch` (optional), `created_at` |
+| `session` | `id`, `name` (globally unique, RN-01), `kind`, `workspace_id` (optional), `model` (optional), `effort` (optional), `claude_session_id` (optional), `protected`, `created_at` |
+| `agent_settings` | `kind` (PK: `alfred`, `geral`, `implementacao`), `model`, `effort` (optional) |
 | `app_settings` | `key` (PK), `value` (json): `max_active_sessions`, `idle_minutes`, `mcp_disabled` |
 
-### Arquivos
+### Files
 
-- `models/db.py`: abre a conexão (`storage.db_path`), cria as tabelas com `CREATE TABLE IF NOT EXISTS` e controla migrações por `PRAGMA user_version`. `foreign_keys=ON`. As operações são curtas e locais e rodam direto no loop.
-- `models/project.py`: `Project`, `Workspace` (pydantic) e funções `create/get/list/update/delete` por entidade.
-- `models/session.py`: `SessionRecord` (linha da tabela) e `SessionView` (o que a tela e o Alfred veem), com as funções de CRUD.
-- `models/settings.py`: `AgentSettings`, `AppSettings`, `load/save` e `seed(config)`.
+- `models/db.py`: opens the connection (`storage.db_path`), creates the tables with `CREATE TABLE IF NOT EXISTS` and tracks migrations through `PRAGMA user_version`. `foreign_keys=ON`. Operations are short and local and run straight on the loop.
+- `models/project.py`: `Project`, `Workspace` (pydantic) and `create/get/list/update/delete` functions per entity.
+- `models/session.py`: `SessionRecord` (the table row) and `SessionView` (what the screen and Alfred see), with the CRUD functions.
+- `models/settings.py`: `AgentSettings`, `AppSettings`, `load/save` and `seed(config)`.
 
-### Regras
+### Rules
 
-- Precedência de modelo e effort: sessão → `agent_settings` do tipo → `config.yaml` (`agents.default_model`).
-- Um workspace com sessão não pode ser apagado. Um projeto com workspace também não. Os dois devolvem erro em pt-BR.
-- `claude_session_id` é salvo ao fim de cada tarefa (`ResultMessage.session_id`). Limpar zera o campo; apagar remove a linha.
-- No boot, `sistema` é semeada se não existir (tipo `geral`, protegida, sem workspace). Todas as sessões carregam desconectadas.
-- `seed(config)` grava `agent_settings` e `app_settings` só quando as tabelas estão vazias.
+- Model and effort precedence: session → the kind's `agent_settings` → `config.yaml` (`agents.default_model`).
+- A workspace with a session cannot be deleted. Neither can a project with a workspace. Both return an error in pt-BR.
+- `claude_session_id` is saved at the end of each task (`ResultMessage.session_id`). Clearing resets the field; deleting removes the row.
+- At boot, `sistema` is seeded if missing (kind `geral`, protected, no workspace). Every session loads disconnected.
+- `seed(config)` writes `agent_settings` and `app_settings` only when the tables are empty.
 
 ## Server
 
-### `infra/git.py` (novo)
+### `infra/git.py` (new)
 
-Funções async com `asyncio.create_subprocess_exec("git", ...)`, sem bloquear o loop:
+Async functions with `asyncio.create_subprocess_exec("git", ...)`, without blocking the loop:
 
-- `add_worktree(parent: Path, name: str) -> tuple[Path, str]`: path `<parent>-wt/<name>`. Se a branch `name` já existe, usa `git worktree add <path> <name>`; senão `-b <name>`. Devolve path e branch.
+- `add_worktree(parent: Path, name: str) -> tuple[Path, str]`: path `<parent>-wt/<name>`. If the `name` branch already exists, uses `git worktree add <path> <name>`; otherwise `-b <name>`. Returns path and branch.
 - `remove_worktree(path: Path, force: bool)`: `git worktree remove [--force] <path>`.
 - `is_dirty(path: Path) -> bool`: `git status --porcelain`.
-- Falha do git vira `GitError(AlfredError)` com a mensagem do stderr cortada.
+- A git failure becomes `GitError(AlfredError)` with the stderr message truncated.
 
 ### `infra/claude/agents.py`
 
-`AgentKind` ganha o que cada tipo precisa para montar as opções do SDK:
+`AgentKind` gets what each kind needs to build the SDK options:
 
 ```python
 class AgentKind(ABC):
@@ -97,8 +97,8 @@ class AgentKind(ABC):
 
 `SessionContext` (dataclass): `name`, `cwd`, `model`, `effort`, `resume`, `mcp_disabled`.
 
-- **`GeneralAgent`** mantém o comportamento atual: tools fixas, `strict_mcp_config=True`, `setting_sources=[]`, prompt próprio, `permission_mode="auto"`.
-- **`ImplementationAgent`** (novo, `kind="implementacao"`, `label="Implementação"`, `needs_workspace=True`):
+- **`GeneralAgent`** keeps today's behavior: fixed tools, `strict_mcp_config=True`, `setting_sources=[]`, its own prompt, `permission_mode="auto"`.
+- **`ImplementationAgent`** (new, `kind="implementacao"`, `label="Implementação"`, `needs_workspace=True`):
 
 ```python
 sdk.ClaudeAgentOptions(
@@ -114,121 +114,121 @@ sdk.ClaudeAgentOptions(
 )
 ```
 
-`IMPLEMENTATION_APPEND`: nome da sessão, projeto e workspace; `SUMMARY_RULE`; "use MCPs externos (e-mail, agenda, navegador) só quando a tarefa pedir explicitamente".
+`IMPLEMENTATION_APPEND`: session name, project and workspace; `SUMMARY_RULE`; "use external MCPs (mail, calendar, browser) only when the task explicitly asks for it".
 
-Tool do Alfred: `delegar_implementacao(sessao, tarefa)`, ambos obrigatórios.
+Alfred's tool: `delegar_implementacao(sessao, tarefa)`, both required.
 
 ### `infra/claude/session.py`
 
-- `CodingSession` recebe um `SessionContext` e o `AgentKind`; `options()` delega ao kind.
-- `run()` passa a tratar, além de `AssistantMessage` e `ResultMessage`:
+- `CodingSession` takes a `SessionContext` and the `AgentKind`; `options()` delegates to the kind.
+- Besides `AssistantMessage` and `ResultMessage`, `run()` now handles:
   - `TaskStartedMessage` → `subagent_started` (`session`, `id=task_id`, `type=task_type`, `description`).
   - `TaskProgressMessage` → `subagent_progress` (`session`, `id`, `last_tool`).
   - `TaskNotificationMessage` → `subagent_finished` (`session`, `id`, `status`).
-  - `SystemMessage` `init` → guarda os nomes em `data["mcp_servers"]` como `known_mcp_servers` (sugestões na tela).
-  - Mensagens com `parent_tool_use_id` (de subagentes) não alimentam a fase nem o `agent_progress` da sessão.
-- `Reply` ganha `session_id` (de `ResultMessage.session_id`) para o controller persistir.
-- `connected` (propriedade): há cliente aberto.
+  - `SystemMessage` `init` → keeps the names in `data["mcp_servers"]` as `known_mcp_servers` (suggestions on screen).
+  - Messages with `parent_tool_use_id` (from subagents) do not feed the session's phase or `agent_progress`.
+- `Reply` gets `session_id` (from `ResultMessage.session_id`) for the controller to persist.
+- `connected` (property): there is an open client.
 
-### Fase da sessão
+### Session phase
 
-`infra/claude/activity.py` ganha `phase_of(tool_name) -> Phase | None`:
+`infra/claude/activity.py` gets `phase_of(tool_name) -> Phase | None`:
 
-| Fase | Tools |
+| Phase | Tools |
 |---|---|
 | `exploring` | `Read`, `Grep`, `Glob`, `LS`, `WebSearch`, `WebFetch`, `NotebookRead` |
 | `editing` | `Edit`, `Write`, `MultiEdit`, `NotebookEdit` |
 | `running` | `Bash`, `BashOutput` |
 
-Tools fora da tabela (MCP, `Skill`, `TodoWrite`) não mudam a fase. `agent_progress` passa a incluir `phase`. O controller guarda a última fase da tarefa; ela volta a `null` quando a tarefa acaba.
+Tools outside the table (MCP, `Skill`, `TodoWrite`) do not change the phase. `agent_progress` now includes `phase`. The controller keeps the task's last phase; it goes back to `null` when the task ends.
 
-### `controllers/projects.py` (novo)
+### `controllers/projects.py` (new)
 
 `Projects(db, bus, sessions)`:
 
-| Método | Comportamento |
+| Method | Behavior |
 |---|---|
-| `create(name, aliases)` | Nome livre e único. Publica `project_created` |
-| `update(id, name?, aliases?)` | Publica `project_updated` |
-| `delete(id)` | Recusa se tiver workspace. Publica `project_deleted` |
-| `add_workspace(project, name, path)` | `kind=folder`. A pasta precisa existir. Publica `project_updated` |
-| `add_worktree(project, parent, name)` | `git.add_worktree` a partir do path do pai; cadastra `kind=worktree`, `parent_id`, `branch`. Publica `project_updated` |
-| `delete_workspace(id, force=False)` | Recusa se tiver sessão. Worktree: `is_dirty` e sem `force` → erro "o worktree tem mudanças não commitadas"; senão `remove_worktree`. Publica `project_updated` |
-| `find(name)` | Resolve projeto por nome ou apelido (sem diferenciar maiúsculas; fuzzy fica pra F3) |
+| `create(name, aliases)` | Free, unique name. Publishes `project_created` |
+| `update(id, name?, aliases?)` | Publishes `project_updated` |
+| `delete(id)` | Refuses if it has a workspace. Publishes `project_deleted` |
+| `add_workspace(project, name, path)` | `kind=folder`. The folder must exist. Publishes `project_updated` |
+| `add_worktree(project, parent, name)` | `git.add_worktree` from the parent's path; registers `kind=worktree`, `parent_id`, `branch`. Publishes `project_updated` |
+| `delete_workspace(id, force=False)` | Refuses if it has a session. Worktree: `is_dirty` and no `force` → "o worktree tem mudanças não commitadas" error; otherwise `remove_worktree`. Publishes `project_updated` |
+| `find(name)` | Resolves a project by name or alias (case-insensitive; fuzzy waits for F3) |
 
-Erros: `ProjectError(AlfredError)` com `ProjectNotFound` e `ProjectInUse`, mensagens em pt-BR.
+Errors: `ProjectError(AlfredError)` with `ProjectNotFound` and `ProjectInUse`, messages in pt-BR.
 
-### `controllers/settings.py` (novo)
+### `controllers/settings.py` (new)
 
-`Settings(db, bus)`: `get() -> SettingsView`, `update(...)`. Publica `settings_updated`. Mudanças de modelo/effort valem na próxima conexão de cada sessão; o Alfred reabre o cliente na próxima pergunta se o modelo dele mudou. `max_active_sessions` e `idle_minutes` valem na hora.
+`Settings(db, bus)`: `get() -> SettingsView`, `update(...)`. Publishes `settings_updated`. Model/effort changes apply on each session's next connection; Alfred reopens its client on the next question if its model changed. `max_active_sessions` and `idle_minutes` apply at once.
 
 ### `controllers/sessions.py`
 
-Mudanças sobre o que existe:
+Changes over what exists:
 
-- **Persistência.** `create` grava a linha; `add` some (o boot carrega do banco). `clear` zera `claude_session_id`; `delete` apaga a linha.
-- **`create(kind, name, workspace_id=None, model=None, effort=None)`.** Valida `needs_workspace`. O `cwd` vem do workspace (ou home). Não conta no limite: criar não abre processo.
-- **`update(name, model?, effort?)`.** Override por sessão; vale na próxima conexão.
-- **Vagas.** Um pool com `max_active_sessions` vagas. Antes de rodar uma tarefa, o worker pede vaga:
-  1. a sessão já está conectada → segue;
-  2. há vaga livre → ocupa;
-  3. há sessão conectada e ociosa → desconecta a ociosa há mais tempo e ocupa;
-  4. senão espera numa fila FIFO global.
-- **Ociosidade.** Um vigia a cada 30 s desconecta sessões ociosas há mais de `idle_minutes` e libera a vaga.
-- **`delegate`** avisa a fila global: "Todas as vagas estão ocupadas; a tarefa da sessão X entrou na fila."
-- **Subagentes.** Assina `subagent_*` do bus e mantém `slot.subagents` (id, tipo, descrição, última tool, status). Os concluídos ficam até a próxima tarefa começar.
-- **Fase.** Assina `agent_progress` e guarda `slot.phase`.
+- **Persistence.** `create` writes the row; `add` goes away (boot loads from the database). `clear` resets `claude_session_id`; `delete` deletes the row.
+- **`create(kind, name, workspace_id=None, model=None, effort=None)`.** Validates `needs_workspace`. The `cwd` comes from the workspace (or home). It does not count toward the limit: creating opens no process.
+- **`update(name, model?, effort?)`.** Per-session override; applies on the next connection.
+- **Slots.** A pool with `max_active_sessions` slots. Before running a task, the worker asks for a slot:
+  1. the session is already connected → go on;
+  2. there is a free slot → take it;
+  3. there is a connected, idle session → disconnect the one idle the longest and take its slot;
+  4. otherwise wait in a global FIFO queue.
+- **Idleness.** A watcher every 30 s disconnects sessions idle for more than `idle_minutes` and frees the slot.
+- **`delegate`** reports the global queue: "Todas as vagas estão ocupadas; a tarefa da sessão X entrou na fila."
+- **Subagents.** Subscribes to the bus's `subagent_*` and keeps `slot.subagents` (id, type, description, last tool, status). Finished ones stay until the next task starts.
+- **Phase.** Subscribes to `agent_progress` and keeps `slot.phase`.
 
-`SessionView` passa a ter: `project` (nome, opcional), `workspace` (nome, opcional), `branch`, `effort`, `phase` (`exploring` \| `editing` \| `running` \| `null`), `connected`, `subagents: list[SubagentView]`, além dos campos atuais. `SubagentView`: `id`, `type`, `description`, `last_tool`, `status` (`running` \| `completed` \| `failed` \| `stopped`).
+`SessionView` now has: `project` (name, optional), `workspace` (name, optional), `branch`, `effort`, `phase` (`exploring` \| `editing` \| `running` \| `null`), `connected`, `subagents: list[SubagentView]`, besides the current fields. `SubagentView`: `id`, `type`, `description`, `last_tool`, `status` (`running` \| `completed` \| `failed` \| `stopped`).
 
-### Tools do Alfred (`infra/claude/tools.py`)
+### Alfred's tools (`infra/claude/tools.py`)
 
-Todas entram em `permissions.ALLOWED`. Nenhuma executa comando livre no computador. As únicas que mexem no disco são `criar_worktree` e `apagar_workspace`, via `infra/git.py`, sempre a partir de uma pasta já cadastrada.
+All of them go into `permissions.ALLOWED`. None runs a free command on the computer. The only ones that touch the disk are `criar_worktree` and `apagar_workspace`, through `infra/git.py`, always from an already registered folder.
 
-| Tool | Argumentos |
+| Tool | Arguments |
 |---|---|
 | `criar_projeto` | `nome`, `apelidos?` |
-| `listar_projetos` | — (projetos, workspaces e sessões numa frase) |
+| `listar_projetos` | — (projects, workspaces and sessions in one sentence) |
 | `criar_workspace` | `projeto`, `nome`, `pasta` |
 | `criar_worktree` | `projeto`, `workspace_pai`, `nome` |
-| `apagar_workspace` | `projeto`, `nome`, `forcar?` (confirmar antes; confirmar de novo antes de forçar) |
-| `criar_sessao` | `tipo`, `nome`, `projeto?`, `workspace?`, `modelo?`, `effort?` (troca `pasta` por projeto + workspace) |
+| `apagar_workspace` | `projeto`, `nome`, `forcar?` (confirm first; confirm again before forcing) |
+| `criar_sessao` | `tipo`, `nome`, `projeto?`, `workspace?`, `modelo?`, `effort?` (replaces `pasta` with project + workspace) |
 | `delegar_implementacao` | `sessao`, `tarefa` |
-| `delegar_geral`, `limpar_sessao`, `apagar_sessao`, `listar_sessoes` | Como hoje |
+| `delegar_geral`, `limpar_sessao`, `apagar_sessao`, `listar_sessoes` | As today |
 
-Prompt do Alfred: código e repositórios vão para `delegar_implementacao` numa sessão do projeto certo; sem sessão de implementação no projeto, perguntar se cria uma ("crio a sessão back no Recurve?"). "Nova sessão testes no Recurve, worktree cancelamento" = `criar_worktree` (se não existir) + `criar_sessao`.
+Alfred's prompt: code and repositories go to `delegar_implementacao` on a session of the right project; with no implementation session in the project, ask whether to create one ("crio a sessão back no Recurve?"). "Nova sessão testes no Recurve, worktree cancelamento" = `criar_worktree` (if missing) + `criar_sessao`.
 
-`activity.py`: rótulos para as tools novas; `delegar_implementacao` entra em `SILENT_ACTIVITIES`.
+`activity.py`: labels for the new tools; `delegar_implementacao` goes into `SILENT_ACTIVITIES`.
 
 ### API
 
-| Rota | Uso |
+| Route | Use |
 |---|---|
-| `GET /api/projects`, `POST /api/projects` | Lista (com workspaces) e cria |
-| `GET/PATCH/DELETE /api/projects/{id}` | Detalhe, renomear/apelidos, apagar (409 se em uso) |
+| `GET /api/projects`, `POST /api/projects` | List (with workspaces) and create |
+| `GET/PATCH/DELETE /api/projects/{id}` | Detail, rename/aliases, delete (409 if in use) |
 | `POST /api/projects/{id}/workspaces` | `{name, path}` |
 | `POST /api/projects/{id}/worktrees` | `{parent_id, name}` |
-| `DELETE /api/workspaces/{id}?force=` | 409 se tiver sessão ou mudanças não commitadas sem `force` |
-| `GET /api/sessions`, `POST /api/sessions` | Lista e cria (`{kind, name, workspace_id?, model?, effort?}`) |
+| `DELETE /api/workspaces/{id}?force=` | 409 if it has a session or uncommitted changes without `force` |
+| `GET /api/sessions`, `POST /api/sessions` | List and create (`{kind, name, workspace_id?, model?, effort?}`) |
 | `PATCH /api/sessions/{name}` | `{model?, effort?}` |
-| `POST /api/sessions/{name}/clear`, `DELETE /api/sessions/{name}` | Como hoje |
-| `GET /api/settings`, `PUT /api/settings` | Modelos e effort por tipo, `max_active_sessions`, `idle_minutes`, `mcp_disabled`, `known_mcp_servers` (só leitura) |
+| `POST /api/sessions/{name}/clear`, `DELETE /api/sessions/{name}` | As today |
+| `GET /api/settings`, `PUT /api/settings` | Model and effort per kind, `max_active_sessions`, `idle_minutes`, `mcp_disabled`, `known_mcp_servers` (read-only) |
 
-`Projects` e `Settings` vão em `app.state`, como `Sessions`. Erros tipados viram 404/409/422 nas rotas e frases nas tools.
+`Projects` and `Settings` go in `app.state`, like `Sessions`. Typed errors become 404/409/422 in the routes and sentences in the tools.
 
-### Eventos novos
+### New events
 
-| Evento | Payload |
+| Event | Payload |
 |---|---|
-| `project_created`, `project_updated` | `project: ProjectView` (com workspaces) |
+| `project_created`, `project_updated` | `project: ProjectView` (with workspaces) |
 | `project_deleted` | `id` |
 | `settings_updated` | `settings: SettingsView` |
 | `subagent_started` | `session`, `id`, `type`, `description` |
 | `subagent_progress` | `session`, `id`, `last_tool` |
 | `subagent_finished` | `session`, `id`, `status` |
-| `agent_progress` | ganha `phase` (opcional) |
+| `agent_progress` | gains `phase` (optional) |
 
-Os `session_*` continuam com o `SessionView` inteiro, agora com os campos novos.
+`session_*` events keep the whole `SessionView`, now with the new fields.
 
 ### Config
 
@@ -246,140 +246,140 @@ storage:
   db_path: data/alfred.sqlite3
 ```
 
-`Storage.db_path` e `Agents.models` entram no `config.py`, com padrões.
+`Storage.db_path` and `Agents.models` go into `config.py`, with defaults.
 
 ## Web (`apps/web`)
 
-### Rotas e features
+### Routes and features
 
-Entra `react-router` (já previsto na STACK). Rotas: `/` (dashboard), `/projects`, `/projects/:id`, `/settings`. Navegação discreta no topo.
+`react-router` comes in (already in the STACK). Routes: `/` (dashboard), `/projects`, `/projects/:id`, `/settings`. Discreet navigation at the top.
 
-| Feature | Conteúdo |
+| Feature | Contents |
 |---|---|
-| `projects/` | `ProjectsPage` (lista, criar projeto), `ProjectPage` (workspaces com path/branch, criar workspace e worktree, sessões do projeto, criar sessão), hooks `useProjects`, `useProject`, mutations |
-| `settings/` | `SettingsPage`: modelo + effort por tipo, limite de sessões, minutos ociosos, MCPs desligados (com sugestões de `known_mcp_servers`); hook `useSettings` |
-| `sessions/` | Constelação agrupada, nó do mordomo, satélites, menu do losango, painel de detalhes com modelo/effort editáveis |
+| `projects/` | `ProjectsPage` (list, create project), `ProjectPage` (workspaces with path/branch, create workspace and worktree, the project's sessions, create session), hooks `useProjects`, `useProject`, mutations |
+| `settings/` | `SettingsPage`: model + effort per kind, session limit, idle minutes, disabled MCPs (with suggestions from `known_mcp_servers`); `useSettings` hook |
+| `sessions/` | Grouped constellation, butler node, satellites, diamond menu, details panel with editable model/effort |
 
-O formulário de nova sessão (tipo, nome, workspace, modelo, effort) é usado por `projects` e `sessions`, então sobe para `components/NewSessionForm.tsx`. Ele só recebe dados e callbacks; cada feature passa os seus hooks. `schema.ts` é regenerado (`make gen-api`).
+The new-session form (kind, name, workspace, model, effort) is used by `projects` and `sessions`, so it moves up to `components/NewSessionForm.tsx`. It only takes data and callbacks; each feature passes its own hooks. `schema.ts` is regenerated (`make gen-api`).
 
-### Constelação agrupada
+### Grouped constellation
 
-- Sessões com projeto ficam num setor da elipse. Do orb sai um filamento até o **losango do projeto** (rótulo em caixa alta acima), e do losango saem ramos curtos até cada sessão. Sessões sem projeto (ex: `sistema`) ligam direto no orb, como hoje.
-- Rótulo da sessão: nome, e embaixo o chip do workspace (`back · ⎇ cancelamento`), depois a atividade.
-- Clique no losango abre um menu com "nova sessão aqui" (abre o `NewSessionForm` com o projeto preenchido) e "abrir projeto" (vai pra `/projects/:id`).
-- Geometria pura em `features/sessions/lib/constellation.ts`, com testes: setores por projeto, posição do losango, ramos.
-- Os pulsos de luz continuam, agora pelo caminho orb → losango → sessão.
+- Sessions with a project sit in a sector of the ellipse. A filament runs from the orb to the **project's diamond** (uppercase label above), and short branches run from the diamond to each session. Sessions with no project (e.g. `sistema`) link straight to the orb, as today.
+- Session label: name, and below it the workspace chip (`back · ⎇ cancelamento`), then the activity.
+- Clicking the diamond opens a menu with "new session here" (opens `NewSessionForm` with the project filled in) and "open project" (goes to `/projects/:id`).
+- Pure geometry in `features/sessions/lib/constellation.ts`, with tests: sectors per project, diamond position, branches.
+- Light pulses keep going, now along the orb → diamond → session path.
 
-### Subagentes
+### Subagents
 
-Cada subagente ativo é um quadradinho ligado ao nó da sessão por um traço fino, com o tipo em mono ao lado. Ele pisca a cada `subagent_progress`. Ao terminar, some com fade. O painel de detalhes lista os subagentes da tarefa atual (tipo, descrição, última tool, status). Os dados vêm do `SessionView.subagents` e dos eventos `subagent_*`.
+Each active subagent is a small square linked to the session node by a thin stroke, with its type in mono next to it. It blinks on each `subagent_progress`. When it ends, it fades out. The details panel lists the current task's subagents (type, description, last tool, status). The data comes from `SessionView.subagents` and the `subagent_*` events.
 
-### Animação do mordomo
+### Butler animation
 
-Só as sessões `implementacao` usam o mordomo; as `geral` continuam como ponto. Ele é pixel art em SVG (grade 36×32) com animações em CSS, em `features/sessions/components/butler/`. O terno é neutro, e o único toque de cor é a gravata no roxo do orb. As referências estão no mockup, nos cards com estes IDs.
+Only `implementacao` sessions use the butler; `geral` ones stay as a dot. It is SVG pixel art (36×32 grid) with CSS animations, in `features/sessions/components/butler/`. The suit is neutral, and the only touch of color is the tie in the orb's purple. The references are in the mockup, on the cards with these IDs.
 
-| Estado | Gatilho | Animação (ID no mockup) |
+| State | Trigger | Animation (mockup ID) |
 |---|---|---|
-| Ocioso | `idle` (conectado ou não) | Cochilando: cabeça baixa, olhos fechados, zzz, respiração lenta |
-| Explorando | `busy` + `phase=exploring` | **E3** Balão de pensamento: digita devagar, balão alterna pasta, arquivo e lupa |
-| Editando | `busy` + `phase=editing` (ou fase nula) | Digitando no laptop, cabeça balançando |
-| Rodando | `busy` + `phase=running` | **T1** Enter dramático: dedo sobe, bate no Enter, cruza os braços com "..." |
-| Chamando subagente | `subagent_started` (toca ~1,5 s e volta à fase) | **C3** Carta selada com selo roxo voa em direção ao quadradinho do subagente |
-| Terminou | `busy` → `idle` sem erro (toca uma vez, ~3 s) | **AB3** Truque da cartola: tira a cartola, vira e o ✓ sai de dentro |
-| Erro | `error` | Olhos em X, tremida |
-| Aguardando permissão | reservado para a F5, sem gatilho agora | **A1** Placa "?" balançando, sem onda pulsando |
+| Idle | `idle` (connected or not) | Dozing: head down, eyes closed, zzz, slow breathing |
+| Exploring | `busy` + `phase=exploring` | **E3** Thought bubble: types slowly, the bubble cycles folder, file and magnifier |
+| Editing | `busy` + `phase=editing` (or null phase) | Typing on the laptop, head bobbing |
+| Running | `busy` + `phase=running` | **T1** Dramatic Enter: finger goes up, hits Enter, crosses arms with "..." |
+| Calling a subagent | `subagent_started` (plays ~1.5 s and returns to the phase) | **C3** A sealed letter with a purple seal flies toward the subagent's square |
+| Done | `busy` → `idle` without error (plays once, ~3 s) | **AB3** Top-hat trick: takes off the hat, turns it over and the ✓ comes out |
+| Error | `error` | X eyes, shaking |
+| Waiting for permission | reserved for F5, no trigger now | **A1** Swinging "?" sign, no pulsing wave |
 
-- **Hover** no mordomo: um terminal pequeno com as últimas 6 tool calls da sessão (`› Edit billing.py`). Ele é montado no cache da web a partir de `agent_progress`, sem rota nova.
-- **Tamanhos.** Na constelação o nó tem ~36 px; o painel de detalhes mostra o mordomo maior.
-- **Lógica.** A máquina de estados é pura (`lib/butler.ts`: `(view, lastEvent) → ButlerState`) e tem testes. Os componentes só renderizam o estado.
-- **Acessibilidade.** Com `prefers-reduced-motion`, cada estado vira um quadro parado. O `aria-label` do nó diz o estado em texto.
+- **Hover** on the butler: a small terminal with the session's last 6 tool calls (`› Edit billing.py`). It is built in the web cache from `agent_progress`, with no new route.
+- **Sizes.** In the constellation the node is ~36 px; the details panel shows a bigger butler.
+- **Logic.** The state machine is pure (`lib/butler.ts`: `(view, lastEvent) → ButlerState`) and tested. The components only render the state.
+- **Accessibility.** With `prefers-reduced-motion`, each state becomes a still frame. The node's `aria-label` states the state in text.
 
-## Erros
+## Errors
 
-- Git falhou (`GitError`): a voz fala a mensagem curta e a API devolve 422 com o stderr cortado. Nada é cadastrado se o `git worktree add` falhar.
-- O resume falhou (conversa sumiu do disco): a sessão abre conversa nova, publica `error` com "a sessão X perdeu o histórico e começou do zero" e segue a tarefa.
-- O workspace sumiu do disco: a tarefa falha antes de conectar e a sessão fica `error` com "a pasta do workspace X não existe mais".
-- A desconexão por ociosidade nunca vira erro.
-- Fila global cheia não tem limite. O Alfred só avisa a posição.
+- Git failed (`GitError`): the voice speaks the short message and the API returns 422 with the truncated stderr. Nothing is registered if `git worktree add` fails.
+- Resume failed (the conversation vanished from disk): the session opens a new conversation, publishes `error` with "a sessão X perdeu o histórico e começou do zero" and carries on with the task.
+- The workspace vanished from disk: the task fails before connecting and the session goes `error` with "a pasta do workspace X não existe mais".
+- Disconnecting for idleness never becomes an error.
+- The global queue has no limit. Alfred only reports the position.
 
-## Segurança — ADR 0008
+## Security — ADR 0008
 
-Nova ADR "Agente de implementação com harness completo":
+New ADR "Implementation agent with the full harness":
 
-- **Decisão:** a sessão `implementacao` carrega as configurações do usuário (CLAUDE.md, skills, plugins, hooks e todos os MCPs) e roda em auto mode, sem lista fixa de tools.
-- **Risco aceito:** essa sessão pode ler conteúdo externo (e-mail ou web, via MCP) e executar comandos no mesmo turno. É o cenário que as ADRs 0003 e 0006 evitam para o Alfred e para a `sistema`.
-- **Mitigações:**
-  - o classificador do auto mode;
-  - a regra no prompt de usar MCP externo só quando a tarefa pedir;
-  - a lista de MCPs desligados na tela de configurações;
-  - o Alfred continua sem Bash/Edit/Write e descreve as tarefas com as próprias palavras (ADR 0006).
+- **Decision:** the `implementacao` session loads the user's settings (CLAUDE.md, skills, plugins, hooks and every MCP) and runs in auto mode, with no fixed tool list.
+- **Accepted risk:** this session can read external content (mail or web, through MCP) and run commands in the same turn. That is the scenario ADRs 0003 and 0006 avoid for Alfred and for `sistema`.
+- **Mitigations:**
+  - the auto mode classifier;
+  - the prompt rule to use an external MCP only when the task asks for it;
+  - the disabled-MCP list on the settings screen;
+  - Alfred still has no Bash/Edit/Write and describes tasks in its own words (ADR 0006).
 
-## Documentação a atualizar
+## Documentation to update
 
-- `SPEC.md` e `ARCHITECTURE.md`:
-  - novo modelo de dados (projeto sem `repo_path`/`base_branch`, workspace com `kind` `folder|worktree` e `parent_id`);
-  - tipos de agente;
-  - eventos novos;
-  - rotas.
+- `SPEC.md` and `ARCHITECTURE.md`:
+  - new data model (project without `repo_path`/`base_branch`, workspace with `kind` `folder|worktree` and `parent_id`);
+  - agent kinds;
+  - new events;
+  - routes.
 - `REQUIREMENTS.md`:
-  - RN-04 passa a contar processos vivos;
-  - RN-11 passa a valer para `folder|worktree`;
-  - Questão em aberto 4 resolvida (a fila por sessão continua em memória; o histórico vem do resume).
+  - RN-04 now counts live processes;
+  - RN-11 now covers `folder|worktree`;
+  - Open question 4 resolved (the per-session queue stays in memory; history comes from resume).
 - ADR 0008.
 
-## Testes
+## Tests
 
-Server (pytest, SDK e git falsos como hoje):
+Server (pytest, fake SDK and git as today):
 
 - `test_db.py`:
-  - criação das tabelas e `user_version`;
-  - `seed` grava só uma vez.
+  - table creation and `user_version`;
+  - `seed` writes only once.
 - `test_projects.py`:
-  - nomes únicos;
-  - apagar recusado com dependentes;
-  - worktree com git falso: path, branch existente vs nova, falha não cadastra;
-  - sujo sem `force` → erro.
-- `test_git.py`: num repo temporário real (`git init`), `add_worktree` e `remove_worktree` funcionam e `is_dirty` detecta mudança.
+  - unique names;
+  - deletion refused with dependents;
+  - worktree with fake git: path, existing vs new branch, a failure registers nothing;
+  - dirty without `force` → error.
+- `test_git.py`: in a real temporary repo (`git init`), `add_worktree` and `remove_worktree` work and `is_dirty` detects a change.
 - `test_settings.py`:
-  - precedência sessão → tipo → yaml;
+  - session → kind → yaml precedence;
   - `settings_updated`.
-- `test_agents.py`: `ImplementationAgent.options()` tem:
-  - preset `claude_code`;
-  - `setting_sources` completo;
+- `test_agents.py`: `ImplementationAgent.options()` has:
+  - the `claude_code` preset;
+  - full `setting_sources`;
   - `skills="all"`;
-  - `disallowed_tools` a partir de `mcp_disabled`;
-  - workspace obrigatório.
+  - `disallowed_tools` from `mcp_disabled`;
+  - a required workspace.
 - `test_session.py`:
-  - eventos `subagent_*` a partir das `Task*Message`;
-  - mensagens com `parent_tool_use_id` não mudam a fase;
-  - `session_id` volta no `Reply`;
-  - `resume` nas opções.
+  - `subagent_*` events from the `Task*Message`s;
+  - messages with `parent_tool_use_id` do not change the phase;
+  - `session_id` comes back in the `Reply`;
+  - `resume` in the options.
 - `test_sessions.py`:
-  - vagas (ocupa, despeja a ociosa mais antiga, enfileira e libera em ordem);
-  - vigia de ociosidade;
-  - persistência e boot carregando desconectado;
-  - `clear` zera o `claude_session_id`;
-  - fase e subagentes no snapshot.
+  - slots (take, evict the oldest idle one, queue and release in order);
+  - idleness watcher;
+  - persistence and boot loading disconnected;
+  - `clear` resets `claude_session_id`;
+  - phase and subagents in the snapshot.
 - `test_activity.py`: `phase_of`.
 - `test_tools.py`:
-  - tools novas repassam e estão em `ALLOWED`;
-  - o Alfred continua sem Bash/Edit/Write.
-- `test_api_projects.py`, `test_api_settings.py`, `test_api_sessions.py` (criar e `PATCH`).
+  - new tools forward and are in `ALLOWED`;
+  - Alfred still has no Bash/Edit/Write.
+- `test_api_projects.py`, `test_api_settings.py`, `test_api_sessions.py` (create and `PATCH`).
 
 Web (Vitest):
 
-- `constellation.test.ts`: setores, losango, ramos.
-- `butler.test.ts`: máquina de estados, incluindo "terminou" só depois de `busy` sem erro e "chamando" com duração limitada.
-- Hooks: os eventos de projeto e subagente atualizam o cache.
-- `make lint`, build e conferência visual no navegador com o modo demo (`lib/demo.ts` ganha projetos, uma sessão de implementação e subagentes).
+- `constellation.test.ts`: sectors, diamond, branches.
+- `butler.test.ts`: state machine, including "done" only after `busy` without error and "calling" with a bounded duration.
+- Hooks: project and subagent events update the cache.
+- `make lint`, build and a visual check in the browser with the demo mode (since removed).
 
-## Fora desta branch
+## Outside this branch
 
-- Permissões e `waiting_permission`, F5. A animação fica desenhada mas sem gatilho.
-- Atalho `<nome>:` e foco (RF-11, RF-27).
-- Fuzzy match de nomes.
-- Interromper sem limpar (RF-33).
-- Tarefas (RF-38/39).
-- Clonar repositório ou criar projeto do zero: dá pra delegar à `sistema`.
-- Histórico persistido dos subagentes.
-- Mudar o tipo de uma sessão existente.
+- Permissions and `waiting_permission`, F5. The animation is drawn but has no trigger.
+- `<name>:` shortcut and focus (RF-11, RF-27).
+- Fuzzy name matching.
+- Interrupting without clearing (RF-33).
+- Tasks (RF-38/39).
+- Cloning a repository or creating a project from scratch: it can be delegated to `sistema`.
+- Persisted subagent history.
+- Changing the kind of an existing session.

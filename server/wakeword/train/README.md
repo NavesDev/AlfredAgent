@@ -1,46 +1,46 @@
-# Treino da wake word "Alfred"
+# Training the "Alfred" wake word
 
-Gera `server/wakeword/alfred.onnx` com o pipeline de treino do openWakeWord: milhares de amostras sintéticas de "Alfred" (Piper em inglês + Kokoro em pt/es/it/fr), aumentadas com ruído e reverberação, treinadas contra ~2000 h de fala negativa pré-computada.
+Builds `server/wakeword/alfred.onnx` with the openWakeWord training pipeline: thousands of synthetic "Alfred" samples (Piper in English + Kokoro in pt/es/it/fr), augmented with noise and reverb, trained against ~2000 h of precomputed negative speech.
 
-## Custo
+## Cost
 
-| Item | Tamanho / tempo |
+| Item | Size / time |
 |---|---|
-| Features negativas ACAV100M + validação | ~17 GB |
-| Ruído de fundo (3000 clipes do AudioSet) + RIRs | ~1 GB |
-| Venv de treino (torch, speechbrain…) | ~3 GB |
-| Geração (~66 mil clipes) + aumento + treino em CPU (12 cores) | ~1h30 (medido) |
+| ACAV100M negative features + validation | ~17 GB |
+| Background noise (3000 AudioSet clips) + RIRs | ~1 GB |
+| Training venv (torch, speechbrain…) | ~3 GB |
+| Generation (~66k clips) + augmentation + training on the CPU (12 cores) | ~1h30 (measured) |
 
-Roda isolado em `.work/` (fora do git) com venv próprio. Não afeta o server.
+Runs isolated in `.work/` (outside git) with its own venv. It does not affect the server.
 
-## Resultado atual (v3, 2026-10-01)
+## Current result (v3, 2026-10-01)
 
-Avaliado com `evaluate.py` em vozes pt-BR do Kokoro, threshold 0.5:
+Evaluated with `evaluate.py` on Kokoro pt-BR voices, threshold 0.5:
 
-| Versão | Mudança | pt-BR (36) | `pm_alex`, voz fora do treino (12) | Falsos positivos (72) |
+| Version | Change | pt-BR (36) | `pm_alex`, voice outside training (12) | False positives (72) |
 |---|---|---|---|---|
-| v1 | Receita padrão, só Piper (inglês) | 1 | 0 | 0 |
-| v2 | `max_negative_weight` 500, meta de 1 FP/h | 3 | 1 | 0 |
-| v3 | + positivos Kokoro pt/es/it/fr (`kokoro_positives.py`) | **17** | **5** | **0** |
+| v1 | Default recipe, Piper only (English) | 1 | 0 | 0 |
+| v2 | `max_negative_weight` 500, target of 1 FP/h | 3 | 1 | 0 |
+| v3 | + Kokoro pt/es/it/fr positives (`kokoro_positives.py`) | **17** | **5** | **0** |
 
-Falhas concentradas em fala rápida e em "Alfred, …" emendado na frase. Vozes sintéticas não substituem a voz real: o próximo passo é testar ao vivo e, se precisar, treinar com gravações do próprio usuário.
+Failures cluster on fast speech and on "Alfred, …" run into the sentence. Synthetic voices do not replace a real voice: the next step is testing live and, if needed, training with the user's own recordings.
 
-## Uso
+## Usage
 
 ```bash
 cd server/wakeword/train
-./train.sh            # baixa tudo, gera amostras, treina e copia o modelo
+./train.sh            # downloads everything, generates samples, trains and copies the model
 ```
 
-No fim, aponte o config:
+At the end, point the config at it:
 
 ```yaml
 wakeword:
   model: wakeword/alfred.onnx
-  threshold: 0.5      # ajustar no uso real
+  threshold: 0.5      # tune with real use
 ```
 
-## Limitações
+## Limitations
 
-- O gerador do Piper usa o modelo multi-locutor LibriTTS (inglês). Grafias "abrasileiradas" ("alfredi", "auf red") soaram como "offered" no Piper e foram descartadas; os positivos são "alfred", "alfredo" e "hey alfred", e palavras parecidas ("offered", "afraid") entram como negativos.
-- A conversão final para `.tflite` do openWakeWord exige TensorFlow, que não suporta Python 3.11; o script ignora essa etapa. O `.onnx` é gerado antes e é o que o Alfred usa.
+- The Piper generator uses the LibriTTS multi-speaker model (English). "Brazilianized" spellings ("alfredi", "auf red") sounded like "offered" in Piper and were dropped; the positives are "alfred", "alfredo" and "hey alfred", and similar words ("offered", "afraid") go in as negatives.
+- openWakeWord's final `.tflite` conversion needs TensorFlow, which does not support Python 3.11; the script skips that step. The `.onnx` is built before it and is what Alfred uses.

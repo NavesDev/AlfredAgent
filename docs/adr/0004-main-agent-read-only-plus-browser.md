@@ -1,23 +1,23 @@
-# 0004 — Agente principal: leitura liberada + navegador, antes do gate de confirmação
+# 0004 — Main agent: reads allowed + browser, before the confirmation gate
 
-- **Status:** Substituído por 0005
-- **Data:** 2026-10-11
+- **Status:** Superseded by 0005
+- **Date:** 2026-10-11
 
-## Contexto
+## Context
 
-O agente principal abre o CLI do Claude Code, que carrega os MCPs do usuário (conectores do claude.ai como Gmail, Agenda e Drive, e plugins como o chrome-devtools). Sem regra explícita, o modo não interativo negava todas as chamadas, e o modelo ainda anunciava capacidades que não tinha. O gate de confirmação por voz/painel (fase 5) ainda não existe, então a regra de "turno contaminado" não tem como pedir confirmação.
+The main agent opens the Claude Code CLI, which loads the user's MCPs (claude.ai connectors such as Gmail, Calendar and Drive, and plugins such as chrome-devtools). With no explicit rule, the non-interactive mode denied every call, and the model still advertised capabilities it did not have. The voice/panel confirmation gate (phase 5) does not exist yet, so the "tainted turn" rule has no way to ask for confirmation.
 
-## Decisão
+## Decision
 
-Política em `server/infra/claude/permissions.py`, com `permission_mode="dontAsk"`:
+Policy in `server/infra/claude/permissions.py`, with `permission_mode="dontAsk"`:
 
-- **Liberado sem confirmação:** WebSearch, WebFetch, leitura de Gmail e Agenda, e o servidor chrome-devtools inteiro (abrir páginas, clicar, ler, rodar JS).
-- **Escondido e negado:** tudo que escreve no Gmail e na Agenda, `upload_file` do navegador, Drive, Claude Docs e outros MCPs conhecidos.
-- Qualquer tool não listada é negada, inclusive MCPs instalados depois.
-- Continua valendo o ADR 0003: nada de Bash, Edit ou Write.
+- **Allowed without confirmation:** WebSearch, WebFetch, reading Gmail and Calendar, and the whole chrome-devtools server (open pages, click, read, run JS).
+- **Hidden and denied:** everything that writes to Gmail and Calendar, the browser's `upload_file`, Drive, Claude Docs and other known MCPs.
+- Any tool not listed is denied, including MCPs installed later.
+- ADR 0003 still holds: no Bash, Edit or Write.
 
-## Consequências
+## Consequences
 
-- O Alfred passa a ler e-mail, agenda e web, e a abrir páginas no Chrome por voz.
-- **Risco aceito:** no mesmo turno ele pode ler um e-mail ou página e agir no navegador logado. Uma instrução injetada poderia navegar para um site e vazar conteúdo pela URL. O prompt manda tratar e-mails e páginas como dados, mas isso mitiga, não impede.
-- Quando o gate da fase 5 existir, o navegador passa a exigir confirmação em turnos contaminados, e este ADR é substituído.
+- Alfred now reads mail, calendar and the web, and opens pages in Chrome by voice.
+- **Accepted risk:** in the same turn it may read a mail or page and act in the logged-in browser. An injected instruction could navigate to a site and leak content through the URL. The prompt tells it to treat mail and pages as data, but that mitigates, it does not prevent.
+- When the phase 5 gate exists, the browser will need confirmation on tainted turns, and this ADR is superseded.

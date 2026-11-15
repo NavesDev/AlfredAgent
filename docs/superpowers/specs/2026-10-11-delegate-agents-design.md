@@ -1,43 +1,43 @@
-# Agentes delegados: tipos polimórficos, ciclo de vida e cartões na tela (design)
+# Delegated agents: polymorphic kinds, lifecycle and on-screen cards (design)
 
-- **Data:** 2026-10-11
-- **Status:** Aprovado
+- **Date:** 2026-10-11
+- **Status:** Approved
 - **Branch:** `feat/delegate-agents`
-- **Requisitos cobertos:** RF-26 (parcial), RF-30 (parcial: criar, listar, limpar, apagar), RF-40, RF-60 (parcial: sessões no dashboard); RN-01, RN-04, RN-05 (sem `waiting_permission`)
+- **Requirements covered:** RF-26 (partial), RF-30 (partial: create, list, clear, delete), RF-40, RF-60 (partial: sessions on the dashboard); RN-01, RN-04, RN-05 (without `waiting_permission`)
 
-## Objetivo
+## Goal
 
-1. Trocar a tool única `delegar` (presa à sessão `sistema`, ADR 0006) por **tipos de agente polimórficos**: cada tipo é uma subclasse de `AgentKind` que define suas tools do Claude Code, prompt e a própria tool de delegar do Alfred. Nesta branch existe um tipo, `geral`; o tipo `implementacao` (sessão presa a um projeto) fica previsto, sem código.
-2. Sessões nomeadas **persistentes** que o usuário cria, mantém, **limpa** (zera o contexto, mantém a sessão) e **apaga** por voz.
-3. Um **cartão por sessão** no painel, com tipo, modelo, pasta, status, tarefa atual, última atividade, fila, contagem de tarefas, tokens e último resumo, mais botões Limpar e Apagar.
+1. Replace the single `delegar` tool (tied to the `sistema` session, ADR 0006) with **polymorphic agent kinds**: each kind is a subclass of `AgentKind` that defines its Claude Code tools, its prompt and Alfred's own delegation tool. This branch has one kind, `geral`; the `implementacao` kind (a session tied to a project) is planned, with no code.
+2. **Persistent** named sessions that the user creates, keeps, **clears** (resets the context, keeps the session) and **deletes** by voice.
+3. A **card per session** on the panel, with kind, model, folder, status, current task, last activity, queue, task count, tokens and last summary, plus Clear and Delete buttons.
 
-## Decisões
+## Decisions
 
-| Tema | Decisão |
+| Topic | Decision |
 |---|---|
-| Modelo de sessão | Persistente por nome (não uma instância por tarefa). Tarefas para sessão ocupada entram na fila dela |
-| Polimorfismo | Classe base abstrata `AgentKind`; cada tipo gera sua tool `delegar_<kind>`. Tools de gestão são genéricas |
-| Tipos nesta branch | Só `geral` (`GeneralAgent`). `ImplementationAgent` só neste documento |
-| Sessão `sistema` | Tipo `geral`, criada no boot, sempre presente. Pode ser limpa, não pode ser apagada |
-| Várias sessões gerais | `delegar_geral(tarefa, sessao?)`: `sessao` opcional, padrão `sistema` |
-| Limpar | Cancela a tarefa em andamento, esvazia a fila e desconecta o cliente; a próxima tarefa abre contexto novo. Contadores de tarefas e tokens zeram |
-| Apagar | Limpar + remover a sessão da tela e do registro |
-| Limite | `limits.max_active_sessions` (padrão 3, RN-04) conta todas as sessões existentes, incluindo `sistema` |
-| Persistência | Só em memória. Reiniciar o server recria apenas `sistema` (SQLite e resume ficam na F4) |
-| Criar pela tela | Não. Criar só por voz; a tela lista, limpa e apaga |
-| Apagar por voz | O Alfred confirma verbalmente antes de chamar `apagar_sessao` (regra no prompt) |
-| Apagar pela tela | Confirmação inline no cartão (segundo clique) |
-| Segurança | O Alfred continua sem Bash/Edit/Write (ADR 0003). As tools novas só mexem no registro de sessões |
+| Session model | Persistent per name (not one instance per task). Tasks for a busy session go into its queue |
+| Polymorphism | Abstract base class `AgentKind`; each kind generates its `delegar_<kind>` tool. Management tools are generic |
+| Kinds in this branch | Only `geral` (`GeneralAgent`). `ImplementationAgent` only in this document |
+| `sistema` session | Kind `geral`, created at boot, always present. It can be cleared, not deleted |
+| Several general sessions | `delegar_geral(tarefa, sessao?)`: `sessao` optional, default `sistema` |
+| Clear | Cancels the running task, empties the queue and disconnects the client; the next task opens a new context. Task and token counters reset |
+| Delete | Clear + remove the session from the screen and the registry |
+| Limit | `limits.max_active_sessions` (default 3, RN-04) counts every existing session, including `sistema` |
+| Persistence | Memory only. Restarting the server recreates only `sistema` (SQLite and resume come in F4) |
+| Create from the screen | No. Create only by voice; the screen lists, clears and deletes |
+| Delete by voice | Alfred confirms verbally before calling `apagar_sessao` (prompt rule) |
+| Delete from the screen | Inline confirmation on the card (second click) |
+| Security | Alfred still has no Bash/Edit/Write (ADR 0003). The new tools only touch the session registry |
 
 ## Server
 
-### `infra/claude/agents.py` (novo)
+### `infra/claude/agents.py` (new)
 
 ```python
 class AgentKind(ABC):
-    kind: str          # "geral" — chave do registro e sufixo da tool
-    label: str         # "Geral" — mostrado na tela e falado
-    tools: list[str]   # tools do Claude Code da sessão
+    kind: str          # "geral" — registry key and tool suffix
+    label: str         # "Geral" — shown on screen and spoken
+    tools: list[str]   # the session's Claude Code tools
 
     @abstractmethod
     def prompt(self, name: str, cwd: Path) -> str: ...
@@ -49,27 +49,27 @@ class AgentKind(ABC):
 class GeneralAgent(AgentKind):
     kind, label = "geral", "Geral"
     tools = ["Bash", "Read", "Edit", "Write", "Glob", "Grep"]
-    # prompt: o SYSTEM_PROMPT atual de session.py
-    # delegate_tool: "delegar_geral", {"tarefa": str, "sessao": str (opcional)}
+    # prompt: the current SYSTEM_PROMPT from session.py
+    # delegate_tool: "delegar_geral", {"tarefa": str, "sessao": str (optional)}
 
 
 KINDS: dict[str, AgentKind] = {k.kind: k for k in (GeneralAgent(),)}
 ```
 
-`Delegate = Callable[[str, str], str]` recebe `(nome_da_sessao, tarefa)` e devolve a frase para o Alfred falar.
+`Delegate = Callable[[str, str], str]` takes `(session_name, task)` and returns the sentence for Alfred to speak.
 
-Futuro `ImplementationAgent` (fora desta branch): `kind="implementacao"`, `cwd` obrigatório apontando para o projeto, tool `delegar_implementacao(sessao, tarefa)` com `sessao` obrigatória, prompt focado em mudar código e rodar testes do projeto.
+Future `ImplementationAgent` (outside this branch): `kind="implementacao"`, a required `cwd` pointing at the project, a `delegar_implementacao(sessao, tarefa)` tool with a required `sessao`, a prompt focused on changing code and running the project's tests.
 
 ### `infra/claude/session.py`
 
-- `CodingSession(bus, name, kind: AgentKind, cwd, model, timeout_s, connect)`. `options()` lê `tools` e `prompt()` do `kind`; o resto (auto mode, `strict_mcp_config`, `setting_sources=[]`) não muda.
-- `run()` passa a guardar os tokens do `ResultMessage.usage` (`input_tokens + output_tokens` somados ao total da sessão) e devolve no `Reply` (`tokens: int`, padrão 0).
-- `clear()`: desconecta o cliente; o próximo `run` reconecta com contexto novo.
-- `close()`: igual a `clear()`, usado ao apagar.
+- `CodingSession(bus, name, kind: AgentKind, cwd, model, timeout_s, connect)`. `options()` reads `tools` and `prompt()` from the `kind`; the rest (auto mode, `strict_mcp_config`, `setting_sources=[]`) stays the same.
+- `run()` now keeps the tokens from `ResultMessage.usage` (`input_tokens + output_tokens` added to the session total) and returns them in the `Reply` (`tokens: int`, default 0).
+- `clear()`: disconnects the client; the next `run` reconnects with a new context.
+- `close()`: same as `clear()`, used on delete.
 
 ### `controllers/sessions.py`
 
-`Sessions` deixa de embrulhar uma sessão e passa a gerenciar várias:
+`Sessions` stops wrapping a single session and manages several:
 
 ```python
 @dataclass
@@ -79,37 +79,37 @@ class Slot:
     worker: asyncio.Task[None]
     status: Literal["idle", "busy", "error"] = "idle"
     task: str | None = None
-    activity: str | None = None      # último agent_progress
+    activity: str | None = None      # last agent_progress
     tasks_done: int = 0
     tokens: int = 0
     last_summary: str | None = None
 ```
 
-| Método | Comportamento |
+| Method | Behavior |
 |---|---|
-| `create(kind, name, cwd=None) -> str` | Valida kind no registro, nome livre (RN-01, sem diferenciar maiúsculas) e limite. `cwd` padrão: home. Cria a `CodingSession`, sobe um worker por sessão e publica `session_created`. Devolve frase para o Alfred |
-| `delegate(name, task) -> str` | Igual ao atual, por nome. Nome desconhecido devolve "Não existe sessão X" sem levantar |
-| `clear(name) -> str` | Cancela o worker (e a tarefa em andamento), esvazia a fila, `session.clear()`, zera contadores, recria o worker, publica `session_cleared` |
-| `delete(name) -> str` | Recusa `sistema`. Cancela o worker, `session.close()`, remove o slot, publica `session_deleted` |
-| `list() -> list[SessionView]` | Snapshot para a API e para `listar_sessoes` |
-| `run()` | Some: cada sessão tem seu worker, criado em `create` |
+| `create(kind, name, cwd=None) -> str` | Validates the kind in the registry, a free name (RN-01, case-insensitive) and the limit. Default `cwd`: home. Creates the `CodingSession`, starts one worker per session and publishes `session_created`. Returns a sentence for Alfred |
+| `delegate(name, task) -> str` | Same as today, by name. An unknown name returns "Não existe sessão X" without raising |
+| `clear(name) -> str` | Cancels the worker (and the running task), empties the queue, `session.clear()`, resets counters, recreates the worker, publishes `session_cleared` |
+| `delete(name) -> str` | Refuses `sistema`. Cancels the worker, `session.close()`, removes the slot, publishes `session_deleted` |
+| `list() -> list[SessionView]` | Snapshot for the API and for `listar_sessoes` |
+| `run()` | Goes away: each session has its own worker, created in `create` |
 
-Os erros de uso (nome duplicado, limite, sessão protegida, tipo desconhecido) viram frases devolvidas para o Alfred falar, não exceções. As alterações em métricas (`task`, `activity`, `tokens`, `status`) publicam `session_status` com o snapshot inteiro da sessão.
+Usage errors (duplicate name, limit, protected session, unknown kind) become sentences returned for Alfred to speak, not exceptions. Changes to metrics (`task`, `activity`, `tokens`, `status`) publish `session_status` with the whole session snapshot.
 
-`activity` vem do bus: o controller assina `agent_progress` e guarda o `label` (ou o texto, cortado) da sessão correspondente.
+`activity` comes from the bus: the controller subscribes to `agent_progress` and keeps the `label` (or the text, truncated) of the matching session.
 
-`SessionView` (pydantic, em `models/session.py`): `name, kind, label, model, cwd, status, task, activity, queue, tasks_done, tokens, last_summary, protected`.
+`SessionView` (pydantic, in `models/session.py`): `name, kind, label, model, cwd, status, task, activity, queue, tasks_done, tokens, last_summary, protected`.
 
-### Tools do Alfred (`infra/claude/tools.py`)
+### Alfred's tools (`infra/claude/tools.py`)
 
-`alfred_tools(sessions)` monta o MCP in-process com:
+`alfred_tools(sessions)` builds the in-process MCP with:
 
-- uma tool de delegar por tipo do registro (`kind.delegate_tool(sessions.delegate)`), hoje só `delegar_geral`;
+- one delegation tool per registry kind (`kind.delegate_tool(sessions.delegate)`), today only `delegar_geral`;
 - `criar_sessao(tipo, nome, pasta?)`, `limpar_sessao(nome)`, `apagar_sessao(nome)`, `listar_sessoes()`.
 
-Todas entram em `permissions.ALLOWED`. O prompt do Alfred (`alfred.py`) explica: usar `delegar_geral` para tarefas no computador, sem `sessao` quando o usuário não nomear uma; confirmar com o usuário antes de `apagar_sessao`; `limpar` quando ele pedir para "limpar", "zerar" ou "esquecer" uma sessão.
+All of them go into `permissions.ALLOWED`. Alfred's prompt (`alfred.py`) explains: use `delegar_geral` for computer tasks, without `sessao` when the user does not name one; confirm with the user before `apagar_sessao`; `limpar` when they ask to "limpar", "zerar" or "esquecer" a session.
 
-`activity.py`: labels "Criando sessão", "Limpando sessão", "Apagando sessão", "Listando sessões". `delegar_geral` mantém "Mandando para a sessão" e continua em `SILENT_ACTIVITIES` do router.
+`activity.py`: labels "Criando sessão", "Limpando sessão", "Apagando sessão", "Listando sessões". `delegar_geral` keeps "Mandando para a sessão" and stays in the router's `SILENT_ACTIVITIES`.
 
 ### Config
 
@@ -118,55 +118,55 @@ limits:
   max_active_sessions: 3
 ```
 
-Novo modelo `Limits` em `config.py`, opcional, com o padrão acima.
+New optional `Limits` model in `config.py`, with the default above.
 
 ### API (`api/routes/sessions.py`)
 
-| Rota | Resposta |
+| Route | Response |
 |---|---|
 | `GET /api/sessions` | `list[SessionView]` |
-| `POST /api/sessions/{name}/clear` | `SessionView`; 404 se não existir |
-| `DELETE /api/sessions/{name}` | 204; 404 se não existir; 409 se protegida |
+| `POST /api/sessions/{name}/clear` | `SessionView`; 404 if it does not exist |
+| `DELETE /api/sessions/{name}` | 204; 404 if it does not exist; 409 if protected |
 
-`Sessions` vai em `app.state.sessions`, como o bus. As rotas usam métodos de `Sessions` que levantam erro tipado (`SessionNotFound`, `SessionProtected`); os métodos das tools capturam esses erros e devolvem frase.
+`Sessions` goes in `app.state.sessions`, like the bus. The routes use `Sessions` methods that raise typed errors (`SessionNotFound`, `SessionProtected`); the tool methods catch those errors and return a sentence.
 
-### Eventos
+### Events
 
-| Evento | Payload |
+| Event | Payload |
 |---|---|
 | `session_created` | `session: SessionView` |
-| `session_status` | `session: SessionView` (antes era só nome e status) |
+| `session_status` | `session: SessionView` (before, only name and status) |
 | `session_cleared` | `session: SessionView` |
 | `session_deleted` | `name` |
 
 ## Web
 
-Primeira versão usou uma faixa de cartões; ficou genérica e não mostrava a ligação com o Alfred. Substituída pela **constelação**:
+The first version used a row of cards; it looked generic and did not show the link to Alfred. Replaced by the **constellation**:
 
-- Cada sessão é um ponto neutro em volta do orb (SVG/CSS, sem WebGL): cinza quando livre, branco com halo respirando quando ocupado, vermelho em erro. O orb do Alfred é a única cor da tela. Mini orbs coloridos foram testados e descartados: pesados visualmente e um contexto WebGL por agente.
-- Rótulo flutuante sob o nó: nome e, embaixo, a atividade atual (ocupado) ou `livre · modelo`.
-- Um filamento cinza neutro liga o centro do orb a cada nó, desenhado atrás dos dois orbs. Livre: linha fraca. Ocupado: tracejado animado, mais claro.
-- Pulso de luz corre pelo filamento: Alfred → nó quando uma tarefa começa, nó → Alfred quando termina (derivado dos eventos `session_status`).
-- Clique no nó abre o painel de detalhes (tipo, modelo, pasta, tarefa, atividade, fila, tarefas, tokens, último resumo, Limpar, Apagar com segundo clique). Esc ou clique fora fecha.
-- Posições em elipse em volta do orb, lados primeiro, depois acima e abaixo; presas à área visível. Geometria pura em `features/sessions/lib/constellation.ts`, com testes.
-- O dashboard passa a ref do orb do `Assistant` para a `Constellation`; as features não se importam.
-- Dados: TanStack Query `GET /api/sessions` + eventos `session_*` do `/ws` no cache. `schema.ts` gerado do OpenAPI.
+- Each session is a neutral dot around the orb (SVG/CSS, no WebGL): gray when free, white with a breathing halo when busy, red on error. Alfred's orb is the only color on screen. Colored mini orbs were tried and dropped: visually heavy and one WebGL context per agent.
+- A floating label under the node: name and, below it, the current activity (busy) or `livre · model`.
+- A neutral gray filament links the orb's center to each node, drawn behind both orbs. Free: faint line. Busy: animated dashes, lighter.
+- A light pulse runs along the filament: Alfred → node when a task starts, node → Alfred when it ends (derived from `session_status` events).
+- Clicking the node opens the details panel (kind, model, folder, task, activity, queue, tasks, tokens, last summary, Clear, Delete with a second click). Esc or a click outside closes it.
+- Positions on an ellipse around the orb, sides first, then above and below; kept inside the visible area. Pure geometry in `features/sessions/lib/constellation.ts`, with tests.
+- The dashboard passes the `Assistant` orb's ref to the `Constellation`; the features do not import each other.
+- Data: TanStack Query `GET /api/sessions` + `/ws` `session_*` events into the cache. `schema.ts` generated from OpenAPI.
 
-## Erros
+## Errors
 
-- Falha na sessão: status `error` no cartão, voz "A sessão X não conseguiu terminar a tarefa", próxima tarefa reconecta (já existe). Status volta a `idle` na próxima tarefa iniciada.
-- Limpar durante uma tarefa: `CancelledError` no worker não vira erro falado; a voz diz "Sessão X limpa".
-- Rota com nome inexistente: 404; o cartão já some pelo evento.
+- Session failure: `error` status on the card, the voice says "A sessão X não conseguiu terminar a tarefa", the next task reconnects (already exists). Status goes back to `idle` when the next task starts.
+- Clearing during a task: `CancelledError` in the worker does not become a spoken error; the voice says "Sessão X limpa".
+- Route with an unknown name: 404; the card already disappeared through the event.
 
-## Testes
+## Tests
 
-- `test_agents.py`: registro, `GeneralAgent.prompt`, `delegate_tool` repassa `(sessao or "sistema", tarefa)`.
-- `test_session.py`: `options()` vem do kind; `clear()` desconecta e o próximo `run` reconecta; tokens somados.
-- `test_sessions.py`: criar (nome duplicado, limite, tipo desconhecido); delegar por nome e nome desconhecido; limpar cancela tarefa em andamento e esvazia fila; apagar remove e protege `sistema`; eventos publicados.
-- `test_alfred.py`/`test_tools.py`: tools de gestão repassam e estão em `ALLOWED`; Alfred continua sem Bash/Edit/Write.
-- `test_api_sessions.py`: as três rotas com `TestClient`.
-- Web: `make lint` e build; conferência visual no navegador com o modo demo.
+- `test_agents.py`: registry, `GeneralAgent.prompt`, `delegate_tool` forwards `(sessao or "sistema", tarefa)`.
+- `test_session.py`: `options()` comes from the kind; `clear()` disconnects and the next `run` reconnects; tokens added up.
+- `test_sessions.py`: create (duplicate name, limit, unknown kind); delegate by name and unknown name; clear cancels the running task and empties the queue; delete removes and protects `sistema`; events published.
+- `test_alfred.py`/`test_tools.py`: management tools forward and are in `ALLOWED`; Alfred still has no Bash/Edit/Write.
+- `test_api_sessions.py`: the three routes with `TestClient`.
+- Web: `make lint` and build; visual check in the browser with the demo mode (since removed).
 
-## Fora desta branch
+## Outside this branch
 
-`ImplementationAgent`, worktrees, foco e atalho `<nome>:` (RF-11, RF-27), interromper sem limpar (RF-33), persistência e resume (RNF-07), `waiting_permission`, criar sessão pela tela.
+`ImplementationAgent`, worktrees, focus and the `<name>:` shortcut (RF-11, RF-27), interrupting without clearing (RF-33), persistence and resume (RNF-07), `waiting_permission`, creating a session from the screen.

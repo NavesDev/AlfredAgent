@@ -1,18 +1,18 @@
-# 0003 — Agente principal sem Bash nem Edit
+# 0003 — Main agent without Bash or Edit
 
-- **Status:** Aceito
-- **Data:** 2026-10-01
+- **Status:** Accepted
+- **Date:** 2026-10-01
 
-## Contexto
+## Context
 
-O agente principal lê conteúdo externo não confiável (e-mails, páginas web). Esse conteúdo pode carregar prompt injection.
+The main agent reads untrusted external content (mail, web pages). That content may carry prompt injection.
 
-## Decisão
+## Decision
 
-O agente `alfred` não recebe Bash, Edit nem Write. Trabalho em repositório é sempre delegado a uma sessão nomeada via `delegar`. Além disso, um turno que leu e-mail ou web fica "contaminado": qualquer ação com efeito colateral nele exige confirmação pelo canal `tainted_turn`.
+The `alfred` agent gets no Bash, Edit or Write. Repository work is always delegated to a named session through `delegar`. Besides, a turn that read mail or the web becomes "tainted": any action with side effects in it needs confirmation through the `tainted_turn` channel.
 
-## Consequências
+## Consequences
 
-- Quem lê conteúdo externo nunca executa comando diretamente.
-- `delegar` vira o ponto de controle: é uma ação com efeito colateral e passa pelo gate de turno contaminado.
-- Fluxos simples ("cria um arquivo de notas") ficam um passo mais longos.
+- Whoever reads external content never runs commands directly.
+- `delegar` becomes the checkpoint: it is an action with side effects and goes through the tainted-turn gate.
+- Simple flows ("create a notes file") get one step longer.

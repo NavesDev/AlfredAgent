@@ -1,39 +1,39 @@
-# Direção visual do painel
+# Panel visual direction
 
-Remodelação do painel web no estilo de vidro da Apple (visionOS). Este documento guia a implementação; os mockups mostram cada tela.
+Redesign of the web panel in Apple's glass style (visionOS). This document guides the implementation; the mockups show each screen. On-screen labels stay in pt-BR.
 
-## Princípios
+## Principles
 
-- **Vidro sobre um ambiente desfocado:** painéis translúcidos flutuam sobre um fundo escuro com formas fora de foco.
-- **Um só elemento vivo por tela:** a esfera do Alfred. O resto é quieto.
-- **Neutro:** fundo grafite, sem amarelo e sem azul. A cor vem só dos estados e das fotos das sessões.
-- **Pílulas e círculos:** botões de ícone redondos, controles em pílula, cantos bem arredondados.
-- **Pouca informação por vez:** listas agrupadas como nos Ajustes do iPhone; detalhe só no cartão aberto.
+- **Glass over a blurred room:** translucent panels float over a dark background with out-of-focus shapes.
+- **One living element per screen:** Alfred's orb. Everything else is quiet.
+- **Neutral:** graphite background, no yellow and no blue. Color comes only from states and session pictures.
+- **Pills and circles:** round icon buttons, pill controls, generously rounded corners.
+- **Little information at a time:** grouped lists like the iPhone Settings app; detail only on the open card.
 
-## Referências
+## References
 
-- **Esfera:** [Strands](https://reactbits.dev/animations/strands), do React Bits (MIT + Commons Clause: pode usar no app, não pode revender o componente). WebGL2 puro, sem dependência; tem as props `listening` e `level` para a voz.
-- **Material, listas e controles:** visionOS e os Ajustes do iOS.
-- **Uso do plano:** anéis como os do Apple Watch, nas configurações e na barra de controle (anel pequeno com o % e a janela).
-- **Taste Skill:** um único elemento animado por tela.
+- **Orb:** [Strands](https://reactbits.dev/animations/strands), from React Bits (MIT + Commons Clause: fine to use in the app, not to resell the component). Plain WebGL2, no dependencies; it has `listening` and `level` props for the voice.
+- **Material, lists and controls:** visionOS and iOS Settings.
+- **Plan usage:** Apple Watch–style rings, in settings and in the control bar (small ring with the % and the window).
+- **Taste Skill:** a single animated element per screen.
 
-## Cores
+## Colors
 
-| Token | Valor | Uso |
+| Token | Value | Use |
 |---|---|---|
-| `--page` | `#0a0a0c` | fundo da página |
-| fundo do ambiente | degradê `#19191c` → `#09090b`, formas `#3c3c42`, `#8a8a94`, `#2a2a30`, `#303036` com blur 60px | atrás dos painéis |
-| `--ink` | `#f5f5f7` | texto principal |
-| `--ink-2` | `rgba(235,235,245,.62)` | texto secundário |
-| `--ink-3` | `rgba(235,235,245,.36)` | dicas, placeholders |
-| `--fill` / `--fill-on` | `rgba(255,255,255,.10)` / `.22` | fundo de controle / selecionado |
-| `--blue` | `#0a84ff` | links, foco, falando |
-| `--teal` | `#64d2ff` | sessão trabalhando |
-| `--orange` | `#ff9f0a` | aguarda você, contexto acima de 60% |
-| `--green` | `#30d158` | ligado, feito |
-| vermelho | `#ff453a` | apagar, contexto acima de 80% |
+| `--page` | `#0a0a0c` | page background |
+| room background | gradient `#19191c` → `#09090b`, shapes `#3c3c42`, `#8a8a94`, `#2a2a30`, `#303036` with a 60px blur | behind the panels |
+| `--ink` | `#f5f5f7` | main text |
+| `--ink-2` | `rgba(235,235,245,.62)` | secondary text |
+| `--ink-3` | `rgba(235,235,245,.36)` | hints, placeholders |
+| `--fill` / `--fill-on` | `rgba(255,255,255,.10)` / `.22` | control / selected background |
+| `--blue` | `#0a84ff` | links, focus, speaking |
+| `--teal` | `#64d2ff` | session working |
+| `--orange` | `#ff9f0a` | waiting for you, context above 60% |
+| `--green` | `#30d158` | on, done |
+| red | `#ff453a` | delete, context above 80% |
 
-## Material de vidro
+## Glass material
 
 ```css
 .glass {
@@ -44,70 +44,70 @@ Remodelação do painel web no estilo de vidro da Apple (visionOS). Este documen
 }
 ```
 
-- Listas e campos dentro do vidro: `rgba(0,0,0,.16–.2)`.
-- Raios: painel 30px, cartão 24px, linha de lista 14–16px, controles em pílula (999px).
+- Lists and fields inside the glass: `rgba(0,0,0,.16–.2)`.
+- Radii: panel 30px, card 24px, list row 14–16px, pill controls (999px).
+- Dropdowns use the glass `Picker`, never a native `<select>` (WebKitGTK draws it white).
 
-## Tipografia
+## Typography
 
-- Fonte do sistema da Apple quando houver; senão Inter (`-apple-system, 'SF Pro Text', 'Inter', system-ui`).
-- Títulos de página: 22–28px, peso 700, `letter-spacing: -.02em`.
-- Corpo: 13–14px, peso 500 nos nomes.
-- Rótulos de seção: 13px, caixa-alta, peso 600, `--ink-2`.
-- Números alinhados com `tabular-nums`.
+- Apple's system font when available; otherwise Inter (`-apple-system, 'SF Pro Text', 'Inter', system-ui`).
+- Page titles: 22–28px, weight 700, `letter-spacing: -.02em`.
+- Body: 13–14px, weight 500 on names.
+- Section labels: 13px, uppercase, weight 600, `--ink-2`.
+- Numbers aligned with `tabular-nums`.
 
-## Esfera do Alfred
+## Alfred's orb
 
-- Strands com vidro, paleta espectral padrão, centro da tela Painel.
-- Estados da voz (`useVoice`):
+- Strands with glass, default spectral palette, centered on the Painel screen.
+- Voice states (`useVoice`):
 
-| Estado | `listening` | `level` | `speed` | `energy` |
+| State | `listening` | `level` | `speed` | `energy` |
 |---|---|---|---|---|
-| Em espera | não | 0 | 0.5 | 0.4 |
-| Ouvindo | sim | nível do microfone | 1 | 0.8 |
-| Pensando | não | 0.3 | 1.8 | 0.6 |
-| Falando | sim | nível da fala | 1.1 | 0.9 |
+| Idle | no | 0 | 0.5 | 0.4 |
+| Listening | yes | microphone level | 1 | 0.8 |
+| Thinking | no | 0.3 | 1.8 | 0.6 |
+| Speaking | yes | speech level | 1.1 | 0.9 |
 
-- **Sem WebGL2** (visualizador do app desktop, algumas VMs): esfera em CSS com faixas coloridas desfocadas, mesma paleta. O Strands não mostra nada sozinho quando falta WebGL, então o fallback é obrigatório.
-- Sai do painel: `three`, `@react-three/fiber` e o orb atual.
+- **No WebGL2** (desktop app visualizer, some VMs): CSS orb with blurred colored bands, same palette. Strands shows nothing on its own when WebGL is missing, so the fallback is mandatory.
+- Removed from the panel: `three`, `@react-three/fiber` and the old orb.
 
-## Componentes
+## Components
 
-- **Barra de navegação:** pílula vertical à esquerda com ícones redondos (Painel, Projetos, Configurações).
-- **Barra de controle (ornamento):** pílula na base com microfone, estado e medidor, seletor de modelo, nova conversa e transcrição.
-- **Balão de fala:** pílula com o avatar do Alfred e a última frase dele.
-- **Lista agrupada:** linhas com ícone quadrado colorido (raio 8px), nome, detalhe e valor à direita, separadas por linha fina.
-- **Controle segmentado, chave liga/desliga (verde), popup de valor e stepper** no padrão do iOS.
-- **Anel de estado na foto da sessão:** azul girando quando trabalha; laranja com bolinha quando aguarda você.
+- **Navigation bar:** vertical pill on the left with round icons (Painel, Projetos, Configurações).
+- **Control bar (ornament):** pill at the bottom with microphone, state and meter, model picker, new conversation, transcript and the usage ring.
+- **Speech bubble:** pill with Alfred's avatar and its last sentence.
+- **Grouped list:** rows with a colored square icon (8px radius), name, detail and value on the right, split by a thin line.
+- **Segmented control, on/off switch (green), value popup and stepper** following iOS.
+- **State ring on the session picture:** spinning blue while working; orange with a dot while waiting for you.
 
-## Telas
+## Screens
 
-- **Painel (layout Janela):** navegação | lista de sessões | esfera, balão e barra de controle | cartão da sessão ou transcrição.
-- **Cartão da sessão** (no estilo do "Tocando agora"): foto grande, nome, projeto e branch, estado, tarefa com progresso, pedido de permissão com Negar e Permitir, contexto, modelo, subagentes, e ações (limpar, falar com, apagar).
-- **Projetos:** cartões como álbuns; a capa junta a inicial do projeto e as fotos das sessões, com selo de quem trabalha ou espera. Mostra a descrição, os apelidos e as contagens. O último cartão é "Novo projeto".
-- **Projeto:** painel lateral com marca, nome, descrição, nomes falados e "Apagar projeto". Painel principal com ambientes (descrição e sessões em cada um, worktree recuado) e sessões do projeto.
-- **Configurações:** barra lateral como nos Ajustes, com Uso e limites (anéis e gasto por sessão), Modelos, Sessões abertas e MCPs (chaves e "Desligar/Ligar todos").
+- **Painel (Window layout):** navigation | session list | orb, bubble and control bar | session card or transcript.
+- **Session card** (in the style of "Now Playing"): big picture, name, project and branch, state, task with progress, permission request with Deny and Allow, context, model, subagents, and actions (clear, talk to, delete).
+- **Projects:** cards like albums; the cover combines the project initial and the session pictures, with a badge for who is working or waiting. Shows the description, the aliases and the counts. The last card is "Novo projeto".
+- **Project:** side panel with mark, name, description, spoken names and "Apagar projeto". Main panel with workspaces (description and sessions in each, worktrees indented) and the project's sessions.
+- **Settings:** side bar like Settings, with Usage and limits (rings and spend per session), Models, Open sessions and MCPs (switches and "Desligar/Ligar todos").
 
-## Movimento
+## Motion
 
-- Só a esfera, o anel de quem trabalha e os medidores se movem.
-- Transições de 200ms; cartões crescem 2% no hover.
-- `prefers-reduced-motion` desliga as animações.
+- Only the orb, the working ring and the meters move.
+- 200ms transitions; cards grow 2% on hover.
+- `prefers-reduced-motion` turns animations off.
 
 ## Mockups
 
-- [Painel, layouts Janela e Ornamentos](https://claude.ai/artifact/9v7ZF6iShWm7TTdPC7hWcE)
-- [Sessões, com as três opções de foto](https://claude.ai/artifact/VZXzh69Zen2HUiJtNBvyEs)
-- [Projetos, Projeto e Configurações](https://claude.ai/artifact/TRisX7cDuLVeakNfrFvKVL)
+- [Painel, Window and Ornaments layouts](https://claude.ai/artifact/9v7ZF6iShWm7TTdPC7hWcE)
+- [Sessions, with the three picture options](https://claude.ai/artifact/VZXzh69Zen2HUiJtNBvyEs)
+- [Projects, Project and Settings](https://claude.ai/artifact/TRisX7cDuLVeakNfrFvKVL)
 
-## Decisões
+## Decisions
 
-- **Foto das sessões:** retrato 3D. Enquanto o retrato não existe, a sessão mostra o monograma (iniciais num degradê estável pelo nome). Geração: [ADR 0009](adr/0009-session-portraits-via-mcp.md).
-- **Bonecos do mapa:** saíram, junto com a opção "Tamanho dos agentes no mapa" (`figure_scale`).
-- **Permissões:** o cartão não tem Negar/Permitir; a confirmação continua por voz, como manda a SPEC.
+- **Session pictures:** 3D portrait. Until the portrait exists, the session shows the monogram (initials on a gradient that is stable per name). Generation: [ADR 0009](adr/0009-session-portraits-via-mcp.md).
+- **Map figures:** removed, along with the "agent size on the map" option (`figure_scale`).
+- **Permissions:** the card has no Deny/Allow; confirmation stays by voice, as the SPEC says.
 
-## App desktop
+## Desktop app
 
-- **Barra de título:** faixa transparente de 40px sobre o ambiente, que arrasta a janela (duplo clique maximiza). Ponto de conexão + "Alfred" à esquerda; botões redondos de vidro de 28px (minimizar, maximizar/restaurar, fechar) à direita. Só aparece no Tauri.
-- **Janela:** cantos de 12px, sem cantos quando maximizada.
-- **Visualizador flutuante:** pílula escura de vidro com a mini esfera em CSS (32px) e 9 barras brancas arredondadas, como o [Bar Visualizer](https://ui.elevenlabs.io/docs/components/bar-visualizer) da ElevenLabs UI (MIT). Ouvindo e falando: altura de cada barra segue a banda de frequência. Pensando: barras baixas com uma onda passando. Entra com fade e escala.
-
+- **Title bar:** 40px transparent strip over the room that drags the window (double click maximizes). Connection dot + "Alfred" on the left; 28px round glass buttons (minimize, maximize/restore, close) on the right. Only shows in Tauri.
+- **Window:** 12px corners, no corners when maximized.
+- **Floating visualizer:** dark glass pill with the mini CSS orb (32px) and 9 rounded white bars, like the [Bar Visualizer](https://ui.elevenlabs.io/docs/components/bar-visualizer) from ElevenLabs UI (MIT). Listening and speaking: each bar's height follows its frequency band. Thinking: low bars with a wave passing through. Enters with a fade and scale.

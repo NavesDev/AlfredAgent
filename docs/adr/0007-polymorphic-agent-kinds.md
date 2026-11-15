@@ -1,23 +1,23 @@
-# 0007 — Tipos de agente polimórficos e sessões gerenciadas por voz
+# 0007 — Polymorphic agent kinds and voice-managed sessions
 
-- **Status:** Aceito
-- **Data:** 2026-10-11
+- **Status:** Accepted
+- **Date:** 2026-10-11
 
-## Contexto
+## Context
 
-A ADR 0006 criou uma sessão fixa `sistema` e uma tool `delegar(tarefa)` presa a ela. O roadmap prevê outros tipos de agente (o próximo é o de implementação, preso a um projeto), e o usuário quer criar, limpar e apagar sessões por voz e ver cada uma na tela.
+ADR 0006 created a fixed `sistema` session and a `delegar(tarefa)` tool tied to it. The roadmap expects other agent kinds (the next one is implementation, tied to a project), and the user wants to create, clear and delete sessions by voice and see each one on screen.
 
-## Decisão
+## Decision
 
-- Cada tipo de agente é uma subclasse de `AgentKind` (`infra/claude/agents.py`) que define as tools do Claude Code, o prompt e a própria tool de delegar do Alfred (`delegar_<tipo>`). O registro `KINDS` é a fonte única dos tipos.
-- O primeiro tipo é `geral` (`GeneralAgent`), que herda tudo da sessão `sistema` da ADR 0006. `sistema` vira uma sessão desse tipo, criada no boot e protegida contra apagar.
-- Tools de ciclo de vida são genéricas: `criar_sessao`, `limpar_sessao`, `apagar_sessao`, `listar_sessoes`. Limpar cancela a tarefa em andamento e zera o contexto; apagar também remove a sessão.
-- Sessões ficam em memória e respeitam `limits.max_active_sessions`.
-- O painel mostra um cartão por sessão e permite limpar e apagar pela API.
+- Each agent kind is a subclass of `AgentKind` (`infra/claude/agents.py`) that defines the Claude Code tools, the prompt and Alfred's own delegation tool (`delegar_<kind>`). The `KINDS` registry is the single source of kinds.
+- The first kind is `geral` (`GeneralAgent`), which inherits everything from ADR 0006's `sistema` session. `sistema` becomes a session of that kind, created at boot and protected from deletion.
+- Lifecycle tools are generic: `criar_sessao`, `limpar_sessao`, `apagar_sessao`, `listar_sessoes`. Clearing cancels the running task and resets the context; deleting also removes the session.
+- Sessions live in memory and respect `limits.max_active_sessions`.
+- The panel shows a card per session and lets you clear and delete through the API.
 
-## Consequências
+## Consequences
 
-- Adicionar um tipo é criar uma subclasse e registrá-la; o Alfred ganha a tool sem mudar o controller.
-- O Alfred continua sem Bash/Edit/Write (ADR 0003): as tools novas só mexem no registro de sessões.
-- Um e-mail ou página ainda pode convencer o Alfred a criar ou apagar sessões. Apagar exige confirmação verbal e `sistema` é protegida; o pior caso é perder o contexto de uma sessão.
-- Reiniciar o server perde as sessões criadas por voz até a F4 (SQLite + resume).
+- Adding a kind means creating a subclass and registering it; Alfred gets the tool without changing the controller.
+- Alfred still has no Bash/Edit/Write (ADR 0003): the new tools only touch the session registry.
+- A mail or page can still convince Alfred to create or delete sessions. Deleting needs a spoken confirmation and `sistema` is protected; the worst case is losing a session's context.
+- Restarting the server loses sessions created by voice until F4 (SQLite + resume).
