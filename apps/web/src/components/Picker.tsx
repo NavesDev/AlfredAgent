@@ -96,7 +96,7 @@ export function Picker({
       </button>
 
       {open && (
-        <div className="absolute right-0 left-0 z-20 mt-1.5 min-w-64 glass rounded-2xl p-1.5">
+        <div className="absolute right-0 left-0 z-30 mt-1.5 min-w-64 glass-menu rounded-2xl p-1.5">
           <ul
             id={listId}
             role="listbox"
