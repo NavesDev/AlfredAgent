@@ -11,6 +11,9 @@ const wave = (from: number, to: number, everyMs: number, source: 'mic' | 'tts'):
       type: 'audio_level',
       source,
       level: Math.max(0, 0.35 + 0.35 * Math.sin(i / 2.3) + (Math.random() - 0.5) * 0.4),
+      bands: Array.from({ length: 9 }, (_, b) =>
+        Math.max(0, 0.75 - b * 0.06 + 0.25 * Math.sin(i / 2.3 + b) + (Math.random() - 0.5) * 0.3),
+      ),
     },
   })) as Step[]
 

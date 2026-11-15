@@ -21,7 +21,7 @@ from config import Listener as ListenerConfig
 from config import Whisper as WhisperConfig
 from errors import AudioError, DependencyError
 from events import EventBus
-from infra.audio import level
+from infra.audio import bands, level
 from infra.audio.device import OnDemandGpu
 
 FRAME = 1280  # 80 ms at 16 kHz, openWakeWord's native frame
@@ -90,7 +90,13 @@ class Listener:
                 self._chime("start")
             return
         self._recording.append(frame)
-        self._bus.publish("audio_level", source="mic", level=level(frame / 32768))
+        samples = frame / 32768
+        self._bus.publish(
+            "audio_level",
+            source="mic",
+            level=level(samples),
+            bands=bands(samples, self._config.sample_rate),
+        )
         if self._is_speech(frame):
             self._heard, self._silence_ms, self._guess = True, 0, None
         elif self._heard:

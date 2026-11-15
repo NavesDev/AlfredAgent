@@ -6,6 +6,7 @@ import numpy as np
 
 from errors import AudioError
 from events import EventBus
+from infra.audio import BANDS
 from infra.audio.talker import PAUSE_S, Talker
 from tests.conftest import drain
 
@@ -49,6 +50,7 @@ async def test_publishes_speaking_levels_then_idle(bus: EventBus) -> None:
     assert (events[0]["type"], events[0]["state"]) == ("voice_state", "speaking")
     levels = [e for e in events if e["type"] == "audio_level"]
     assert len(levels) == 15 and levels[0]["source"] == "tts"
+    assert len(levels[0]["bands"]) == BANDS
     assert (events[-1]["type"], events[-1]["state"]) == ("voice_state", "idle")
 
 

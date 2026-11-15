@@ -11,7 +11,7 @@ import numpy as np
 from config import Kokoro as KokoroConfig
 from errors import AudioError, DependencyError
 from events import EventBus
-from infra.audio import level
+from infra.audio import bands, level
 from infra.audio.device import OnDemandGpu
 
 KOKORO_RATE = 24000
@@ -32,6 +32,7 @@ class Talker:
         acknowledgements: Sequence[str] = (),
     ) -> None:
         self._bus, self._synthesize, self._play = bus, synthesize, play
+        self._rate = sample_rate
         self._block = sample_rate // LEVELS_PER_S
         self._pause = np.zeros(int(sample_rate * PAUSE_S), dtype=np.float32)
         self._chimes = {kind: _sweep(*hz, sample_rate) for kind, hz in CHIMES.items()}
@@ -116,7 +117,9 @@ class Talker:
         for chunk in self._synthesize(text):
             for start in range(0, len(chunk), self._block):
                 block = chunk[start : start + self._block]
-                self._bus.publish("audio_level", source="tts", level=level(block))
+                self._bus.publish(
+                    "audio_level", source="tts", level=level(block), bands=bands(block, self._rate)
+                )
                 self._play(block)
 
 

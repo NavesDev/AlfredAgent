@@ -48,7 +48,7 @@ Formato no fio: `{"type": str, "ts": float, ...dados}`.
 | `type` | Dados | Quando |
 |---|---|---|
 | `voice_state` | `state`: `idle`, `listening`, `transcribing`, `thinking`, `speaking` | Cada transição |
-| `audio_level` | `source`: `mic` ou `tts`; `level`: 0–1 (RMS normalizado) | ~15×/s em `listening` e `speaking` |
+| `audio_level` | `source`: `mic` ou `tts`; `level`: 0–1 (RMS normalizado); `bands`: 9 bandas de 100 Hz a 5 kHz, 0–1 | ~15×/s em `listening` e `speaking` |
 | `transcript` | `text`, `source`: `voice` | Whisper terminou com texto não vazio |
 | `agent_progress` | `session`: `alfred`; `kind`: `text` ou `tool`; `content` | Cada bloco do stream do SDK |
 | `alfred_reply` | `session`, `text`, `summary` | Resposta final |
