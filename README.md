@@ -116,6 +116,8 @@ alfred/
 
 [SemVer](https://semver.org/) with `vX.Y.Z` tags, cut by [release-please](https://github.com/googleapis/release-please) from Conventional Commits. Notes in [CHANGELOG.md](CHANGELOG.md) and on the [releases page](https://github.com/NavesDev/AlfredAgent/releases).
 
+Alfred updates itself: when a new tag comes out, the panel shows it with its notes, and **Atualizar** moves the checkout to that tag, reinstalls and restarts, rolling back if the install fails ([ADR 0013](docs/adr/0013-self-update-from-git-tags.md)). It needs a clean checkout on `main`.
+
 ## License
 
 To be defined.

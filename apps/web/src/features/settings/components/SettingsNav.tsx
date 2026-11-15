@@ -1,5 +1,5 @@
 import type { ComponentType, SVGProps } from 'react'
-import { BarChart, Gauge, Plug, Sparkle } from '../../../components/icons'
+import { BarChart, Download, Gauge, Plug, Sparkle } from '../../../components/icons'
 import { SECTIONS, type SectionId } from '../lib/sections'
 
 const ICON: Record<SectionId, ComponentType<SVGProps<SVGSVGElement>>> = {
@@ -7,6 +7,7 @@ const ICON: Record<SectionId, ComponentType<SVGProps<SVGSVGElement>>> = {
   modelos: Sparkle,
   sessoes: Gauge,
   mcps: Plug,
+  atualizacoes: Download,
 }
 
 type Props = { current: SectionId; onSelect: (id: SectionId) => void }

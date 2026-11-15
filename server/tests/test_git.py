@@ -145,3 +145,33 @@ async def test_watch_worktrees_ignores_other_git_activity(repo: Path) -> None:
     await asyncio.wait_for(task, 5)
 
     assert seen == []
+
+
+@pytest.fixture
+def cloned(repo: Path, tmp_path: Path) -> Path:
+    """A clone of `repo` (its origin), which has tags v0.1.0 and v0.2.0 and a CHANGELOG."""
+    for tag, text in (("v0.1.0", "# Changelog\n\n## [0.1.0] (x)\n\nOne\n"), ("v0.2.0", "two")):
+        (repo / "CHANGELOG.md").write_text(text)
+        subprocess.run(["git", "add", "."], cwd=repo, check=True)
+        subprocess.run(["git", "commit", "-q", "-m", tag], cwd=repo, check=True)
+        subprocess.run(["git", "tag", tag], cwd=repo, check=True)
+    clone = tmp_path / "clone"
+    subprocess.run(["git", "clone", "-q", str(repo), str(clone)], check=True)
+    subprocess.run(["git", "tag", "-d", "v0.2.0"], cwd=clone, check=True, capture_output=True)
+    return clone
+
+
+async def test_local_and_remote_tags(cloned: Path) -> None:
+    assert await git.local_tags(cloned) == ["v0.1.0"]
+    assert sorted(await git.remote_tags(cloned)) == ["v0.1.0", "v0.2.0"]
+
+
+async def test_fetch_tag_then_show_a_file_at_it(cloned: Path) -> None:
+    await git.fetch_tag(cloned, "v0.2.0")
+
+    assert await git.show(cloned, "v0.2.0", "CHANGELOG.md") == "two"
+    assert await git.local_tags(cloned) == ["v0.1.0", "v0.2.0"]
+
+
+async def test_current_branch(cloned: Path) -> None:
+    assert await git.current_branch(cloned) == "main"

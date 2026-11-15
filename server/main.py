@@ -16,6 +16,7 @@ from controllers.projects import Projects
 from controllers.router import Router
 from controllers.sessions import Sessions
 from controllers.settings import Settings
+from controllers.updates import Updates
 from controllers.usage import Usage
 from controllers.vocabulary import Vocabulary
 from errors import ConfigError, DependencyError
@@ -31,6 +32,7 @@ from infra.claude.portrait import paint, user_mcp_servers
 from infra.claude.session import CodingSession
 from infra.claude.state import DailyState
 from infra.claude.tools import session_tools
+from infra.updater import spawner, state_dir
 from models import settings as settings_model
 from models.db import open_db
 
@@ -84,6 +86,10 @@ async def serve(config: Config) -> None:
         tools=session_tools(sessions, projects),
     )
     await agent.start()
+    root = Path(__file__).resolve().parent.parent
+    updates = Updates(
+        bus, root, git=git, spawn=spawner(root), result_path=state_dir() / "update.json"
+    )
     vocabulary = Vocabulary(db, bus)
     router = Router(bus, agent, talker, vocabulary=vocabulary)
     whisper = load_whisper(config.whisper, lambda: vocabulary.whisper_words)
@@ -114,6 +120,7 @@ async def serve(config: Config) -> None:
             vocabulary.run,
             portraits.run,
             projects.watch_worktrees,
+            updates.run,
         )
     ]
     stop = threading.Event()
@@ -128,6 +135,7 @@ async def serve(config: Config) -> None:
     app.state.settings = settings
     app.state.portraits = portraits
     app.state.usage = usage
+    app.state.updates = updates
     server = uvicorn.Server(
         uvicorn.Config(app, config.api.host, config.api.port, log_level="warning")
     )

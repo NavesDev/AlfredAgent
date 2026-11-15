@@ -219,6 +219,57 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/update': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get Update */
+    get: operations['get_update_api_update_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/update/check': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Check Update */
+    post: operations['check_update_api_update_check_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/update/apply': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Apply Update */
+    post: operations['apply_update_api_update_apply_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/health': {
     parameters: {
       query?: never
@@ -497,6 +548,43 @@ export interface components {
        * @enum {string}
        */
       status: 'running' | 'completed' | 'failed' | 'stopped'
+    }
+    /**
+     * UpdateResult
+     * @description What the update script wrote when it last ran.
+     */
+    UpdateResult: {
+      /** Previous */
+      previous?: string | null
+      /** To */
+      to: string
+      /** Ok */
+      ok: boolean
+      /** Error */
+      error?: string | null
+      /** At */
+      at: number
+    }
+    /** UpdateView */
+    UpdateView: {
+      /** Current */
+      current: string | null
+      /** Latest */
+      latest: string | null
+      /** Available */
+      available: boolean
+      /** Notes */
+      notes: string
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'idle' | 'checking' | 'updating' | 'error'
+      /** Error */
+      error: string | null
+      /** Checked At */
+      checked_at: number | null
+      last: components['schemas']['UpdateResult'] | null
     }
     /** UsageView */
     UsageView: {
@@ -1144,6 +1232,66 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['UsageView']
+        }
+      }
+    }
+  }
+  get_update_api_update_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['UpdateView']
+        }
+      }
+    }
+  }
+  check_update_api_update_check_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['UpdateView']
+        }
+      }
+    }
+  }
+  apply_update_api_update_apply_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['UpdateView']
         }
       }
     }

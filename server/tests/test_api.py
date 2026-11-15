@@ -244,3 +244,29 @@ def test_session_description(api: Api) -> None:
     assert changed.status_code == 200
     assert changed.json()["description"] == "Tarefas no computador"
     assert too_long.status_code == 422
+
+
+def test_update_routes(tmp_path: Path) -> None:
+    from controllers.updates import Updates
+    from tests.test_updates import FakeGit
+
+    app = create_app()
+    spawned: list[str] = []
+    fake = FakeGit()
+    with TestClient(app) as client:
+        assert client.portal
+        bus = EventBus(client.portal.call(asyncio.get_running_loop))
+        app.state.updates = Updates(
+            bus, tmp_path, git=fake, spawn=spawned.append, result_path=tmp_path / "u.json"
+        )
+
+        assert client.get("/api/update").json()["available"] is False
+        assert client.post("/api/update/check").json()["latest"] == "v0.2.0"
+        fake.dirty = True
+        refused = client.post("/api/update/apply")
+        fake.dirty = False
+        applied = client.post("/api/update/apply")
+
+    assert refused.status_code == 409 and "não commitadas" in refused.json()["detail"]
+    assert applied.status_code == 202 and applied.json()["status"] == "updating"
+    assert spawned == ["v0.2.0"]

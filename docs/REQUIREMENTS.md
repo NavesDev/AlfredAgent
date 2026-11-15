@@ -102,6 +102,8 @@ Conventions: **RF** = functional requirement, **RNF** = non-functional, **RN** =
 | RF-64 | Reachable on localhost and from the phone on the local network | F6 |
 | RF-65 | Desktop app (Tauri) with the panel's UI, its own title bar and a tray; closing hides it in the tray ([ADR 0012](adr/0012-desktop-shell-tauri.md)) | Desktop |
 | RF-66 | Floating voice visualizer (mini orb + bars) at the bottom center of the screen while the voice is not idle and the app is minimized or in the tray; it does not capture clicks | Desktop |
+| RF-67 | Check for a newer release tag at boot, every 6 hours and on request; show the version and its CHANGELOG notes on the panel ([ADR 0013](adr/0013-self-update-from-git-tags.md)) | Updates |
+| RF-68 | "Atualizar" updates to that tag and restarts Alfred; refused when the checkout is not on a clean `main`; a failed install or build rolls back to the previous version | Updates |
 
 ## Non-functional requirements
 

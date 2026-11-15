@@ -7,6 +7,7 @@ describe('sectionFromHash', () => {
     expect(sectionFromHash('#modelos')).toBe('modelos')
     expect(sectionFromHash('')).toBe('uso')
     expect(sectionFromHash('#painel')).toBe('uso')
+    expect(sectionFromHash('#atualizacoes')).toBe('atualizacoes')
   })
 
   it('lists the sections in the sidebar order', () => {
@@ -15,6 +16,7 @@ describe('sectionFromHash', () => {
       'Modelos',
       'Sessões abertas',
       'MCPs',
+      'Atualizações',
     ])
   })
 })
