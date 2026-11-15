@@ -120,3 +120,22 @@ def prune(db: sqlite3.Connection, session_id: int | None, keep: int = MAX_PER_SE
         " (SELECT id FROM result WHERE session_id IS ? ORDER BY id DESC LIMIT ?)",
         (session_id, session_id, keep),
     )
+
+
+class ResultFile(BaseModel):
+    name: str
+    kind: Kind
+    size: int
+    exists: bool
+
+
+class ResultView(BaseModel):
+    id: int
+    session: str  # "alfred" for Alfred's own
+    source: Source
+    title: str
+    summary: str | None
+    report: str | None
+    changes: list[FileChange]
+    files: list[ResultFile]  # never the path
+    created_at: float

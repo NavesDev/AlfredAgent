@@ -63,3 +63,19 @@ class SettingsError(AlfredError):
 
 class UpdateError(AlfredError):
     """The self-update cannot start (dirty checkout, not on main, nothing new). pt-BR message."""
+
+
+class ResultError(AlfredError):
+    """Invalid request about results. The message is pt-BR: Alfred speaks it."""
+
+
+class ResultNotFound(ResultError):
+    """No such result, file index, or the session has none yet."""
+
+
+class ResultNotReadable(ResultError):
+    """The file is outside the home, a secret, or missing when Alfred asked to show it."""
+
+
+class FileGone(ResultError):
+    """The result's file was deleted after it was recorded."""
