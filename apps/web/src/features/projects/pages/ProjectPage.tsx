@@ -20,6 +20,7 @@ import { ProjectMark } from '../components/ProjectMark'
 import { WorkspaceMode } from '../components/WorkspaceMode'
 import { useGlobalMode, useProjectActions, useProjects, useSessionList } from '../hooks/useProjects'
 import { byParent, plural, type Mode } from '../lib/projects'
+import { Picker } from '../../../components/Picker'
 
 const BACK = { to: '/projects', label: 'Projetos' }
 
@@ -333,18 +334,17 @@ function AddWorkspace({ projectId, workspaces }: { projectId: number; workspaces
             className={`${field} min-w-40 flex-1 font-mono`}
           />
         ) : (
-          <select
-            aria-label="A partir de"
-            value={parent ?? ''}
-            onChange={(e) => setParent(Number(e.target.value))}
-            className={`${field} min-w-40 flex-1`}
-          >
-            {workspaces.map((w) => (
-              <option key={w.id} value={w.id}>
-                a partir de {w.name}
-              </option>
-            ))}
-          </select>
+          <div className="min-w-40 flex-1">
+            <Picker
+              label="A partir de"
+              value={parent == null ? '' : String(parent)}
+              onChange={(id) => setParent(Number(id))}
+              options={workspaces.map((w) => ({
+                id: String(w.id),
+                label: `a partir de ${w.name}`,
+              }))}
+            />
+          </div>
         )}
         <input
           aria-label="Descrição do ambiente"
