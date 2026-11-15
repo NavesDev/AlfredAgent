@@ -64,3 +64,8 @@ def test_apresentar_wins_over_guardar_and_items_merge() -> None:
 def test_strip_control_keeps_only_the_details() -> None:
     text = "RESUMO: Feito.\nMudei o login.\n\nAPRESENTAR: relatório\n"
     assert strip_control(text) == "Mudei o login."
+
+
+def test_underscores_inside_a_path_survive() -> None:
+    text = "APRESENTAR: __/home/u/my_file_v2.png__"
+    assert parse_presentation(text) == Presentation(True, ["/home/u/my_file_v2.png"], False)

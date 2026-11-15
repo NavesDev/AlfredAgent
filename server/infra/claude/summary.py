@@ -9,6 +9,7 @@ _RESUMO = re.compile(r"^\W*resumo\W*:\W*(.+)$", re.I | re.M)
 _PRESENT = re.compile(r"^\W*(apresentar|guardar)\W*:(.*)$", re.I | re.M)
 _CONTROL = re.compile(r"^\W*(resumo|apresentar|guardar)\W*:.*$\n?", re.I | re.M)
 _MARKDOWN = re.compile(r"[*_`#>]")
+_EDGES = re.compile(r"^[\s*_`#>]+|[\s*_`#>]+$")  # markdown around a path, never inside
 _SENTENCE = re.compile(r"(.+?[.!?])(\s|$)", re.S)
 _REPORT = {"relatório", "relatorio"}
 
@@ -38,7 +39,7 @@ def parse_presentation(text: str) -> Presentation | None:
     show, files, report = False, [], False
     for verb, items in _PRESENT.findall(_CODE_BLOCK.sub("", text)):
         show = show or verb.lower() == "apresentar"
-        for item in (_MARKDOWN.sub("", i).strip() for i in items.split(";")):
+        for item in (_EDGES.sub("", i) for i in items.split(";")):
             if item.lower() in _REPORT:
                 report = True
             elif item and item not in files:
