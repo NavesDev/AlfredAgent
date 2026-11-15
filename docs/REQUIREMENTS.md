@@ -57,6 +57,7 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 | RF-26 | `delegar(sessao, tarefa)`: envia trabalho a uma sessão nomeada e avisa ao terminar | F3 |
 | RF-27 | Comando de código sem nome de sessão vira `delegar(foco, ...)` | F3 |
 | RF-28 | Uma conversa por dia: histórico do dia na mesma sessão, nova sessão a cada dia | F1 |
+| RF-29 | Ler, listar e buscar arquivos da home (menos arquivos secretos) e o estado git de um ambiente, para responder perguntas e verificações sem delegar ([ADR 0011](adr/0011-main-agent-local-read.md)) | F4 |
 
 ### Sessões, projetos e tarefas
 
@@ -70,6 +71,8 @@ Convenções: **RF** = requisito funcional, **RNF** = não funcional, **RN** = r
 | RF-34a | Projeto e ambiente têm descrição curta, editável no painel e por voz; o Alfred a recebe ao listar projetos | F4 |
 | RF-35 | Criar worktree (`git worktree add <path> -b <branch>`) e cadastrar o ambiente; remover com `git worktree remove` | F4 |
 | RF-36 | "Nova sessão X no projeto Y, worktree Z" cria o worktree se não existir e a sessão | F4 |
+| RF-36a | Projeto tem ambiente padrão; ambiente tem modo de implementação (`worktree` ou `ambiente`), com padrão global. Feature nova no modo `worktree` cria worktree `feat/<slug>`, ambiente e sessão sem perguntar | F4 |
+| RF-36b | Ambientes espelham os worktrees do git: criado fora vira ambiente; removido fora apaga o ambiente e as sessões dele | F4 |
 | RF-37 | Retomar sessões após reiniciar o assistente via `claude_session_id` (resume) | F4 |
 | RF-38 | Criar, listar, concluir e priorizar tarefas, com ou sem projeto | F4 |
 | RF-39 | Delegar uma tarefa marca-a como `in_progress`; ao fim da sessão, vira `done` automaticamente | F4 |
