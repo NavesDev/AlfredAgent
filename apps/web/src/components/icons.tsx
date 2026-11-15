@@ -161,3 +161,21 @@ export const Download = (p: Props) => (
     <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
   </Icon>
 )
+export const FileX = (p: Props) => (
+  <Icon {...p}>
+    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
+    <path d="M14 3v5h5M9.5 12.5l5 5M14.5 12.5l-5 5" />
+  </Icon>
+)
+export const FileText = (p: Props) => (
+  <Icon {...p}>
+    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
+    <path d="M14 3v5h5M9 13h6M9 17h4" />
+  </Icon>
+)
+export const Monitor = (p: Props) => (
+  <Icon {...p}>
+    <rect x="3" y="4" width="18" height="12" rx="2" />
+    <path d="M8 20h8M12 16v4" />
+  </Icon>
+)

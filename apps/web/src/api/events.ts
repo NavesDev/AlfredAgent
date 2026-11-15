@@ -11,6 +11,11 @@ export type UsageView = components['schemas']['UsageView']
 export type RateLimit = components['schemas']['RateLimit']
 export type UpdateView = components['schemas']['UpdateView']
 export type Phase = NonNullable<SessionView['phase']>
+export type ResultView = components['schemas']['ResultView']
+export type ResultFile = components['schemas']['ResultFile']
+export type FileChange = components['schemas']['FileChange']
+export type PresentMode = 'card' | 'ampliado'
+export type OverlayPosition = SettingsView['overlay_position']
 
 /** Mirrors server/infra/claude/activity.py's Action. */
 export type ActivityAction =
@@ -79,6 +84,9 @@ export type AlfredEvent = Base &
     | { type: 'project_deleted'; id: number }
     | { type: 'settings_updated'; settings: SettingsView }
     | { type: 'update_status'; update: UpdateView }
+    | { type: 'result_created'; result: ResultView }
+    | { type: 'result_presented'; result: ResultView; mode: PresentMode }
+    | { type: 'presentation_closed' }
     | {
         type: 'rate_limit'
         window: string
