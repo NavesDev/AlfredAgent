@@ -38,7 +38,7 @@ alfred/
 ├── server/        # Python 3.11+: voz + agentes + API (FastAPI)
 ├── apps/
 │   ├── web/       # React + TypeScript + Vite (painel)
-│   └── desktop/   # Tauri (futuro)
+│   └── desktop/   # app Tauri: janela do painel, visualizador de voz, tray
 ├── docs/          # spec, requisitos, arquitetura, stack, ADRs
 └── Makefile       # make dev = server + vite juntos
 ```
@@ -69,6 +69,8 @@ make dev          # sobe voz + agente + API + painel (Vite)
 A primeira execução baixa os modelos (Whisper ~1,6 GB, Kokoro ~330 MB). Diga **"Alfred"**, espere um instante e faça a pergunta. Se não acordar bem, `wakeword.model: hey_jarvis` no `config.yaml` volta ao modelo pronto.
 
 Painel em http://localhost:5173: um orbe 3D que reage ao estado (ouvindo, transcrevendo, pensando, falando) e ao volume do microfone/voz. O botão **Transcrição** (ou tecla `T`) abre o histórico com o que foi ouvido, as tools usadas, o que foi falado, a resposta completa e os tempos (STT, 1ª fala, resposta); **Copiar** exporta em Markdown para avaliar. **Demo** simula uma conversa sem o servidor.
+
+App desktop (Linux/X11, [ADR 0012](docs/adr/0012-desktop-shell-tauri.md)): precisa do Rust e das libs do Tauri (`libwebkit2gtk-4.1-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`). Com o `make dev` rodando, `make dev-desktop` abre a janela; `make build-desktop` gera o binário que o `make install-launcher` passa a abrir no lugar do navegador. Fechar a janela deixa o Alfred no tray; minimizado ou no tray, uma pílula com a esfera e barras aparece no centro-baixo da tela enquanto ele ouve, pensa ou fala.
 
 Eventos crus em tempo real (estado da voz, nível de áudio, progresso do agente):
 
