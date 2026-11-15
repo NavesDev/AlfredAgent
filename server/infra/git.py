@@ -9,6 +9,7 @@ from pathlib import Path
 import watchfiles
 
 from errors import GitError
+from models.result import FileChange
 
 ERROR_MAX = 200
 
@@ -143,3 +144,38 @@ async def show(path: Path, rev: str, file: str) -> str:
 
 async def current_branch(path: Path) -> str:
     return (await _git(path, "branch", "--show-current")).strip()
+
+
+async def head(path: Path) -> str | None:
+    """The commit checked out at `path`; None outside a git checkout or without commits."""
+    if not path.is_dir():
+        return None
+    try:
+        return (await _git(path, "rev-parse", "HEAD")).strip()
+    except GitError:
+        return None
+
+
+async def numstat(path: Path, base: str) -> list[FileChange]:
+    """Lines added and removed per file from `base` to the working tree, untracked files
+    included as added. Binary files count 0."""
+    changes = []
+    for line in (await _git(path, "diff", "--numstat", base)).splitlines():
+        added, removed, name = line.split("\t", 2)
+        changes.append(FileChange(path=name, added=_count(added), removed=_count(removed)))
+    for name in (await _git(path, "ls-files", "--others", "--exclude-standard")).splitlines():
+        lines = await asyncio.to_thread(_lines, path / name)
+        changes.append(FileChange(path=name, added=lines, removed=0))
+    return changes
+
+
+def _count(value: str) -> int:
+    return int(value) if value.isdigit() else 0
+
+
+def _lines(file: Path) -> int:
+    try:
+        data = file.read_bytes()
+    except OSError:
+        return 0
+    return 0 if b"\0" in data else data.count(b"\n")
