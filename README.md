@@ -1,6 +1,17 @@
+<div align="center">
+
 # Alfred
 
-Assistente pessoal por voz para a rotina de dev. Tira dúvidas, pesquisa na web, lê e-mail e agenda, controla tarefas e gerencia várias sessões do Claude Code em paralelo — cada uma com nome próprio, presa a um projeto e a um worktree.
+**Assistente de voz para a rotina de dev.** Fala com você, pesquisa, lê e-mail e agenda, e comanda várias sessões do Claude Code em paralelo, cada uma com nome, projeto e worktree.
+
+[![Release](https://img.shields.io/github/v/release/NavesDev/AlfredAgent?include_prereleases&label=release)](CHANGELOG.md)
+![Python](https://img.shields.io/badge/python-3.11+-3776AB?logo=python&logoColor=white)
+![React](https://img.shields.io/badge/react-19-61DAFB?logo=react&logoColor=black)
+![Tauri](https://img.shields.io/badge/tauri-2-24C8DB?logo=tauri&logoColor=white)
+
+<img src="docs/assets/home.jpg" alt="Tela principal do Alfred: orbe 3D, lista de sessões e barra de controle" width="100%">
+
+</div>
 
 ```text
 "Alfred, backend: cria o endpoint de cancelamento"
@@ -8,42 +19,38 @@ Assistente pessoal por voz para a rotina de dev. Tira dúvidas, pesquisa na web,
 "Alfred, manda o backend fazer a tarefa de reembolso"
 ```
 
-O Alfred escuta continuamente com wake word, transcreve localmente (Whisper), decide para onde mandar o comando, conversa com o Claude na nuvem e responde falando (Kokoro) só a linha de resumo.
+## Funcionalidades
 
-> **Status:** fase 1 (voz de ponta a ponta). Wake word: **"Alfred"** (modelo próprio, ainda em validação com voz real). Veja o [roadmap](docs/REQUIREMENTS.md#roadmap-do-mvp).
+- 🎙️ **Hands-free:** wake word própria "Alfred", transcrição local (Whisper) e resposta falada (Kokoro), só com o resumo.
+- 🧠 **Um ponto de entrada só:** o mesmo Alfred tira dúvidas, pesquisa na web, lê e-mail, agenda, arquivos e issues do GitHub.
+- 🧑‍💻 **Sessões do Claude Code por voz:** sessões nomeadas em paralelo, presas a um projeto e a um ambiente (git worktree); delegue com "manda o backend fazer…".
+- 🌿 **Projetos e worktrees:** ambientes espelham os worktrees; uma frase abre branch, worktree e sessão.
+- 🔒 **Seguro por padrão:** o agente principal não tem shell nem edição; voz 100% local, raciocínio na nuvem.
+- 🪟 **Painel e app desktop:** painel em vidro com orbe 3D que reage à voz, uso do plano em anéis, e app Tauri com tray e pílula flutuante.
 
-## Objetivos
+## Telas
 
-- **Hands-free:** escuta contínua com wake word, sem teclado.
-- **Um ponto de entrada só:** o mesmo "Alfred" serve pro dia a dia e pra código.
-- **Voz 100% local:** Whisper + Kokoro; raciocínio e integrações rodam na nuvem.
-- **Organizado por voz:** projetos, worktrees, sessões nomeadas e tarefas.
-- **Leve:** alvo de ≤ 3 GB de RAM no total, rodando junto dos ambientes de dev.
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/session.jpg" alt="Cartão de uma sessão com retrato, modelo e effort"><br><sub><b>Sessão:</b> retrato, ambiente, modelo e effort</sub></td>
+    <td width="50%"><img src="docs/assets/projects.jpg" alt="Lista de projetos com ambientes e sessões"><br><sub><b>Projetos:</b> ambientes e sessões de cada um</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/assets/settings.jpg" alt="Configurações com uso e limites do plano"><br><sub><b>Configurações:</b> uso e limites do plano, modelos, sessões abertas e MCPs</sub></td>
+  </tr>
+</table>
 
-## Documentação
+## Como funciona
 
-| Documento | Conteúdo |
-|---|---|
-| [docs/SPEC.md](docs/SPEC.md) | Spec original do produto (fonte da verdade) |
-| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | Requisitos funcionais, não funcionais, regras de negócio e roadmap |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Componentes, fluxo de um comando, modelo de dados, event bus, permissões |
-| [docs/STACK.md](docs/STACK.md) | Tecnologias escolhidas, versões e motivo de cada uma |
-| [docs/adr/](docs/adr/) | Registro de decisões de arquitetura (ADRs) |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Como rodar, convenções de código, commits e PRs |
-
-## Estrutura do repositório
-
-```text
-alfred/
-├── server/        # Python 3.11+: voz + agentes + API (FastAPI)
-├── apps/
-│   ├── web/       # React + TypeScript + Vite (painel)
-│   └── desktop/   # app Tauri: janela do painel, visualizador de voz, tray
-├── docs/          # spec, requisitos, arquitetura, stack, ADRs
-└── Makefile       # make dev = server + vite juntos
+```mermaid
+flowchart LR
+  mic["🎙️ Microfone"] --> wake["Wake word<br/>Alfred"] --> stt["Whisper<br/>(local)"] --> router{Router}
+  router -->|pergunta| alfred["Agente Alfred<br/>(Claude, só leitura)"]
+  router -->|"&lt;sessão&gt;: tarefa"| sessions["Sessões Claude Code<br/>(worktrees)"]
+  alfred --> tts["Kokoro<br/>(local)"] --> speaker["🔊 Resumo falado"]
+  sessions --> tts
+  router -. eventos /ws .-> panel["Painel web / app desktop"]
 ```
-
-Detalhes em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#estrutura-de-pastas).
 
 ## Requisitos de máquina
 
@@ -77,6 +84,36 @@ Eventos crus em tempo real (estado da voz, nível de áudio, progresso do agente
 ```bash
 websocat ws://localhost:8000/ws
 ```
+
+
+## Documentação
+
+| Documento | Conteúdo |
+|---|---|
+| [docs/SPEC.md](docs/SPEC.md) | Spec do produto (fonte da verdade) |
+| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | Requisitos, regras de negócio e roadmap |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Componentes, fluxo de um comando, dados, eventos, permissões |
+| [docs/STACK.md](docs/STACK.md) | Tecnologias e o motivo de cada uma |
+| [docs/DESIGN.md](docs/DESIGN.md) | Direção visual do painel e do app desktop |
+| [docs/adr/](docs/adr/) | Decisões de arquitetura (ADRs) |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Convenções, commits, PRs e releases |
+| [CHANGELOG.md](CHANGELOG.md) | O que mudou em cada versão |
+
+## Estrutura do repositório
+
+```text
+alfred/
+├── server/        # Python 3.11+: voz + agentes + API (FastAPI)
+├── apps/
+│   ├── web/       # React + TypeScript + Vite (painel)
+│   └── desktop/   # Tauri v2: janela do painel, pílula de voz, tray
+├── docs/          # spec, requisitos, arquitetura, stack, ADRs
+└── Makefile       # make dev = server + vite juntos
+```
+
+## Versões
+
+[SemVer](https://semver.org/lang/pt-BR/) com tags `vX.Y.Z`; notas no [CHANGELOG.md](CHANGELOG.md) e nas [releases](https://github.com/NavesDev/AlfredAgent/releases). Como lançar: [CONTRIBUTING.md](CONTRIBUTING.md#versões-e-releases).
 
 ## Licença
 
