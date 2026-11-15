@@ -78,6 +78,8 @@ ALLOWED = [
             "ver_ambiente",
             "iniciar_feature",
             "definir_ambiente_padrao",
+            "ver_issue",
+            "listar_issues",
         )
     ),
 ]

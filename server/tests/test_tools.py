@@ -1,16 +1,18 @@
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
 from controllers.projects import Projects
 from controllers.settings import SettingsUpdate
-from errors import AgentError, SessionNotFound
+from errors import AgentError, GitHubError, SessionNotFound
 from events import EventBus
 from infra.claude import permissions
 from infra.claude.activity import describe_tool
 from infra.claude.alfred import AlfredAgent
 from infra.claude.tools import SERVER, session_tools
+from infra.github import Issue
 from tests.test_projects import FakeGit
 from tests.test_sessions import Env, settle
 
@@ -22,7 +24,22 @@ class Tools:
         self.projects = Projects(
             env.db, env.sessions._bus, self.git, mode=lambda: env.settings.app().implementation_mode
         )
-        self.list = session_tools(env.sessions, self.projects)
+        self.gh_calls: list[tuple[str, Path, object]] = []
+        self.gh_fail: str | None = None
+
+        async def issue(repo: Path, number: int) -> Issue:
+            self.gh_calls.append(("issue", repo, number))
+            if self.gh_fail:
+                raise GitHubError(self.gh_fail)
+            return Issue(12, "Login quebra", "OPEN", ["bug"], "passos...", "u", ["ana: vi"])
+
+        async def issues(repo: Path, search: str | None, state: str) -> list[Issue]:
+            self.gh_calls.append(("issues", repo, (search, state)))
+            return [Issue(12, "Login quebra", labels=["bug"]), Issue(13, "Doc", labels=[])]
+
+        self.list = session_tools(
+            env.sessions, self.projects, github=SimpleNamespace(issue=issue, issues=issues)
+        )
 
     async def call(self, name: str, args: dict[str, Any]) -> str:
         tool = next(t for t in self.list if t.name == name)
@@ -55,6 +72,8 @@ def test_every_tool_is_allowed_without_asking(tools: Tools) -> None:
         "ver_ambiente",
         "iniciar_feature",
         "definir_ambiente_padrao",
+        "ver_issue",
+        "listar_issues",
     }
     assert {f"mcp__{SERVER}__{n}" for n in names} <= set(permissions.ALLOWED)
     assert not {"Bash", "Edit", "Write"} & set(permissions.ALLOWED)
@@ -368,3 +387,24 @@ async def test_listar_projetos_tells_each_workspace_mode(tools: Tools, tmp_path:
 
     assert "padrão" in text
     assert "features em worktree" in text and "features no próprio ambiente" in text
+
+
+async def test_ver_issue_reads_from_the_default_workspace(tools: Tools, tmp_path: Path) -> None:
+    await recurve_with(tools, tmp_path, "back")
+
+    text = await tools.call("ver_issue", {"projeto": "Recurve", "numero": 12})
+
+    assert tools.gh_calls == [("issue", tmp_path / "back", 12)]
+    assert "Login quebra" in text and "bug" in text and "ana: vi" in text
+
+
+async def test_listar_issues_and_errors_are_spoken(tools: Tools, tmp_path: Path) -> None:
+    await recurve_with(tools, tmp_path, "back")
+
+    listed = await tools.call("listar_issues", {"projeto": "Recurve", "busca": "login"})
+    tools.gh_fail = "no git remotes found"
+    failed = await tools.call("ver_issue", {"projeto": "Recurve", "numero": 1})
+
+    assert "#12 Login quebra" in listed and "#13 Doc" in listed
+    assert tools.gh_calls[0] == ("issues", tmp_path / "back", ("login", "open"))
+    assert "no git remotes" in failed

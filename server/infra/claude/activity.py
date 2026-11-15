@@ -40,6 +40,7 @@ _TABLE: list[tuple[str, str, Action]] = [
     (r"^mcp__alfred__ver_ambiente$", "Vendo o git do ambiente", "project"),
     (r"^mcp__alfred__iniciar_feature$", "Preparando a feature", "project"),
     (r"^mcp__alfred__definir_ambiente_padrao$", "Ajustando o ambiente padrão", "project"),
+    (r"^mcp__alfred__(ver_issue|listar_issues)$", "Lendo issues do GitHub", "web_page"),
     (r"^Bash$", "Executando um comando", "command"),
     (r"^Read$", "Lendo um arquivo", "files_read"),
     (r"^(Glob|Grep)$", "Buscando nos arquivos", "files_read"),

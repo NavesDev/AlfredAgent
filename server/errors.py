@@ -53,5 +53,9 @@ class GitError(AlfredError):
     """A git command failed. The message is git's stderr, trimmed."""
 
 
+class GitHubError(AlfredError):
+    """gh failed or is missing. The message is gh's stderr, trimmed, or pt-BR."""
+
+
 class SettingsError(AlfredError):
     """Invalid settings from the panel. The message is pt-BR."""

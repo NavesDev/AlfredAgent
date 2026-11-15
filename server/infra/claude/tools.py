@@ -5,11 +5,13 @@ for projects and workspaces. Errors come back as the sentence Alfred says.
 """
 
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import claude_agent_sdk as sdk
 
-from errors import GitError, ProjectError, SessionError
+from errors import GitError, GitHubError, ProjectError, SessionError
+from infra import github as real_github
 from infra.claude.agents import KINDS
 
 if TYPE_CHECKING:
@@ -22,7 +24,9 @@ EFFORTS = ["low", "medium", "high", "xhigh", "max"]
 Result = dict[str, Any]
 
 
-def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcpTool[Any]]:
+def session_tools(
+    sessions: "Sessions", projects: "Projects", github: Any = real_github
+) -> list[sdk.SdkMcpTool[Any]]:
     def delegate(name: str, task: str) -> str:
         try:
             return sessions.delegate(name, task)
@@ -338,6 +342,73 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
 
         return await _speak(run)
 
+    def repo_of(args: Result) -> Path:
+        found = projects.find(str(args["projeto"]))
+        if args.get("ambiente"):
+            return Path(projects.workspace(found.name, str(args["ambiente"])).path)
+        base = next((w for w in found.workspaces if w.id == found.default_workspace_id), None)
+        if base is None:
+            raise ProjectError(f"O projeto {found.name} não tem ambiente; diga em qual.")
+        return Path(base.path)
+
+    issue_args = {
+        "projeto": {"type": "string"},
+        "ambiente": {"type": "string", "description": "sem ele, o ambiente padrão"},
+    }
+
+    @sdk.tool(
+        "ver_issue",
+        "Lê uma issue do GitHub do repo do projeto: título, estado, labels, texto e os últimos "
+        "comentários. Use antes de planejar uma feature ou para responder sobre ela.",
+        {
+            "type": "object",
+            "properties": {**issue_args, "numero": {"type": "integer"}},
+            "required": ["projeto", "numero"],
+        },
+    )
+    async def ver_issue(args: Result) -> Result:
+        async def run() -> str:
+            i = await github.issue(repo_of(args), int(args["numero"]))
+            labels = f" [{', '.join(i.labels)}]" if i.labels else ""
+            comments = "\n".join(i.comments or []) or "sem comentários"
+            return (
+                f"#{i.number} {i.title} ({i.state}){labels} {i.url}\n{i.body}\n"
+                f"Comentários:\n{comments}"
+            )
+
+        return await _speak(run)
+
+    @sdk.tool(
+        "listar_issues",
+        "Lista até 20 issues do GitHub do repo do projeto, com 'busca' opcional (sintaxe de "
+        "busca do GitHub) e 'estado' open, closed ou all.",
+        {
+            "type": "object",
+            "properties": {
+                **issue_args,
+                "busca": {"type": "string"},
+                "estado": {"type": "string", "enum": ["open", "closed", "all"]},
+            },
+            "required": ["projeto"],
+        },
+    )
+    async def listar_issues(args: Result) -> Result:
+        async def run() -> str:
+            found = await github.issues(
+                repo_of(args),
+                str(args.get("busca") or "") or None,
+                str(args.get("estado") or "open"),
+            )
+            return (
+                "\n".join(
+                    f"#{i.number} {i.title}" + (f" [{', '.join(i.labels)}]" if i.labels else "")
+                    for i in found
+                )
+                or "Nenhuma issue encontrada."
+            )
+
+        return await _speak(run)
+
     @sdk.tool(
         "iniciar_feature",
         "Começa uma feature num projeto e manda a 'tarefa'. Antes, decida: veja as branches "
@@ -427,12 +498,14 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
         ver_ambiente,
         iniciar_feature,
         definir_ambiente_padrao,
+        ver_issue,
+        listar_issues,
     ]
 
 
 async def _speak(run: Callable[[], Awaitable[str]]) -> Result:
     try:
         text = await run()
-    except (SessionError, ProjectError, GitError) as e:
+    except (SessionError, ProjectError, GitError, GitHubError) as e:
         text = str(e)
     return {"content": [{"type": "text", "text": text}]}
