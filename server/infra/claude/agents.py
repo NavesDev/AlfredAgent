@@ -12,6 +12,8 @@ from typing import Any, ClassVar
 
 import claude_agent_sdk as sdk
 
+from infra.claude.mcp import tool_prefix
+
 # One CLI message can carry a screenshot, a big file or a long command output; the SDK's 1 MB
 # default turns those into a failed task ("JSON message exceeded maximum buffer size").
 MAX_BUFFER = 64 * 1024 * 1024
@@ -122,7 +124,7 @@ Use MCPs externos (e-mail, agenda, navegador) só quando a tarefa pedir isso exp
             setting_sources=["user", "project", "local"],  # CLAUDE.md, skills, plugins, hooks, MCPs
             skills="all",
             permission_mode="auto",
-            disallowed_tools=[f"mcp__{name}" for name in ctx.mcp_disabled],
+            disallowed_tools=[tool_prefix(name) for name in ctx.mcp_disabled],
             cwd=ctx.cwd,
             max_buffer_size=MAX_BUFFER,
             extra_args=dict(REPLAY_PROMPTS),

@@ -48,7 +48,7 @@ def test_implementation_options_load_the_full_claude_code_harness() -> None:
         effort="max",
         project="Recurve",
         workspace="back",
-        mcp_disabled=("gmail", "calendar"),
+        mcp_disabled=("gmail", "plugin:engineering:google calendar", "claude.ai Gmail"),
     )
 
     options = KINDS["implementacao"].options(ctx)
@@ -57,7 +57,11 @@ def test_implementation_options_load_the_full_claude_code_harness() -> None:
     assert options.skills == "all"
     assert options.tools is None and not options.strict_mcp_config
     assert options.permission_mode == "auto"
-    assert options.disallowed_tools == ["mcp__gmail", "mcp__calendar"]
+    assert options.disallowed_tools == [
+        "mcp__gmail",
+        "mcp__plugin_engineering_google_calendar",
+        "mcp__claude_ai_Gmail",
+    ]
     assert (options.cwd, options.model, options.effort) == (Path("/dev/api"), "opus", "max")
     prompt = options.system_prompt
     assert isinstance(prompt, dict) and prompt["type"] == "preset"
