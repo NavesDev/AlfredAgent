@@ -140,3 +140,19 @@ export const BarChart = (p: Props) => (
     <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
   </Icon>
 )
+export const Minus = (p: Props) => (
+  <Icon {...p}>
+    <path d="M5 12h14" />
+  </Icon>
+)
+export const Maximize = (p: Props) => (
+  <Icon {...p}>
+    <rect x="5" y="5" width="14" height="14" rx="2" />
+  </Icon>
+)
+export const Restore = (p: Props) => (
+  <Icon {...p}>
+    <rect x="4" y="8" width="12" height="12" rx="2" />
+    <path d="M8 8V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2" />
+  </Icon>
+)
