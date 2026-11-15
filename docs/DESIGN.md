@@ -14,7 +14,7 @@ Remodelação do painel web no estilo de vidro da Apple (visionOS). Este documen
 
 - **Esfera:** [Strands](https://reactbits.dev/animations/strands), do React Bits (MIT + Commons Clause: pode usar no app, não pode revender o componente). WebGL2 puro, sem dependência; tem as props `listening` e `level` para a voz.
 - **Material, listas e controles:** visionOS e os Ajustes do iOS.
-- **Uso do plano:** anéis como os do Apple Watch.
+- **Uso do plano:** anéis como os do Apple Watch, nas configurações e na barra de controle (anel pequeno com o % e a janela).
 - **Taste Skill:** um único elemento animado por tela.
 
 ## Cores
