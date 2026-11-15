@@ -314,6 +314,9 @@ def test_results_list_get_and_serve_a_file(results_api: Any) -> None:
     assert [r["id"] for r in listed.json()] == [rid]
     assert one.json()["files"] == [{"name": "a.png", "kind": "image", "size": 4, "exists": True}]
     assert served.status_code == 200 and served.content == b"PNG!"
+    csp = served.headers["content-security-policy"]
+    assert "sandbox allow-scripts" in csp and "default-src 'none'" in csp  # no network, no origin
+    assert served.headers["x-content-type-options"] == "nosniff"
     assert api.get("/api/results", params={"session": "nada"}).status_code == 404
     assert api.get("/api/results", params={"session": "sistema", "limit": 31}).status_code == 422
     assert api.get("/api/results/999").status_code == 404

@@ -18,6 +18,17 @@ router = APIRouter(prefix="/api/results", tags=["results"])
 presentation = APIRouter(prefix="/api/presentation", tags=["results"])
 
 
+# A result file opened as a page (HTML, SVG) runs sandboxed: no same-origin, no network.
+_ISOLATED = {
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy": (
+        "sandbox allow-scripts; default-src 'none'; img-src data: blob:; media-src data: blob:;"
+        " style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:"
+    ),
+}
+
+
 class Present(BaseModel):
     mode: PresentMode
 
@@ -75,7 +86,7 @@ async def get_file(result_id: int, index: int, request: Request) -> FileResponse
         raise HTTPException(403, str(e)) from e
     except FileGone as e:
         raise HTTPException(410, str(e)) from e
-    return FileResponse(path, headers={"Cache-Control": "no-store"})
+    return FileResponse(path, headers=_ISOLATED)
 
 
 @router.post("/{result_id}/files/{index}/open", status_code=204)
