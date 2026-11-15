@@ -13,6 +13,7 @@ from api.app import create_app
 from config import Config, load_config
 from controllers.portraits import Portraits
 from controllers.projects import Projects
+from controllers.results import Results
 from controllers.router import Router
 from controllers.sessions import Sessions
 from controllers.settings import Settings
@@ -66,8 +67,16 @@ async def serve(config: Config) -> None:
         return CodingSession(bus, kind, context)
 
     portraits = Portraits(db, bus, settings, config.storage.db_path.parent / "portraits", paint)
+    results = Results(db, bus, Path.home())
     sessions = Sessions(
-        bus, talker, db, settings, new_session, home=Path.home(), portrait=portraits.url
+        bus,
+        talker,
+        db,
+        settings,
+        new_session,
+        home=Path.home(),
+        portrait=portraits.url,
+        results=results,
     )
     sessions.load()
     usage = Usage(bus, sessions, settings)
@@ -83,7 +92,7 @@ async def serve(config: Config) -> None:
         DailyState(config.storage.state_path),
         model=lambda: settings.resolve("alfred", None, None),
         timeout_s=config.agents.timeout_s,
-        tools=session_tools(sessions, projects),
+        tools=session_tools(sessions, projects, results=results),
     )
     await agent.start()
     root = Path(__file__).resolve().parent.parent
@@ -136,6 +145,7 @@ async def serve(config: Config) -> None:
     app.state.portraits = portraits
     app.state.usage = usage
     app.state.updates = updates
+    app.state.results = results
     server = uvicorn.Server(
         uvicorn.Config(app, config.api.host, config.api.port, log_level="warning")
     )

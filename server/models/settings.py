@@ -11,6 +11,10 @@ from typing import Literal
 from pydantic import BaseModel
 
 Effort = str  # "low" | "medium" | "high" | "xhigh" | "max"; validated by the controller
+# Where everything that floats on the desktop anchors (ADR 0014)
+OverlayPosition = Literal[
+    "top_right", "top_center", "top_left", "bottom_right", "bottom_center", "bottom_left"
+]
 
 
 class AgentSettings(BaseModel):
@@ -25,6 +29,7 @@ class AppSettings(BaseModel):
     mcp_disabled: list[str] = []
     image_mcp: str | None = None  # favorite image generator; None lets the model pick
     implementation_mode: Literal["worktree", "ambiente"] = "worktree"  # workspaces may override
+    overlay_position: OverlayPosition = "top_right"
 
 
 class Defaults(BaseModel):
