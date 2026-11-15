@@ -74,7 +74,7 @@ Suggested scopes: `server`, `router`, `sessions`, `alfred`, `permissions`, `audi
 
 - [SemVer](https://semver.org/), one version for the whole repo (server, web and desktop), tagged `vX.Y.Z` on `main`.
 - [release-please](https://github.com/googleapis/release-please) ([workflow](.github/workflows/release-please.yml), [config](release-please-config.json)) keeps a release PR open with the next version and its CHANGELOG, built from the commits merged into `main`. Before 1.0: `feat` bumps the minor, `fix` bumps the patch, a breaking change (`feat!:`) bumps the minor.
-- Merging the release PR bumps the versions in `server/pyproject.toml`, `apps/web/package.json`, `Cargo.toml` and `tauri.conf.json`, then creates the tag and the GitHub release.
+- Merging the release PR bumps the versions in `server/pyproject.toml`, `server/uv.lock`, `apps/web/package.json`, `Cargo.toml`, `Cargo.lock` and `tauri.conf.json`, then creates the tag and the GitHub release. The lockfiles matter: the self-update refuses a dirty checkout, and `uv sync` or the build would rewrite them otherwise.
 - `docs`, `chore` and `test` commits stay out of the CHANGELOG.
 
 ## ADRs
