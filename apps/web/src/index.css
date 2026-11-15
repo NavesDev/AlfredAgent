@@ -3,6 +3,8 @@
 /* Visual direction: docs/DESIGN.md. Apple glass over a neutral graphite room. */
 @theme {
   --font-sans: -apple-system, 'SF Pro Text', 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+  /* Only the "Alfred" name on the title bar (docs/DESIGN.md#typography); bundled, works offline. */
+  --font-display: 'Newsreader Variable', Georgia, serif;
   --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'SFMono-Regular', monospace;
 
   --color-page: #0a0a0c;

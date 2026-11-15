@@ -20,7 +20,9 @@ export function TitleBar({ connection }: { connection: Connection }) {
     >
       <div className="pointer-events-none flex items-center gap-2 pl-1 text-[13px] font-semibold">
         <span className={`size-2 rounded-full ${DOT[connection]}`} />
-        Alfred
+        <span className="font-display text-[19px] leading-none font-normal italic [font-variation-settings:'opsz'_72]">
+          Alfred
+        </span>
       </div>
       <div className="flex items-center gap-1.5">
         <WindowButton label="Minimizar" onClick={() => appWindow().minimize()}>
