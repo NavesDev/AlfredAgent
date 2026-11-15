@@ -155,3 +155,26 @@ def test_descriptions_persist_and_old_databases_gain_the_columns(tmp_path: Path)
     project.set_implementation_mode(db, ws.id, "ambiente")
     assert project.get_project(db, p.id).default_workspace_id == ws.id  # type: ignore[union-attr]
     assert project.get_workspace(db, ws.id).implementation_mode == "ambiente"  # type: ignore[union-attr]
+
+
+def test_v4_gives_old_projects_their_first_folder_as_default(tmp_path: Path) -> None:
+    path = tmp_path / "v3.sqlite3"
+    old = sqlite3.connect(path)
+    old.executescript(
+        "CREATE TABLE project (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE,"
+        " aliases TEXT NOT NULL DEFAULT '[]', description TEXT NOT NULL DEFAULT '');"
+        "CREATE TABLE workspace (id INTEGER PRIMARY KEY, project_id INTEGER NOT NULL,"
+        " name TEXT NOT NULL, path TEXT NOT NULL, kind TEXT NOT NULL, parent_id INTEGER,"
+        " branch TEXT, description TEXT NOT NULL DEFAULT '');"
+        "INSERT INTO project (name) VALUES ('Vrummy'), ('Vazio');"
+        "INSERT INTO workspace (project_id, name, path, kind) VALUES"
+        " (1, 'wt', '/x-wt', 'worktree'), (1, 'principal', '/x', 'folder'),"
+        " (1, 'docs', '/y', 'folder');"
+    )
+    old.close()
+
+    db = open_db(path)
+    vrummy, empty = project.list_projects(db)
+
+    assert vrummy.default_workspace_id == 2
+    assert empty.default_workspace_id is None

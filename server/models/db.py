@@ -59,6 +59,7 @@ def open_db(path: Path | str) -> sqlite3.Connection:
     db.execute("PRAGMA foreign_keys = ON")
     db.executescript(_SCHEMA)
     _migrate(db)
+    _default_workspaces(db)
     db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     return db
 
@@ -82,3 +83,12 @@ def _migrate(db: sqlite3.Connection) -> None:
         columns = {row["name"] for row in db.execute(f"PRAGMA table_info({table})")}
         if column not in columns:
             db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {kind}")
+
+
+def _default_workspaces(db: sqlite3.Connection) -> None:
+    """A project without a default workspace gets its first folder (version 4)."""
+    db.execute(
+        "UPDATE project SET default_workspace_id = (SELECT MIN(id) FROM workspace"
+        " WHERE workspace.project_id = project.id AND kind = 'folder')"
+        " WHERE default_workspace_id IS NULL"
+    )
