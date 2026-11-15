@@ -37,11 +37,6 @@ function connect() {
   }
 }
 
-/** Feeds fake events into the same stream; used by the demo mode. */
-export function emit(event: AlfredEvent) {
-  listeners.forEach((listener) => listener(event))
-}
-
 export function useEvents(listener: Listener) {
   const latest = useRef(listener)
   useEffect(() => {

@@ -1,7 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { AppShell } from '../../../components/layout/AppShell'
 import { NewSessionForm } from '../../../components/NewSessionForm'
-import { playDemo } from '../../../lib/demo'
 import { ActivityCards } from '../../assistant/components/ActivityCards'
 import { Orb } from '../../assistant/components/Orb'
 import { useActivity } from '../../assistant/hooks/useActivity'
@@ -157,14 +156,6 @@ export function DashboardPage() {
             )}
           >
             <UsagePill />
-            <button
-              type="button"
-              onClick={() => playDemo()}
-              title="Simula uma conversa para testar a animação sem o servidor"
-              className="rounded-full px-3 py-2 text-xs text-ink-2 hover:bg-fill"
-            >
-              Demo
-            </button>
           </ControlBar>
         </section>
 

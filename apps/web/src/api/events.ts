@@ -87,10 +87,3 @@ export type AlfredEvent = Base &
   )
 
 export type EventOf<T extends AlfredEvent['type']> = Extract<AlfredEvent, { type: T }>
-
-/** An event before the server stamps it, e.g. for the demo script. */
-export type UnstampedEvent = AlfredEvent extends infer E
-  ? E extends AlfredEvent
-    ? Omit<E, 'ts'>
-    : never
-  : never
