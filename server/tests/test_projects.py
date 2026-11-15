@@ -1,3 +1,5 @@
+import asyncio
+from collections.abc import AsyncIterator, Iterable
 from pathlib import Path
 
 import pytest
@@ -16,6 +18,9 @@ class FakeGit:
         self.dirty, self.fail = dirty, fail
         self.removed: list[tuple[Path, bool]] = []
         self.added: list[tuple[Path, str, str]] = []
+        self.trees: dict[Path, list[tuple[Path, str | None]]] = {}  # repo -> its worktrees
+        self.commons: dict[Path, Path] = {}  # folder -> common dir, when not <folder>/.git
+        self.broken: set[Path] = set()
 
     async def add_worktree(
         self, parent: Path, name: str, branch: str | None = None
@@ -33,6 +38,14 @@ class FakeGit:
     async def is_dirty(self, path: Path) -> bool:
         return self.dirty
 
+    async def common_dir(self, path: Path) -> Path:
+        if not path.is_dir() or path in self.broken:
+            raise GitError("fatal: not a git repository")
+        return self.commons.get(path, path / ".git")
+
+    async def list_worktrees(self, repo: Path) -> list[tuple[Path, str | None]]:
+        return list(self.trees.get(repo, []))
+
     async def summary(self, path: Path) -> GitSummary:
         if self.fail:
             raise GitError("fatal: not a git repository")
@@ -40,7 +53,13 @@ class FakeGit:
 
 
 def make(env: Env, git: FakeGit | None = None, mode: str = "worktree") -> Projects:
-    return Projects(env.db, env.sessions._bus, git or FakeGit(), mode=lambda: mode)  # type: ignore[arg-type,return-value]
+    return Projects(
+        env.db,
+        env.sessions._bus,
+        git or FakeGit(),
+        mode=lambda: mode,  # type: ignore[arg-type,return-value]
+        drop_session=env.sessions.delete,
+    )
 
 
 @pytest.fixture
@@ -326,3 +345,114 @@ async def test_start_feature_without_a_default_refuses(env: Env) -> None:
 
     with pytest.raises(NoDefaultWorkspace):
         await projects.start_feature("Recurve", "login")
+
+
+async def test_sync_registers_worktrees_made_outside_and_drops_vanished_ones(
+    env: Env, tmp_path: Path
+) -> None:
+    git = FakeGit()
+    projects = make(env, git)
+    (back,) = folders(tmp_path, "back")
+    recurve = projects.create("Recurve", [])
+    parent = projects.add_workspace(recurve.id, "back", back)
+    gone = await projects.add_worktree(recurve.id, parent.id, "old")
+    env.sessions.create("implementacao", "velha", gone.id)
+    outside = tmp_path / "back-wt" / "login"
+    outside.mkdir(parents=True)
+    git.trees[Path(back)] = [(outside, "feat/login"), (tmp_path / "loose", None)]
+    queue = env.sessions._bus.subscribe()
+
+    added, removed = await projects.sync_worktrees()
+    await settle()
+
+    assert [(w.name, w.kind, w.parent_id, w.branch) for w in added] == [
+        ("login", "worktree", parent.id, "feat/login"),
+        ("loose", "worktree", parent.id, None),
+    ]
+    assert [w.name for w in removed] == ["old"]
+    assert "velha" not in {v.name for v in env.sessions.list()}
+    assert {w.name for w in projects.get(recurve.id).workspaces} == {"back", "login", "loose"}
+    assert "project_updated" in {e["type"] for e in drain(queue)}
+    assert await projects.sync_worktrees() == ([], [])  # idempotent
+
+
+async def test_sync_of_one_repo_leaves_the_others(env: Env, tmp_path: Path) -> None:
+    git = FakeGit()
+    projects = make(env, git)
+    back, front = folders(tmp_path, "back", "front")
+    recurve = projects.create("Recurve", [])
+    projects.add_workspace(recurve.id, "back", back)
+    projects.add_workspace(recurve.id, "front", front)
+    for repo, name in ((back, "a"), (front, "b")):
+        (tmp_path / name).mkdir()
+        git.trees[Path(repo)] = [(tmp_path / name, name)]
+
+    added, _ = await projects.sync_worktrees(Path(front) / ".git")
+
+    assert [w.name for w in added] == ["b"]
+
+
+async def test_sync_skips_broken_repos_and_missing_folders(env: Env, tmp_path: Path) -> None:
+    git = FakeGit()
+    projects = make(env, git)
+    back, front = folders(tmp_path, "back", "front")
+    recurve = projects.create("Recurve", [])
+    parent = projects.add_workspace(recurve.id, "back", back)
+    projects.add_workspace(recurve.id, "front", front)
+    kept = await projects.add_worktree(recurve.id, parent.id, "kept")
+    git.broken.add(Path(back))  # git fails there: nothing of it is touched
+    (tmp_path / "x").mkdir()
+    git.trees[Path(front)] = [(tmp_path / "x", "x")]
+
+    added, removed = await projects.sync_worktrees()
+
+    assert [w.name for w in added] == ["x"] and removed == []
+    assert kept.id in {w.id for w in projects.get(recurve.id).workspaces}
+
+
+async def test_two_folders_of_one_repo_share_it(env: Env, tmp_path: Path) -> None:
+    git = FakeGit()
+    projects = make(env, git)
+    back, mirror = folders(tmp_path, "back", "mirror")
+    git.commons[Path(mirror)] = Path(back) / ".git"
+    recurve = projects.create("Recurve", [])
+    projects.add_workspace(recurve.id, "back", back)
+    projects.add_workspace(recurve.id, "mirror", mirror)
+    (tmp_path / "t").mkdir()
+    git.trees[Path(back)] = git.trees[Path(mirror)] = [(tmp_path / "t", "t")]
+
+    added, _ = await projects.sync_worktrees()
+
+    assert [w.name for w in added] == ["t"]
+    assert await projects.repos() == [Path(back) / ".git"]
+
+
+async def test_watch_syncs_at_start_and_on_each_event(env: Env, tmp_path: Path) -> None:
+    git = FakeGit()
+    events: asyncio.Queue[Path] = asyncio.Queue()
+    watched: list[list[Path]] = []
+
+    async def watch(repos: Iterable[Path], stop: asyncio.Event) -> AsyncIterator[Path]:
+        watched.append(list(repos))
+        while not stop.is_set():
+            yield await events.get()
+
+    projects = Projects(env.db, env.sessions._bus, git, watch=watch)
+    (back,) = folders(tmp_path, "back")
+    recurve = projects.create("Recurve", [])
+    projects.add_workspace(recurve.id, "back", back)
+    (tmp_path / "early").mkdir()
+    git.trees[Path(back)] = [(tmp_path / "early", "early")]  # made while Alfred was off
+
+    task = asyncio.create_task(projects.watch_worktrees())
+    await settle()
+    assert "early" in {w.name for w in projects.get(recurve.id).workspaces}
+
+    (tmp_path / "late").mkdir()
+    git.trees[Path(back)].append((tmp_path / "late", "late"))
+    await events.put(Path(back) / ".git")
+    await settle()
+    task.cancel()
+
+    assert "late" in {w.name for w in projects.get(recurve.id).workspaces}
+    assert watched == [[Path(back) / ".git"]]  # one watch, no polling

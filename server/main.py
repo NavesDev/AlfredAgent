@@ -20,6 +20,7 @@ from controllers.usage import Usage
 from controllers.vocabulary import Vocabulary
 from errors import ConfigError, DependencyError
 from events import EventBus
+from infra import git
 from infra.audio import check_audio
 from infra.audio.listener import Listener, OpenWakeWord, load_vad, load_whisper
 from infra.audio.talker import Talker, load_kokoro, open_speaker
@@ -68,7 +69,13 @@ async def serve(config: Config) -> None:
     )
     sessions.load()
     usage = Usage(bus, sessions, settings)
-    projects = Projects(db, bus, mode=lambda: settings.app().implementation_mode)
+    projects = Projects(
+        db,
+        bus,
+        mode=lambda: settings.app().implementation_mode,
+        drop_session=sessions.delete,
+        watch=git.watch_worktrees,
+    )
     agent = AlfredAgent(
         bus,
         DailyState(config.storage.state_path),
@@ -106,6 +113,7 @@ async def serve(config: Config) -> None:
             usage.run,
             vocabulary.run,
             portraits.run,
+            projects.watch_worktrees,
         )
     ]
     stop = threading.Event()

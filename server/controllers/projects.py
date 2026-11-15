@@ -2,20 +2,31 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import re
 import sqlite3
 import unicodedata
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
 from pathlib import Path
 from typing import Protocol
 
-from errors import NoDefaultWorkspace, ProjectError, ProjectInUse, ProjectNotFound
+from errors import (
+    GitError,
+    NoDefaultWorkspace,
+    ProjectError,
+    ProjectInUse,
+    ProjectNotFound,
+    SessionError,
+)
 from events import EventBus
 from infra import git as real_git
 from infra.git import GitSummary
 from models import project
 from models import session as records
 from models.project import ImplementationMode, Project, Workspace
+
+log = logging.getLogger(__name__)
 
 KEEP = object()  # update_workspace: leave the implementation mode as it is
 
@@ -27,6 +38,8 @@ class Git(Protocol):
     async def remove_worktree(self, path: Path, force: bool) -> None: ...
     async def is_dirty(self, path: Path) -> bool: ...
     async def summary(self, path: Path) -> GitSummary: ...
+    async def common_dir(self, path: Path) -> Path: ...
+    async def list_worktrees(self, repo: Path) -> list[tuple[Path, str | None]]: ...
 
 
 class Projects:
@@ -36,8 +49,12 @@ class Projects:
         bus: EventBus,
         git: Git = real_git,
         mode: Callable[[], ImplementationMode] = lambda: "worktree",
+        drop_session: Callable[[str], Awaitable[None]] | None = None,
+        watch: Callable[[Iterable[Path], asyncio.Event], AsyncIterator[Path]] | None = None,
     ) -> None:
         self._db, self._bus, self._git, self._mode = db, bus, git, mode
+        self._drop_session, self._watch = drop_session, watch
+        self._rewatch = asyncio.Event()
 
     def all(self) -> list[Project]:
         return project.list_projects(self._db)
@@ -107,6 +124,7 @@ class Projects:
         if current.default_workspace_id is None:
             project.update_project(self._db, project_id, default_workspace_id=ws.id)
         self._publish_updated(project_id)
+        self._rewatch.set()  # maybe a new repo to watch
         return ws
 
     async def add_worktree(
@@ -124,6 +142,12 @@ class Projects:
         if parent is None:
             raise ProjectNotFound(f"O ambiente de origem não existe no projeto {current.name}.")
         path, branch = await self._git.add_worktree(Path(parent.path), name, branch)
+        synced = next(  # the watcher may have registered it first
+            (w for w in self.get(project_id).workspaces if _real(w.path) == _real(str(path))),
+            None,
+        )
+        if synced is not None:
+            return synced
         ws = project.insert_workspace(
             self._db, project_id, name, str(path), "worktree", parent.id, branch, description
         )
@@ -209,6 +233,92 @@ class Projects:
         project.delete_workspace(self._db, id)
         self._publish_updated(ws.project_id)
 
+    async def _groups(self) -> dict[Path, list[Workspace]]:
+        """Folder workspaces by the repo they belong to; folders git can't read are left out."""
+        groups: dict[Path, list[Workspace]] = {}
+        for p in self.all():
+            for ws in p.workspaces:
+                if ws.kind != "folder":
+                    continue
+                try:
+                    common = await self._git.common_dir(Path(ws.path))
+                except GitError as e:
+                    log.debug("not a repo, not synced: %s (%s)", ws.path, e)
+                    continue
+                groups.setdefault(common, []).append(ws)
+        return groups
+
+    async def repos(self) -> list[Path]:
+        return sorted(await self._groups())
+
+    async def sync_worktrees(
+        self, common: Path | None = None
+    ) -> tuple[list[Workspace], list[Workspace]]:
+        """Makes the workspaces mirror the worktrees git has (ADR 0011): a worktree made outside
+        becomes a workspace of the repo's first folder; a vanished one takes its workspace and
+        sessions with it. Only `common`'s repo when given."""
+        added: list[Workspace] = []
+        removed: list[Workspace] = []
+        for repo, folders in (await self._groups()).items():
+            if common is not None and repo != common:
+                continue
+            parent = folders[0]
+            try:
+                listed = await self._git.list_worktrees(Path(parent.path))
+            except GitError as e:
+                log.warning("could not list worktrees of %s: %s", parent.path, e)
+                continue
+            current = self.get(parent.project_id)
+            known = {_real(w.path) for p in self.all() for w in p.workspaces}
+            for path, branch in listed:
+                if _real(str(path)) in known:
+                    continue
+                name = self._spare_name(current, path.name)
+                ws = project.insert_workspace(
+                    self._db, current.id, name, str(path), "worktree", parent.id, branch
+                )
+                current = self.get(current.id)
+                added.append(ws)
+            alive = {_real(str(path)) for path, _ in listed}
+            roots = {w.id for w in folders}
+            for ws in sorted(_worktrees_under(current, roots), key=lambda w: -w.id):
+                if _real(ws.path) not in alive and await self._drop(ws):
+                    removed.append(ws)
+            if added or removed:
+                self._publish_updated(current.id)
+        return added, removed
+
+    async def _drop(self, ws: Workspace) -> bool:
+        for name in records.sessions_in_workspace(self._db, ws.id):
+            try:
+                if self._drop_session is None:
+                    raise SessionError("no way to drop sessions")
+                await self._drop_session(name)
+            except SessionError as e:
+                log.warning("kept workspace %s: session %s stays (%s)", ws.name, name, e)
+                return False
+        project.delete_workspace(self._db, ws.id)
+        return True
+
+    async def watch_worktrees(self) -> None:
+        """Syncs everything once, then each repo whenever git adds or removes a worktree."""
+        if self._watch is None:
+            return
+        await self.sync_worktrees()
+        while True:
+            repos = await self.repos()
+            watched = _watched(repos)
+            self._rewatch.clear()
+            stop = asyncio.Event()
+            relay = asyncio.create_task(_relay(self._rewatch, stop))
+            try:
+                async for repo in self._watch(repos, stop):
+                    await self.sync_worktrees(repo)
+                    if _watched(repos) != watched:  # a repo got its first worktrees/ folder
+                        stop.set()
+            finally:
+                relay.cancel()
+
     def _free_name(self, name: str) -> str:
         name = name.strip()
         if not name:
@@ -225,6 +335,13 @@ class Projects:
             raise ProjectError(f"O projeto {current.name} já tem um ambiente chamado {name}.")
         return name
 
+    def _spare_name(self, current: Project, name: str) -> str:
+        taken = {w.name.lower() for w in current.workspaces}
+        candidate, n = name, 2
+        while candidate.lower() in taken:
+            candidate, n = f"{name}-{n}", n + 1
+        return candidate
+
     def _publish_updated(self, id: int) -> Project:
         updated = self.get(id)
         self._bus.publish("project_updated", project=updated.model_dump())
@@ -239,6 +356,31 @@ def _description(text: str) -> str:
     if len(text) > MAX_DESCRIPTION:
         raise ProjectError(f"A descrição passa de {MAX_DESCRIPTION} caracteres; encurte.")
     return text
+
+
+def _real(path: str) -> str:
+    return str(Path(path).expanduser().resolve())
+
+
+def _worktrees_under(current: Project, roots: set[int]) -> list[Workspace]:
+    """Worktree workspaces whose chain of parents reaches one of the given folders."""
+    by_id = {w.id: w for w in current.workspaces}
+
+    def root(ws: Workspace) -> int | None:
+        while ws.parent_id is not None and ws.parent_id in by_id:
+            ws = by_id[ws.parent_id]
+        return ws.id
+
+    return [w for w in current.workspaces if w.kind == "worktree" and root(w) in roots]
+
+
+def _watched(repos: list[Path]) -> set[Path]:
+    return {p for r in repos for p in (r, r / "worktrees") if p.is_dir()}
+
+
+async def _relay(source: asyncio.Event, target: asyncio.Event) -> None:
+    await source.wait()
+    target.set()
 
 
 def _slug(text: str) -> str:
