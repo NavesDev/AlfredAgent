@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Desktop launcher: starts server + web (make dev) if not running, then opens the panel.
+# Desktop launcher: starts server + web (make dev) if not running, then opens the panel
+# in the desktop app (make build-desktop) or, without it, in the browser.
 # Usage: alfred-launch.sh [start|stop]
 set -euo pipefail
 
@@ -8,6 +9,7 @@ STATE="${XDG_STATE_HOME:-$HOME/.local/state}/alfred"
 PIDFILE="$STATE/alfred.pid"
 LOG="$STATE/alfred.log"
 URL="http://localhost:5173"
+DESKTOP="$ROOT/apps/desktop/src-tauri/target/release/alfred-desktop"
 export PATH="$HOME/.local/bin:$PATH"
 mkdir -p "$STATE"
 
@@ -16,6 +18,7 @@ notify() { command -v notify-send >/dev/null && notify-send -i "$ROOT/apps/web/p
 
 case "${1:-start}" in
   stop)
+    pkill -f "$DESKTOP" 2>/dev/null || true
     if running; then
       # SIGINT like Ctrl+C: the server only shuts down cleanly on it.
       pgid="$(cat "$PIDFILE")"
@@ -40,7 +43,11 @@ case "${1:-start}" in
         sleep 1
       done
     fi
-    xdg-open "$URL" >/dev/null 2>&1 &
+    if [[ -x "$DESKTOP" ]]; then
+      setsid "$DESKTOP" >>"$LOG" 2>&1 < /dev/null &
+    else
+      xdg-open "$URL" >/dev/null 2>&1 &
+    fi
     ;;
   *) echo "usage: $0 [start|stop]" >&2; exit 2 ;;
 esac
