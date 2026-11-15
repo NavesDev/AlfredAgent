@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/NavesDev/AlfredAgent/compare/v0.2.0...v0.2.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* **release:** bump uv.lock and Cargo.lock with the version ([6bff388](https://github.com/NavesDev/AlfredAgent/commit/6bff388f3ef9f38ec3d6ccbaeeedfccdfe82f765))
+* **release:** bump uv.lock and Cargo.lock with the version ([ee0a952](https://github.com/NavesDev/AlfredAgent/commit/ee0a95264490339ece89b3944fb1dd90f0e8cc1d))
+
 ## [0.2.0](https://github.com/NavesDev/AlfredAgent/compare/v0.1.0...v0.2.0) (2026-11-15)
 
 
