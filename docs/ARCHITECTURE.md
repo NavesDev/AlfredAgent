@@ -194,6 +194,7 @@ erDiagram
     WORKSPACE ||--o{ SESSION : hosts
     PROJECT ||--o{ TASK : groups
     SESSION ||--o{ TASK : executes
+    SESSION ||--o{ RESULT : records
 
     PROJECT {
         int id PK
@@ -221,6 +222,17 @@ erDiagram
         text claude_session_id
         bool protected
     }
+    RESULT {
+        int id PK
+        int session_id FK "null = Alfred's own"
+        text source "session | alfred"
+        text title
+        text summary "RESUMO"
+        text report "Markdown, change report only"
+        json changes "path, added, removed"
+        json files "absolute paths"
+        datetime created_at
+    }
     TASK {
         int id PK
         int project_id FK "optional"
@@ -232,7 +244,9 @@ erDiagram
     }
 ```
 
-Settings live in `agent_settings` (model and effort per kind: `alfred`, `geral`, `implementacao`) and `app_settings` (`max_active_sessions`, `idle_minutes`, `mcp_disabled`, `image_mcp`, `implementation_mode`); `config.yaml` only seeds them the first time. Session status and queues live in memory.
+Settings live in `agent_settings` (model and effort per kind: `alfred`, `geral`, `implementacao`) and `app_settings` (`max_active_sessions`, `idle_minutes`, `mcp_disabled`, `image_mcp`, `implementation_mode`, `overlay_position`); `config.yaml` only seeds them the first time. Session status and queues live in memory.
+
+Each session keeps its last 30 results; older rows are deleted (files stay on disk). Results come from `APRESENTAR:`/`GUARDAR:` lines in a session's final reply or from Alfred's `apresentar` tool ([ADR 0014](adr/0014-results-presentation.md)).
 
 Workspaces mirror git worktrees: `Projects.watch_worktrees` watches each repo's `.git/worktrees/` through inotify and syncs only the repo that changed; at startup it syncs everything once.
 
@@ -259,6 +273,9 @@ Planned auxiliary tables: `audit_log` (every tool call), `confirmation` (pending
 | `task_updated` | task | ws |
 | `permission_request` | id, session, action, description, channel | talker, ws |
 | `permission_resolved` | id, approved, channel | ws |
+| `result_created` | result | ws (session history) |
+| `result_presented` | result, mode (`card` / `ampliado`) | ws (overlay card, panel card, viewer) |
+| `presentation_closed` | — | ws |
 | `update_status` | update snapshot (current, latest, notes, status, last result) | ws |
 
 ## Errors
@@ -313,7 +330,10 @@ flowchart TD
 | `POST /api/alfred/clear` | Forgets Alfred's conversation of the day (waits for the reply in progress) |
 | `GET/POST /api/sessions`, `PATCH /api/sessions/{name}`, `POST …/clear`, `DELETE …` | Sessions |
 | `GET/POST /api/sessions/{name}/portrait` | Session portrait (POST paints it again) |
-| `GET/PUT /api/settings` | Model and effort per kind, limits, disabled MCPs, favorite image generator |
+| `GET/PUT /api/settings` | Model and effort per kind, limits, disabled MCPs, favorite image generator, overlay position preset |
+| `GET /api/results?session=`, `GET /api/results/{id}` | A session's results (newest first, up to 30) and one result |
+| `GET /api/results/{id}/files/{index}` | A result's file; loopback clients only (403 otherwise), 410 when it no longer exists |
+| `POST /api/results/{id}/present`, `POST /api/presentation/close` | Shows a result (`card` or `ampliado`) and closes what is shown |
 | `GET/POST/PATCH /api/tasks` | Tasks |
 | `GET /api/confirmations`, `POST /api/confirmations/{id}` | Pending confirmations |
 | `POST /api/commands` | Text into the same router as the voice |
@@ -331,9 +351,10 @@ apps/web/src/
 ├── main.tsx
 ├── App.tsx                      # layout + routes + global ConfirmDialog
 ├── api/                         # client.ts, schema.ts (generated), events.ts
+├── pages/OverlayPage.tsx        # desktop overlay: composes assistant (pill) and results (card)
 ├── features/
 │   ├── sessions/  projects/  settings/  tasks/  confirmations/
-│   ├── activity/  command/  dashboard/
+│   ├── activity/  command/  dashboard/  results/
 ├── components/                  # layout/, shared controls
 ├── hooks/useEvents.ts           # WebSocket → updates the cache
 ├── lib/

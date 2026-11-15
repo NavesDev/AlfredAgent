@@ -101,9 +101,20 @@ Conventions: **RF** = functional requirement, **RNF** = non-functional, **RN** =
 | RF-63 | CommandBar (Ctrl+K) to talk to Alfred by typing | F6 |
 | RF-64 | Reachable on localhost and from the phone on the local network | F6 |
 | RF-65 | Desktop app (Tauri) with the panel's UI, its own title bar and a tray; closing hides it in the tray ([ADR 0012](adr/0012-desktop-shell-tauri.md)) | Desktop |
-| RF-66 | Floating voice visualizer (mini orb + bars) at the bottom center of the screen while the voice is not idle and the app is minimized or in the tray; it does not capture clicks | Desktop |
+| RF-66 | Floating voice visualizer (mini orb + bars) while the voice is not idle and the app is minimized or in the tray; its position is a preset chosen in Settings (RF-74), it cannot be dragged, and clicks outside it pass through | Desktop |
 | RF-67 | Check for a newer release tag at boot, every 6 hours and on request; show the version and its CHANGELOG notes on the panel ([ADR 0013](adr/0013-self-update-from-git-tags.md)) | Updates |
 | RF-68 | "Atualizar" updates to that tag and restarts Alfred; refused when the checkout is not on a clean `main`; a failed install or build rolls back to the previous version | Updates |
+
+### Results
+
+| ID | Requirement | Phase |
+|---|---|---|
+| RF-69 | The "Alfred" name on the title bar uses Newsreader Display italic, bundled with the app; the app and tray icon is the real orb, round with a transparent background | Desktop |
+| RF-70 | A session that finishes may record a result (files to show and/or a change report) with `APRESENTAR:` (show it) or `GUARDAR:` (keep it only) lines in its final reply; no lines, no result ([ADR 0014](adr/0014-results-presentation.md)) | Results |
+| RF-71 | A change report is the reply text plus `git diff --numstat` between the task's starting `HEAD` and the tree at the end | Results |
+| RF-72 | "Me mostra o que o X fez" shows the session's last result; Alfred also shows a file it found, as a card or straight in the expanded view when asked ("me apresenta"); "pode fechar" closes it | Results |
+| RF-73 | With the panel out of sight the pill grows into a 300 px result card in its corner; with the panel in sight the card shows on the panel. The card shows image/GIF, muted looping video, report or document; "Ampliar" opens a centered expanded view with arrows between files; "Abrir no app" and "Pasta" open the file or its folder. Each session lists its last 30 results | Results |
+| RF-74 | Everything that floats (pill, card, future notices) anchors to one position preset chosen in Settings: top or bottom, left, center or right; default top right | Desktop |
 
 ## Non-functional requirements
 
@@ -137,6 +148,8 @@ Conventions: **RF** = functional requirement, **RNF** = non-functional, **RN** =
 | RN-10 | Reading mail/calendar runs right away; writing needs confirmation |
 | RN-11 | A workspace has `kind` `folder` (any folder) or `worktree` (with `parent_id` and `branch`) |
 | RN-11a | Project and workspace descriptions are optional, 200 characters at most |
+| RN-12 | Result files are served only to this computer (loopback). From another device the panel shows a result's title, summary and report text, never its media or files |
+| RN-13 | A result file is shown only if Alfred could read it: inside the home, not a secret (ADR 0011), checked when recorded and again when served |
 
 ## Out of scope for the MVP
 

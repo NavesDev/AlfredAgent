@@ -55,6 +55,7 @@ Redesign of the web panel in Apple's glass style (visionOS). This document guide
 - Body: 13–14px, weight 500 on names.
 - Section labels: 13px, uppercase, weight 600, `--ink-2`.
 - Numbers aligned with `tabular-nums`.
+- **Display:** the "Alfred" name on the title bar only, in Newsreader italic (`opsz` 72), token `--font-display`, bundled with `@fontsource-variable/newsreader` (works offline).
 
 ## Alfred's orb
 
@@ -99,6 +100,7 @@ Redesign of the web panel in Apple's glass style (visionOS). This document guide
 - [Painel, Window and Ornaments layouts](https://claude.ai/artifact/9v7ZF6iShWm7TTdPC7hWcE)
 - [Sessions, with the three picture options](https://claude.ai/artifact/VZXzh69Zen2HUiJtNBvyEs)
 - [Projects, Project and Settings](https://claude.ai/artifact/TRisX7cDuLVeakNfrFvKVL)
+- [Font, icon and result presentation (v3)](https://claude.ai/artifact/1v5NGLoRGVnSA8s3kJML4j)
 
 ## Decisions
 
@@ -110,4 +112,16 @@ Redesign of the web panel in Apple's glass style (visionOS). This document guide
 
 - **Title bar:** 40px transparent strip over the room that drags the window (double click maximizes). Connection dot + "Alfred" on the left; 28px round glass buttons (minimize, maximize/restore, close) on the right. Only shows in Tauri.
 - **Window:** 12px corners, no corners when maximized.
-- **Floating visualizer:** dark glass pill with the mini CSS orb (32px) and 9 rounded white bars, like the [Bar Visualizer](https://ui.elevenlabs.io/docs/components/bar-visualizer) from ElevenLabs UI (MIT). Listening and speaking: each bar's height follows its frequency band. Thinking: low bars with a wave passing through. Enters with a fade and scale.
+- **Floating visualizer:** dark glass pill with the mini CSS orb (32px) and 9 rounded white bars, like the [Bar Visualizer](https://ui.elevenlabs.io/docs/components/bar-visualizer) from ElevenLabs UI (MIT). Listening and speaking: each bar's height follows its frequency band. Thinking: low bars with a wave passing through. Enters with a fade and scale. It cannot be dragged: its spot is a preset in Settings → Geral ("Posição da pílula": corners and center, top or bottom, 8px from the work area's edge; default top right).
+- **Icon:** a frame of the real Strands orb (`apps/web/icon.html`, rendered by `apps/desktop/render_icon.mjs`), circular mask with a soft edge, transparent background; same icon on the dock and the tray.
+
+## Results
+
+References: Dynamic Island / Live Activities (card), Quick Look (expanded view), lightbox `@hirael/lightbox` (Shoogle, MIT).
+
+- **Card:** the pill grows into a 300px card in its corner (it grows down when anchored on top, up when at the bottom); 22px corners, the pill's dark glass. Header: mini orb, session name and time, "1 de N", close (✕). Body by type: image/GIF 16:9 `cover`, muted looping video, report (summary and up to 3 changed files with +/−, then "+N"), document preview. Buttons: "Ampliar" (primary), "Abrir no app", "Pasta" (desktop only).
+- **Behavior:** never takes keyboard focus; leaves after 30s without interaction (hover pauses); a new result replaces it. With the panel in sight the same card shows at the panel's top right instead.
+- **Expanded view:** a separate glass window, 70% of the monitor, centered, with arrows, a thumbnail strip and Esc to close.
+- **Types:** PDF through `pdfjs-dist`; Markdown through `react-markdown` + `remark-gfm` without raw HTML; HTML in a sandboxed iframe without same-origin; text up to 1 MB in a monospaced block; anything else a file card with "Abrir no app".
+- **Other device:** title, summary and report text only, with "Arquivos só no computador".
+- **History:** under the session card, the session's results with a thumbnail and time; a missing file shows "Arquivo não existe mais".
