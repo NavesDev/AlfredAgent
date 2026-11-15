@@ -69,7 +69,8 @@ alfred/
 │   │   ├── sessions.py
 │   │   ├── portraits.py       # portrait queue, files under data/portraits
 │   │   ├── projects.py
-│   │   └── tasks.py
+│   │   ├── tasks.py
+│   │   └── updates.py         # release check + self-update (ADR 0013)
 │   ├── infra/
 │   │   ├── audio/
 │   │   │   ├── device.py      # GPU on demand, CPU fallback
@@ -258,6 +259,7 @@ Planned auxiliary tables: `audit_log` (every tool call), `confirmation` (pending
 | `task_updated` | task | ws |
 | `permission_request` | id, session, action, description, channel | talker, ws |
 | `permission_resolved` | id, approved, channel | ws |
+| `update_status` | update snapshot (current, latest, notes, status, last result) | ws |
 
 ## Errors
 
@@ -315,6 +317,7 @@ flowchart TD
 | `GET/POST/PATCH /api/tasks` | Tasks |
 | `GET /api/confirmations`, `POST /api/confirmations/{id}` | Pending confirmations |
 | `POST /api/commands` | Text into the same router as the voice |
+| `GET /api/update`, `POST /api/update/check`, `POST /api/update/apply` | Release check and self-update ([ADR 0013](adr/0013-self-update-from-git-tags.md)) |
 | `WS /ws` | Bus event stream |
 
 In dev, Vite proxies `/api` and `/ws` to the server. In production, FastAPI serves `dist/` on the same port.
