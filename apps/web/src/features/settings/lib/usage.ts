@@ -47,7 +47,7 @@ export function headline(limits: RateLimit[]): RateLimit | null {
   return limits.find((l) => l.window === 'five_hour') ?? limits[0] ?? null
 }
 
-const span = (seconds: number) => {
+export const span = (seconds: number) => {
   const minutes = Math.max(1, Math.round(seconds / 60))
   if (minutes < 60) return `${minutes} min`
   const hours = Math.floor(minutes / 60)

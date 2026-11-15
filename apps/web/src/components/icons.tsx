@@ -156,3 +156,8 @@ export const Restore = (p: Props) => (
     <path d="M8 8V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2" />
   </Icon>
 )
+export const Download = (p: Props) => (
+  <Icon {...p}>
+    <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
+  </Icon>
+)

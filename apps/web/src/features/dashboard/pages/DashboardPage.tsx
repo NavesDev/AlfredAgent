@@ -11,6 +11,7 @@ import { SessionList } from '../../sessions/components/SessionList'
 import { useProjectList } from '../../sessions/hooks/useProjectList'
 import { useSessionActions } from '../../sessions/hooks/useSessionActions'
 import { useSessions } from '../../sessions/hooks/useSessions'
+import { UpdatePill } from '../../settings/components/UpdatePill'
 import { UsagePill } from '../../settings/components/UsagePill'
 import { useSettings } from '../../settings/hooks/useSettings'
 import { TranscriptPanel } from '../../transcript/components/TranscriptPanel'
@@ -155,6 +156,7 @@ export function DashboardPage() {
               setShowTranscript((v) => !v)
             )}
           >
+            <UpdatePill />
             <UsagePill />
           </ControlBar>
         </section>

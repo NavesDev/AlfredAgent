@@ -7,6 +7,7 @@ import { ModelSelect } from '../../../components/ModelSelect'
 import { Picker } from '../../../components/Picker'
 import { EFFORTS, field } from '../../../lib/sessionForm'
 import { SettingsNav } from '../components/SettingsNav'
+import { UpdateSection } from '../components/UpdateSection'
 import { UsageSection } from '../components/UsageSection'
 import { SECTIONS, sectionFromHash, type SectionId } from '../lib/sections'
 import { useSettings } from '../hooks/useSettings'
@@ -39,6 +40,8 @@ export function SettingsPage() {
     >
       {section === 'uso' ? (
         <UsageSection />
+      ) : section === 'atualizacoes' ? (
+        <UpdateSection />
       ) : settings ? (
         <Form key={JSON.stringify(settings)} settings={settings} save={save} section={section} />
       ) : null}
