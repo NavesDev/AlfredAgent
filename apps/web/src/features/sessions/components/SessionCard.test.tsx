@@ -63,6 +63,18 @@ describe('SessionCard', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Limite de uso atingido')
   })
 
+  it('edits the short description Alfred reads', async () => {
+    const { onChange, user } = setup({ ...dev, description: 'Cuida do checkout' })
+    expect(screen.getByText('Cuida do checkout')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Editar descrição da sessão Developer' }))
+    const input = screen.getByRole('textbox', { name: /descrição da sessão Developer/ })
+    await user.clear(input)
+    await user.type(input, 'Checkout e pagamentos{Enter}')
+
+    expect(onChange).toHaveBeenCalledWith({ description: 'Checkout e pagamentos' })
+  })
+
   it('closes', async () => {
     const { onClose, user } = setup()
     await user.click(screen.getByRole('button', { name: 'Fechar' }))

@@ -1,6 +1,9 @@
 import { Picker } from '../../../components/Picker'
 import { modeOptions, type Mode } from '../lib/projects'
 
+const HINT =
+  'Ambiente padrão: onde o Alfred começa uma feature quando você não diz o ambiente, e de onde saem os worktrees.'
+
 type Props = {
   name: string
   isDefault: boolean
@@ -15,7 +18,10 @@ export function WorkspaceMode({ name, isDefault, mode, globalMode, onDefault, on
   return (
     <div className="flex flex-wrap items-center gap-2">
       {isDefault ? (
-        <span className="rounded-full bg-apple-green/20 px-2 py-0.5 text-[11px] text-[#8ee6a6]">
+        <span
+          title={HINT}
+          className="rounded-full bg-apple-green/20 px-2 py-0.5 text-[11px] text-[#8ee6a6]"
+        >
           padrão
         </span>
       ) : (
@@ -23,6 +29,7 @@ export function WorkspaceMode({ name, isDefault, mode, globalMode, onDefault, on
           type="button"
           onClick={onDefault}
           aria-label={`Tornar ${name} padrão`}
+          title={HINT}
           className="rounded-full px-2 py-0.5 text-[11px] text-ink-3 opacity-60 ring-1 ring-white/10 transition group-hover:opacity-100 hover:text-ink"
         >
           tornar padrão

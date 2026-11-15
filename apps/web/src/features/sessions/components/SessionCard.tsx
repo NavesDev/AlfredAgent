@@ -5,6 +5,7 @@ import { ModelSelect } from '../../../components/ModelSelect'
 import { formatTokens } from '../../../lib/format'
 import { EFFORTS, field } from '../../../lib/sessionForm'
 import { contextLevel, gradientFor, initials, presence, type Tone } from '../../../lib/presence'
+import { Description } from '../../../components/Description'
 import type { SessionChange } from '../hooks/useSessionActions'
 
 const CONFIRM_MS = 4000
@@ -82,6 +83,11 @@ export function SessionCard({ session: s, onClose, onClear, onDelete, onChange, 
         <div className="min-w-0">
           <h2 className="truncate text-lg font-semibold tracking-tight">{s.name}</h2>
           <p className="truncate text-xs text-ink-2">{where}</p>
+          <Description
+            value={s.description}
+            label={`descrição da sessão ${s.name}`}
+            onSave={(description) => onChange({ description })}
+          />
         </div>
         <span
           className={`rounded-full px-2.5 py-1 text-[11.5px] font-semibold whitespace-nowrap ${PILL[state.tone]}`}

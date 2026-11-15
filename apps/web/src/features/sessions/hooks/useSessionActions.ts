@@ -12,7 +12,7 @@ const json = (method: string, body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 })
 
-export type SessionChange = { model?: string; effort?: string }
+export type SessionChange = { model?: string; effort?: string; description?: string }
 
 export function useSessionActions() {
   const client = useQueryClient()
