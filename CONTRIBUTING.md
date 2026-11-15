@@ -1,60 +1,58 @@
-# Contribuindo
+# Contributing
 
-Guia para trabalhar no Alfred. Leia antes [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+How to work on Alfred. Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) first.
 
-## Ambiente
+## Setup
 
-Pré-requisitos em [README.md](README.md#requisitos-de-máquina).
+Prerequisites in [README.md](README.md#requirements).
 
 ```bash
-make setup     # uv sync (server) + pnpm install (web)
-make dev       # server + Vite juntos
+make setup     # uv sync (server) + pnpm install (web, desktop)
+make dev       # server + Vite together
 make test      # pytest + vitest
-make lint      # ruff + mypy + eslint
-make fmt       # ruff format + prettier
+make lint      # ruff + mypy + oxlint/tsc + clippy
+make fmt       # ruff format + prettier + cargo fmt
 ```
 
-Config local:
+Local config:
 
 ```bash
 cp server/config.example.yaml server/config.yaml
-cp .env.example .env    # ANTHROPIC_API_KEY, credenciais Google
+cp .env.example .env    # ANTHROPIC_API_KEY, Google credentials
 ```
 
-`config.yaml` e `.env` nunca são commitados.
+`config.yaml` and `.env` are never committed.
 
-## Idioma
+## Language
 
-- **Código, nomes de arquivo, pastas, config, identificadores, commits e PRs:** inglês.
-- **Documentação em `docs/`, README e textos falados/exibidos ao usuário:** português (pt-BR).
+- **Everything in the repo:** English (code, names, config, commits, PRs, docs, README, CHANGELOG).
+- **Text spoken or shown to the user:** Brazilian Portuguese (pt-BR).
 
-## Convenções do server (Python)
+## Server conventions (Python)
 
-- Python 3.11+, type hints em tudo que é público; `mypy --strict` no CI.
-- `ruff` para lint e format (linha de 100).
-- Respeitar as camadas: `models` não importa `infra`; só `controllers` junta `models` com `infra`; `api` fala com `controllers`. Detalhes em [ARCHITECTURE.md](docs/ARCHITECTURE.md#camadas-do-server).
-- Nada bloqueante no loop asyncio. Trabalho de áudio/STT/TTS fica nas threads do `infra/audio`.
-- Comunicação entre partes desacopladas via `events.py`, não chamada direta entre `talker` e `api`.
-- Testes com `pytest` + `pytest-asyncio`. Claude, microfone e git são mockados nos testes unitários; testes que precisam de hardware ou rede ficam marcados com `@pytest.mark.integration`.
+- Python 3.11+, type hints on everything public; `mypy --strict`.
+- `ruff` for lint and format (100-character lines).
+- Respect the layers: `models` never imports `infra`; only `controllers` joins `models` and `infra`; `api` talks to `controllers`. Details in [ARCHITECTURE.md](docs/ARCHITECTURE.md).
+- Nothing blocking on the asyncio loop. Audio, STT and TTS work stays in the `infra/audio` threads.
+- Decoupled parts talk through `events.py`, not direct calls between `talker` and `api`.
+- Tests with `pytest` + `pytest-asyncio`. Claude, the microphone and git are mocked in unit tests; tests that need hardware or network are marked `@pytest.mark.integration`.
 
-## Convenções do web (TypeScript)
+## Web conventions (TypeScript)
 
-- Organização por feature (`src/features/<feature>/{pages,components,hooks}`).
-- Acesso à API **só** nos hooks da feature, via TanStack Query.
-- Feature não importa de outra feature (exceção: `dashboard`).
-- `src/api/schema.ts` é gerado: `make gen-api`. Não editar à mão.
-- Sem estado global além do TanStack Query.
-- Componentes de UI base via shadcn em `src/components/ui/`.
+- Organized by feature (`src/features/<feature>/{pages,components,hooks}`).
+- API access **only** in the feature hooks, through TanStack Query.
+- A feature never imports from another feature (exception: `dashboard`).
+- `src/api/schema.ts` is generated: `make gen-api`. Do not edit by hand.
+- No global state besides TanStack Query.
 
-## Branches e worktrees
+## Branches
 
-- `main` sempre funcional.
-- Branches: `feat/<tema>`, `fix/<tema>`, `docs/<tema>`, `chore/<tema>`, `refactor/<tema>`.
-- Trabalho paralelo em worktrees é bem-vindo (é o próprio caso de uso do Alfred).
+- `main` always works.
+- Branches: `feat/<topic>`, `fix/<topic>`, `docs/<topic>`, `chore/<topic>`, `refactor/<topic>`.
 
 ## Commits
 
-[Conventional Commits](https://www.conventionalcommits.org/), em inglês, no imperativo:
+[Conventional Commits](https://www.conventionalcommits.org/), imperative mood. They drive the version and the CHANGELOG, so pick the type with care:
 
 ```text
 feat(router): add fuzzy match for session aliases
@@ -62,35 +60,29 @@ fix(talker): drop queued speech on barge-in
 docs(architecture): describe permission flow
 ```
 
-Escopos sugeridos: `server`, `router`, `sessions`, `alfred`, `permissions`, `audio`, `listener`, `talker`, `api`, `web`, `docs`, `build`.
+Suggested scopes: `server`, `router`, `sessions`, `alfred`, `permissions`, `audio`, `listener`, `talker`, `api`, `web`, `desktop`, `docs`, `build`.
 
 ## Pull requests
 
-- Um assunto por PR, pequeno o suficiente para revisar de uma vez.
-- Descrição: o quê, por quê, como testar. Referencie o requisito (`RF-xx`, `RNF-xx`) quando houver.
-- `make lint test` passando.
-- Mudou comportamento descrito em `docs/`? Atualize o doc no mesmo PR.
-- Decisão de arquitetura nova ou que contraria a spec? Abra um ADR em `docs/adr/`.
+- One subject per PR, small enough to review in one go.
+- Description: what, why, how to test. Reference the requirement (`RF-xx`, `RNF-xx`) when there is one.
+- `make lint test` passing.
+- Changed behavior described in `docs/`? Update the doc in the same PR.
+- New architecture decision, or one that contradicts the spec? Open an ADR in `docs/adr/`.
 
-## Versões e releases
+## Versions and releases
 
-- [SemVer](https://semver.org/lang/pt-BR/), uma versão só para o repo todo (server, web e desktop). Tag `vX.Y.Z` anotada, sempre na `main`.
-- Antes do 1.0: `0.Y.0` para funcionalidades novas ou que quebram algo, `0.Y.Z` para correções.
-- Cada PR que muda algo visível acrescenta uma linha em `## [Não lançado]` no [CHANGELOG.md](CHANGELOG.md), na seção do tema (Voz, Agente principal, Sessões e projetos, Painel e app desktop).
-- Para lançar, na `main` limpa:
-
-```bash
-make release VERSION=0.2.0   # versões, CHANGELOG, commit chore(release) e tag
-git push origin main v0.2.0
-gh release create v0.2.0 --title "Alfred v0.2.0" --notes "$(scripts/release.sh notes 0.2.0)"
-```
+- [SemVer](https://semver.org/), one version for the whole repo (server, web and desktop), tagged `vX.Y.Z` on `main`.
+- [release-please](https://github.com/googleapis/release-please) ([workflow](.github/workflows/release-please.yml), [config](release-please-config.json)) keeps a release PR open with the next version and its CHANGELOG, built from the commits merged into `main`. Before 1.0: `feat` bumps the minor, `fix` bumps the patch, a breaking change (`feat!:`) bumps the minor.
+- Merging the release PR bumps the versions in `server/pyproject.toml`, `apps/web/package.json`, `Cargo.toml` and `tauri.conf.json`, then creates the tag and the GitHub release.
+- `docs`, `chore` and `test` commits stay out of the CHANGELOG.
 
 ## ADRs
 
-Copie [docs/adr/0000-template.md](docs/adr/0000-template.md) para `docs/adr/NNNN-titulo-curto.md`, numeração sequencial. ADR aceito não é editado; uma decisão nova o substitui (`Superseded by NNNN`).
+Copy [docs/adr/0000-template.md](docs/adr/0000-template.md) to `docs/adr/NNNN-short-title.md`, numbered in sequence. An accepted ADR is not edited; a new decision supersedes it (`Superseded by NNNN`).
 
-## Segurança
+## Security
 
-- Nunca commitar chaves, tokens, `config.yaml` ou `.env`.
-- Mudanças em `infra/claude/permissions.py`, na denylist ou nas tools do agente principal exigem revisão cuidadosa e teste cobrindo o caso negado.
-- O agente principal não pode ganhar Bash nem Edit (ver [ADR 0003](docs/adr/0003-main-agent-without-exec-tools.md)).
+- Never commit keys, tokens, `config.yaml` or `.env`.
+- Changes to `infra/claude/permissions.py`, the denylist or the main agent's tools need careful review and a test covering the denied case.
+- The main agent never gets Bash or Edit ([ADR 0003](docs/adr/0003-main-agent-without-exec-tools.md)).
