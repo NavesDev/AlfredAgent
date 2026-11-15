@@ -59,3 +59,7 @@ class GitHubError(AlfredError):
 
 class SettingsError(AlfredError):
     """Invalid settings from the panel. The message is pt-BR."""
+
+
+class UpdateError(AlfredError):
+    """The self-update cannot start (dirty checkout, not on main, nothing new). pt-BR message."""

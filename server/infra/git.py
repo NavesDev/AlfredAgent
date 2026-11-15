@@ -118,3 +118,28 @@ async def watch_worktrees(commons: Iterable[Path], stop: asyncio.Event) -> Async
         }
         for common in sorted(changed):
             yield common
+
+
+def _tags(text: str) -> list[str]:
+    return [line.rsplit("refs/tags/", 1)[-1] for line in text.split() if "refs/tags/" in line]
+
+
+async def local_tags(path: Path) -> list[str]:
+    return (await _git(path, "tag", "--list", "v*")).split()
+
+
+async def remote_tags(path: Path) -> list[str]:
+    """Tags on origin, without fetching (ADR 0013)."""
+    return _tags(await _git(path, "ls-remote", "--tags", "--refs", "origin", "v*"))
+
+
+async def fetch_tag(path: Path, tag: str) -> None:
+    await _git(path, "fetch", "--quiet", "origin", "tag", tag, "--no-tags")
+
+
+async def show(path: Path, rev: str, file: str) -> str:
+    return await _git(path, "show", f"{rev}:{file}")
+
+
+async def current_branch(path: Path) -> str:
+    return (await _git(path, "branch", "--show-current")).strip()
