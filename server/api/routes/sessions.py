@@ -28,6 +28,7 @@ class SessionChange(BaseModel):
     model: str | None = None  # "" goes back to the kind's setting
     effort: str | None = None
     aliases: list[str] | None = None  # replaces the list
+    description: str | None = None  # context for Alfred; "" clears it
 
 
 def _sessions(request: Request) -> Sessions:
@@ -56,6 +57,8 @@ async def update_session(name: str, body: SessionChange, request: Request) -> Se
         sessions = _sessions(request)
         if body.aliases is not None:
             name = sessions.set_aliases(name, body.aliases).name  # may have been an old alias
+        if body.description is not None:
+            sessions.set_description(name, body.description)
         return sessions.update(name, body.model, body.effort)
     except SessionNotFound as e:
         raise HTTPException(404, str(e)) from e

@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS session (
     effort TEXT,
     claude_session_id TEXT,
     protected INTEGER NOT NULL DEFAULT 0,
+    description TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS agent_settings (
@@ -70,6 +71,7 @@ def _migrate(db: sqlite3.Connection) -> None:
         ("session", "aliases"): "TEXT NOT NULL DEFAULT '[]'",  # version 2
         ("project", "description"): "TEXT NOT NULL DEFAULT ''",  # version 3
         ("workspace", "description"): "TEXT NOT NULL DEFAULT ''",  # version 3
+        ("session", "description"): "TEXT NOT NULL DEFAULT ''",  # version 4
         (
             "project",
             "default_workspace_id",

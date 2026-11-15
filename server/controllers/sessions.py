@@ -23,6 +23,7 @@ from infra.claude.agents import DEFAULT_SESSION, KINDS, AgentKind, SessionContex
 from infra.claude.alfred import Reply
 from models import project
 from models import session as records
+from models.project import MAX_DESCRIPTION
 from models.session import Phase, SessionView, Status, SubagentView
 
 ACTIVITY_MAX = 80
@@ -124,6 +125,16 @@ class Sessions:
             self._db, name, kind, workspace_id, model or None, effort or None, aliases=aliases
         )
         return self._register(record)
+
+    def set_description(self, name: str, text: str) -> SessionView:
+        """Short context for Alfred: what the session is for."""
+        slot = self._get(name)
+        text = " ".join(text.split())
+        if len(text) > MAX_DESCRIPTION:
+            raise SessionError(f"A descrição passa de {MAX_DESCRIPTION} caracteres; encurte.")
+        records.update_session(self._db, slot.session.name, description=text)
+        self._publish_status(slot)
+        return self._view(slot)
 
     def set_aliases(self, name: str, aliases: list[str]) -> SessionView:
         """Replaces the spoken alternatives for a session's name."""
@@ -390,6 +401,7 @@ class Sessions:
         return SessionView(
             name=s.name,
             aliases=record.aliases,
+            description=record.description,
             kind=s.kind.kind,
             label=s.kind.label,
             model=model,

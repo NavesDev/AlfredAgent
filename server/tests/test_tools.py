@@ -408,3 +408,28 @@ async def test_listar_issues_and_errors_are_spoken(tools: Tools, tmp_path: Path)
     assert "#12 Login quebra" in listed and "#13 Doc" in listed
     assert tools.gh_calls[0] == ("issues", tmp_path / "back", ("login", "open"))
     assert "no git remotes" in failed
+
+
+async def test_sessions_carry_a_short_description_for_alfred(tools: Tools) -> None:
+    created = await tools.call(
+        "criar_sessao",
+        {"tipo": "geral", "nome": "downloads", "descricao": "Organiza a pasta Downloads"},
+    )
+    changed = await tools.call(
+        "definir_descricao", {"sessao": "downloads", "descricao": "Arruma downloads e fotos"}
+    )
+    listed = await tools.call("listar_sessoes", {})
+    too_long = await tools.call(
+        "definir_descricao", {"sessao": "downloads", "descricao": "x" * 201}
+    )
+
+    assert "downloads" in created
+    assert "Arruma downloads e fotos" in changed
+    assert "— Arruma downloads e fotos" in listed
+    assert "200" in too_long
+
+
+async def test_a_too_long_description_creates_no_session(tools: Tools) -> None:
+    text = await tools.call("criar_sessao", {"tipo": "geral", "nome": "x", "descricao": "y" * 201})
+
+    assert "200" in text and "x" not in {v.name for v in tools.env.sessions.list()}

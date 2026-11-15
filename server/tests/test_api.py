@@ -235,3 +235,12 @@ def test_default_workspace_and_implementation_modes(api: Api) -> None:
     assert kept.json()["implementation_mode"] is None and kept.json()["description"] == "Front"
     assert bad.status_code == 422 and alien.status_code == 404
     assert settings["implementation_mode"] == "ambiente"
+
+
+def test_session_description(api: Api) -> None:
+    changed = api.patch("/api/sessions/sistema", json={"description": "Tarefas no computador"})
+    too_long = api.patch("/api/sessions/sistema", json={"description": "x" * 201})
+
+    assert changed.status_code == 200
+    assert changed.json()["description"] == "Tarefas no computador"
+    assert too_long.status_code == 422

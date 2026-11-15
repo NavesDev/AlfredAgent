@@ -13,6 +13,7 @@ import claude_agent_sdk as sdk
 from errors import GitError, GitHubError, ProjectError, SessionError
 from infra import github as real_github
 from infra.claude.agents import KINDS
+from models.project import MAX_DESCRIPTION
 
 if TYPE_CHECKING:
     from controllers.projects import Projects
@@ -43,13 +44,15 @@ def session_tools(
         "Implementação precisa de 'projeto' e 'ambiente'; geral aceita os dois opcionais "
         "(sem eles, roda na home). 'modelo' e 'effort' só quando o usuário pedir. "
         "'apelidos': jeitos de falar o nome que o reconhecimento de voz entende, úteis para "
-        'nomes em inglês ("saite seils" para Site Sales).',
+        "nomes em inglês (\"saite seils\" para Site Sales). 'descricao': até 200 caracteres "
+        "dizendo para que a sessão serve (contexto seu para delegar).",
         {
             "type": "object",
             "properties": {
                 "tipo": {"type": "string", "enum": list(KINDS)},
                 "nome": {"type": "string"},
                 "apelidos": {"type": "array", "items": {"type": "string"}},
+                "descricao": {"type": "string"},
                 "projeto": {"type": "string"},
                 "ambiente": {"type": "string"},
                 "modelo": {"type": "string"},
@@ -63,6 +66,8 @@ def session_tools(
             ws = None
             if args.get("projeto") or args.get("ambiente"):
                 ws = workspace_id(str(args.get("projeto", "")), str(args.get("ambiente", "")))
+            if len(" ".join(str(args.get("descricao") or "").split())) > MAX_DESCRIPTION:
+                raise SessionError(f"A descrição passa de {MAX_DESCRIPTION} caracteres; encurte.")
             view = sessions.create(
                 str(args["tipo"]),
                 str(args["nome"]),
@@ -71,6 +76,8 @@ def session_tools(
                 args.get("effort"),
                 aliases=[str(a) for a in args.get("apelidos", [])],
             )
+            if args.get("descricao"):
+                view = sessions.set_description(view.name, str(args["descricao"]))
             where = f"{view.project}, ambiente {view.workspace}" if view.project else view.cwd
             return f"Sessão {view.name} criada, tipo {view.label}, em {where}."
 
@@ -112,7 +119,9 @@ def session_tools(
             return "\n".join(
                 f"{v.name} ({v.label}, "
                 + (f"{v.project}/{v.workspace}" if v.project else v.cwd)
-                + f"): {'esperando vaga' if v.waiting else v.status}"
+                + ")"
+                + (f" — {v.description}" if v.description else "")
+                + f": {'esperando vaga' if v.waiting else v.status}"
                 + (f", {'vai fazer' if v.waiting else 'fazendo'}: {v.task}" if v.task else "")
                 + (f", {v.queue} na fila" if v.queue else "")
                 + (f", último erro: {v.last_error}" if v.last_error else "")
@@ -125,7 +134,7 @@ def session_tools(
         "criar_projeto",
         "Cadastra um projeto: um nome que agrupa ambientes (pastas) e sessões. "
         "'apelidos' ajudam a reconhecer o nome falado; 'descricao' diz em uma frase do que o "
-        "projeto trata.",
+        "projeto trata (contexto seu para delegar).",
         {
             "type": "object",
             "properties": {
@@ -187,7 +196,7 @@ def session_tools(
     @sdk.tool(
         "criar_ambiente",
         "Cadastra uma pasta existente como ambiente de um projeto (ex: back e front), com uma "
-        "'descricao' curta opcional.",
+        "'descricao' curta opcional: o básico do que é, contexto seu para delegar.",
         {
             "type": "object",
             "properties": {
@@ -289,21 +298,26 @@ def session_tools(
 
     @sdk.tool(
         "definir_descricao",
-        "Troca a descrição curta (até 200 caracteres) de um projeto ou, com 'ambiente', de um "
-        "ambiente dele. Vazia apaga.",
+        "Troca a descrição curta (até 200 caracteres) de um projeto, de um ambiente dele (com "
+        "'ambiente') ou de uma sessão (só 'sessao'). A descrição é contexto seu: o básico do que "
+        "é e para que serve, para decidir onde delegar. Vazia apaga.",
         {
             "type": "object",
             "properties": {
                 "projeto": {"type": "string"},
                 "ambiente": {"type": "string"},
+                "sessao": {"type": "string"},
                 "descricao": {"type": "string"},
             },
-            "required": ["projeto", "descricao"],
+            "required": ["descricao"],
         },
     )
     async def definir_descricao(args: Result) -> Result:
         async def run() -> str:
             text = str(args["descricao"])
+            if session := str(args.get("sessao") or "").strip():
+                view = sessions.set_description(session, text)
+                return f"Descrição da sessão {view.name}: {view.description or 'nenhuma'}."
             if name := str(args.get("ambiente") or "").strip():
                 ws = projects.update_workspace(workspace_id(str(args["projeto"]), name), text)
                 return f"Descrição do ambiente {ws.name}: {ws.description or 'nenhuma'}."

@@ -24,7 +24,7 @@ from infra import git as real_git
 from infra.git import GitSummary
 from models import project
 from models import session as records
-from models.project import ImplementationMode, Project, Workspace
+from models.project import MAX_DESCRIPTION, ImplementationMode, Project, Workspace
 
 log = logging.getLogger(__name__)
 
@@ -355,9 +355,6 @@ class Projects:
         updated = self.get(id)
         self._bus.publish("project_updated", project=updated.model_dump())
         return updated
-
-
-MAX_DESCRIPTION = 200
 
 
 def _description(text: str) -> str:

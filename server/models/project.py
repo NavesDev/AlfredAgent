@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 WorkspaceKind = Literal["folder", "worktree"]
 ImplementationMode = Literal["worktree", "ambiente"]
+MAX_DESCRIPTION = 200  # short descriptions: Alfred's context for where to delegate
 
 
 class Workspace(BaseModel):
