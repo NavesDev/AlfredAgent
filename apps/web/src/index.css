@@ -138,8 +138,9 @@ html.desktop.maximized #root {
   clip-path: none;
 }
 
-/* The overlay window shows only the voice pill. */
-html.overlay #root {
+/* The overlay (pill, card) and viewer windows draw their own glass on a clear window. */
+html.overlay #root,
+html.viewer #root {
   background: transparent;
   clip-path: none;
 }
