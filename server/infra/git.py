@@ -56,13 +56,22 @@ class GitSummary:
     branch: str
     changed: int  # files modified, added, deleted or untracked
     commits: list[str]  # "<short hash> <subject>", newest first
+    branches: list[str]  # local branches, most recently committed first: naming patterns
 
 
-async def summary(path: Path, commits: int = 5) -> GitSummary:
+async def summary(path: Path, commits: int = 5, branches: int = 10) -> GitSummary:
     branch = (await _git(path, "branch", "--show-current")).strip() or "HEAD solto"
     status = await _git(path, "status", "--porcelain")
     log = await _git(path, "log", f"-{commits}", "--format=%h %s")
-    return GitSummary(branch, len(status.splitlines()), log.splitlines())
+    refs = await _git(
+        path,
+        "for-each-ref",
+        "--sort=-committerdate",
+        f"--count={branches}",
+        "--format=%(refname:short)",
+        "refs/heads",
+    )
+    return GitSummary(branch, len(status.splitlines()), log.splitlines(), refs.split())
 
 
 async def common_dir(path: Path) -> Path:

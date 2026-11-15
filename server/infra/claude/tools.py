@@ -159,6 +159,12 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
                 parts = [
                     f"{w.name} ({w.path}"
                     + (f", branch {w.branch}" if w.branch else "")
+                    + (", padrão" if w.id == p.default_workspace_id else "")
+                    + (
+                        ", features em worktree"
+                        if projects.mode_of(w) == "worktree"
+                        else ", features no próprio ambiente"
+                    )
                     + ")"
                     + (f" — {w.description}" if w.description else "")
                     + (
@@ -324,22 +330,30 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
                 f"alterado{'s' if git.changed > 1 else ''}"
             )
             commits = "; ".join(git.commits) or "sem commits"
-            return f"{ws.name}: branch {git.branch}, {changed}. Últimos commits: {commits}."
+            branches = ", ".join(git.branches) or "nenhuma"
+            return (
+                f"{ws.name}: branch {git.branch}, {changed}. Últimos commits: {commits}. "
+                f"Branches recentes: {branches}."
+            )
 
         return await _speak(run)
 
     @sdk.tool(
         "iniciar_feature",
-        "Começa uma feature nova num projeto: escolhe o ambiente ('ambiente', ou o padrão do "
-        "projeto) e, conforme o modo de implementação dele, cria worktree, branch feat/<nome> e "
-        "sessão de implementação, ou usa a sessão do ambiente; depois manda a 'tarefa'. Não "
-        "precisa perguntar ao usuário antes.",
+        "Começa uma feature num projeto e manda a 'tarefa'. Antes, decida: veja as branches "
+        "recentes (ver_ambiente) para seguir o padrão de nomes e leia a issue citada "
+        "(ver_issue). 'worktree': true cria worktree e sessão novos a partir do ambiente "
+        "('ambiente', ou o padrão do projeto); false usa a sessão do próprio ambiente; sem ele, "
+        "segue o modo do ambiente (listar_projetos). 'branch' no padrão do repo (sem ela, "
+        "feat/<feature>). Não precisa perguntar ao usuário.",
         {
             "type": "object",
             "properties": {
                 "projeto": {"type": "string"},
                 "feature": {"type": "string"},
                 "tarefa": {"type": "string"},
+                "branch": {"type": "string"},
+                "worktree": {"type": "boolean"},
                 "ambiente": {"type": "string"},
             },
             "required": ["projeto", "feature", "tarefa"],
@@ -348,8 +362,13 @@ def session_tools(sessions: "Sessions", projects: "Projects") -> list[sdk.SdkMcp
     async def iniciar_feature(args: Result) -> Result:
         async def run() -> str:
             found = projects.find(str(args["projeto"]))
+            worktree = args.get("worktree")
             ws = await projects.start_feature(
-                found.name, str(args["feature"]), str(args.get("ambiente") or "") or None
+                found.name,
+                str(args["feature"]),
+                str(args.get("ambiente") or "") or None,
+                str(args["branch"]) if args.get("branch") else None,
+                worktree if isinstance(worktree, bool) else None,
             )
             views = sessions.list()
             view = next(

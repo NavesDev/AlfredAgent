@@ -192,10 +192,16 @@ class Projects:
         return ws.implementation_mode or self._mode()
 
     async def start_feature(
-        self, project_name: str, feature: str, workspace: str | None = None
+        self,
+        project_name: str,
+        feature: str,
+        workspace: str | None = None,
+        branch: str | None = None,
+        worktree: bool | None = None,
     ) -> Workspace:
-        """Where a new feature gets implemented: a worktree feat/<slug> of the workspace (named,
-        else the project's default), or the workspace itself, as its mode says."""
+        """Where a new feature gets implemented: the workspace named (else the project's
+        default) or a worktree of it. `worktree` is Alfred's call; without it the workspace's
+        mode decides. A worktree workspace always works in itself."""
         found = self.find(project_name)
         base = (
             self.workspace(found.name, workspace)
@@ -206,13 +212,16 @@ class Projects:
             raise NoDefaultWorkspace(
                 f"O projeto {found.name} não tem ambiente padrão; diga em qual ambiente."
             )
-        if self.mode_of(base) == "ambiente":
+        if branch is not None and not _BRANCH.fullmatch(branch):
+            raise ProjectError(f"Nome de branch inválido: {branch!r}.")
+        wants = worktree if worktree is not None else self.mode_of(base) == "worktree"
+        if base.kind == "worktree" or not wants:
             return base
         slug = _slug(feature)
         existing = next((w for w in found.workspaces if w.name.lower() == slug), None)
         if existing is not None:
             return existing
-        return await self.add_worktree(found.id, base.id, slug, branch=f"feat/{slug}")
+        return await self.add_worktree(found.id, base.id, slug, branch=branch or f"feat/{slug}")
 
     async def delete_workspace(self, id: int, force: bool = False) -> None:
         ws = project.get_workspace(self._db, id)
@@ -356,6 +365,9 @@ def _description(text: str) -> str:
     if len(text) > MAX_DESCRIPTION:
         raise ProjectError(f"A descrição passa de {MAX_DESCRIPTION} caracteres; encurte.")
     return text
+
+
+_BRANCH = re.compile(r"(?!-)(?!.*\.\.)[A-Za-z0-9._/-]{1,100}")
 
 
 def _real(path: str) -> str:

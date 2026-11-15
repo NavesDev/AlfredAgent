@@ -88,6 +88,9 @@ async def test_summary_tells_branch_changes_and_last_commits(repo: Path) -> None
     assert summary.branch == "main"
     assert summary.changed == 2
     assert [c.split(" ", 1)[1] for c in summary.commits] == ["add a", "init"]
+    assert summary.branches == ["main"]
+    run(repo, "branch", "fix/1-a")
+    assert set((await git.summary(repo)).branches) == {"main", "fix/1-a"}
 
 
 async def test_summary_outside_a_repo_raises(tmp_path: Path) -> None:

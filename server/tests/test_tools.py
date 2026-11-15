@@ -258,6 +258,7 @@ async def test_ver_ambiente_tells_branch_changes_and_commits(tools: Tools, tmp_p
     text = await tools.call("ver_ambiente", {"projeto": "Recurve", "ambiente": "back"})
 
     assert "main" in text and "2 arquivos alterados" in text and "add login" in text
+    assert "fix/12-login" in text and "docs/3-sprint" in text
 
 
 async def test_ver_ambiente_speaks_the_error(tools: Tools, tmp_path: Path) -> None:
@@ -338,3 +339,32 @@ async def test_definir_ambiente_padrao(tools: Tools, tmp_path: Path) -> None:
     found = tools.projects.find("Recurve")
     assert "front" in text
     assert found.default_workspace_id == next(w.id for w in found.workspaces if w.name == "front")
+
+
+async def test_iniciar_feature_uses_alfreds_branch_and_choice(tools: Tools, tmp_path: Path) -> None:
+    await recurve_with(tools, tmp_path, "back")
+
+    text = await tools.call(
+        "iniciar_feature",
+        {
+            "projeto": "Recurve",
+            "feature": "issue 12 login",
+            "tarefa": "implementa a issue 12",
+            "branch": "fix/12-login",
+        },
+    )
+
+    assert "fix/12-login" in text
+    assert tools.git.added[-1][2] == "fix/12-login"
+
+
+async def test_listar_projetos_tells_each_workspace_mode(tools: Tools, tmp_path: Path) -> None:
+    await recurve_with(tools, tmp_path, "back", "front")
+    found = tools.projects.find("Recurve")
+    front = next(w for w in found.workspaces if w.name == "front")
+    tools.projects.update_workspace(front.id, implementation_mode="ambiente")
+
+    text = await tools.call("listar_projetos", {})
+
+    assert "padrão" in text
+    assert "features em worktree" in text and "features no próprio ambiente" in text

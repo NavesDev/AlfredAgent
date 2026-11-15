@@ -49,7 +49,12 @@ class FakeGit:
     async def summary(self, path: Path) -> GitSummary:
         if self.fail:
             raise GitError("fatal: not a git repository")
-        return GitSummary("main", 2 if self.dirty else 0, ["a1b2c3d add login", "9f8e7d6 init"])
+        return GitSummary(
+            "main",
+            2 if self.dirty else 0,
+            ["a1b2c3d add login", "9f8e7d6 init"],
+            ["main", "fix/12-login", "docs/3-sprint"],
+        )
 
 
 def make(env: Env, git: FakeGit | None = None, mode: str = "worktree") -> Projects:
@@ -456,3 +461,36 @@ async def test_watch_syncs_at_start_and_on_each_event(env: Env, tmp_path: Path) 
 
     assert "late" in {w.name for w in projects.get(recurve.id).workspaces}
     assert watched == [[Path(back) / ".git"]]  # one watch, no polling
+
+
+async def test_start_feature_takes_the_branch_and_worktree_choice(env: Env, tmp_path: Path) -> None:
+    git = FakeGit()
+    projects = make(env, git, mode="ambiente")
+    (back,) = folders(tmp_path, "back")
+    recurve = projects.create("Recurve", [])
+    base = projects.add_workspace(recurve.id, "back", back)
+
+    same = await projects.start_feature("Recurve", "login")
+    tree = await projects.start_feature(
+        "Recurve", "Issue 12 cancel", branch="fix/12-cancel", worktree=True
+    )
+    projects.update_workspace(base.id, implementation_mode="worktree")
+    kept = await projects.start_feature("Recurve", "small", worktree=False)
+
+    assert same.id == base.id and kept.id == base.id
+    assert (tree.name, tree.branch) == ("issue-12-cancel", "fix/12-cancel")
+    assert git.added == [(Path(back), "issue-12-cancel", "fix/12-cancel")]
+
+
+@pytest.mark.parametrize("branch", ["-f", "a b", "feat/../x", "x;rm", ""])
+async def test_start_feature_refuses_odd_branch_names(
+    env: Env, tmp_path: Path, branch: str
+) -> None:
+    git = FakeGit()
+    projects = make(env, git)
+    (back,) = folders(tmp_path, "back")
+    projects.add_workspace(projects.create("Recurve", []).id, "back", back)
+
+    with pytest.raises(ProjectError):
+        await projects.start_feature("Recurve", "x", branch=branch)
+    assert git.added == []
