@@ -367,6 +367,8 @@ export interface components {
             effort?: string | null;
             /** Aliases */
             aliases?: string[] | null;
+            /** Description */
+            description?: string | null;
         };
         /** SessionUsage */
         SessionUsage: {
@@ -385,6 +387,8 @@ export interface components {
             name: string;
             /** Aliases */
             aliases: string[];
+            /** Description */
+            description: string;
             /** Kind */
             kind: string;
             /** Label */
