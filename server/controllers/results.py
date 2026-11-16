@@ -31,6 +31,8 @@ from models.result import FileChange, PresentMode, ResultFile, ResultRecord, Res
 
 ALFRED = "alfred"
 TITLE_MAX = 80
+# Files Alfred shows in one result (a guard against dumping a whole folder on screen).
+MAX_FILES = 20
 
 log = logging.getLogger("alfred.results")
 
@@ -95,14 +97,26 @@ class Results:
             raise ResultNotFound(f"A sessão {self._name(sid)} ainda não tem resultado.")
         return self._show(last[0], mode)
 
-    def present_path(self, raw: str, mode: PresentMode) -> ResultView:
-        """A file Alfred found becomes a result of its own and is shown."""
-        path = Path(os.path.expanduser(raw.strip()))
-        if not readable(path, self._home):
-            raise ResultNotReadable("Não tenho acesso a esse arquivo.")
-        if not path.is_file():
-            raise ResultNotReadable("Não achei esse arquivo.")
-        record = records.insert_result(self._db, None, "alfred", path.name, files=[str(path)])
+    def present_paths(self, raws: list[str], mode: PresentMode) -> ResultView:
+        """Files Alfred found become one result of their own and are shown; any file it may not
+        read, or that is missing, refuses the whole set."""
+        paths: list[Path] = []
+        for raw in raws:
+            path = Path(os.path.expanduser(raw.strip()))
+            if not readable(path, self._home):
+                raise ResultNotReadable(f"Não tenho acesso a {path.name or 'esse arquivo'}.")
+            if not path.is_file():
+                raise ResultNotReadable(f"Não achei {path.name or 'esse arquivo'}.")
+            if path not in paths:
+                paths.append(path)
+        if not paths:
+            raise ResultNotReadable("Diga qual arquivo quer ver.")
+        if len(paths) > MAX_FILES:
+            raise ResultNotReadable(f"Mostro no máximo {MAX_FILES} arquivos de uma vez.")
+        title = paths[0].name if len(paths) == 1 else f"{len(paths)} arquivos"
+        record = records.insert_result(
+            self._db, None, "alfred", title[:TITLE_MAX], files=[str(p) for p in paths]
+        )
         records.prune(self._db, None)
         self._bus.publish("result_created", result=self._view(record).model_dump())
         return self._show(record, mode)

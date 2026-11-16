@@ -17,7 +17,7 @@ export function ResultHistory({ session, local }: { session: string; local: bool
       <ResultList
         results={results.data ?? []}
         local={local}
-        onShow={(id) => present.mutate({ id, mode: 'card' })}
+        onShow={(id) => present.mutate({ id, mode: 'ampliado' })}
       />
     </section>
   )

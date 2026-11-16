@@ -194,7 +194,7 @@ async def test_present_last_without_results_raises(env: Env) -> None:
 async def test_present_path_records_an_alfred_result(env: Env) -> None:
     pdf = env.file("Documentos/x.pdf")
 
-    view = env.results.present_path("~/Documentos/x.pdf".replace("~", str(env.home)), "card")
+    view = env.results.present_paths(["~/Documentos/x.pdf".replace("~", str(env.home))], "card")
     await settle()
 
     assert (view.session, view.source, view.title) == ("alfred", "alfred", "x.pdf")
@@ -204,11 +204,32 @@ async def test_present_path_records_an_alfred_result(env: Env) -> None:
     assert env.results.file(view.id, 0) == pdf
 
 
+async def test_present_paths_shows_several_files_as_one_result(env: Env) -> None:
+    pdf = env.file("Documentos/x.pdf")
+    png = env.file("Imagens/y.png")
+
+    view = env.results.present_paths([str(pdf), str(png), str(pdf)], "ampliado")
+    await settle()
+
+    assert view.title == "2 arquivos"
+    assert [f.name for f in view.files] == ["x.pdf", "y.png"]
+    assert env.results.file(view.id, 1) == png
+
+
+async def test_present_paths_refuses_the_set_when_one_file_is_secret(env: Env) -> None:
+    pdf = env.file("Documentos/x.pdf")
+    env.file(".env")
+    with pytest.raises(ResultNotReadable, match=r"\.env"):
+        env.results.present_paths([str(pdf), str(env.home / ".env")], "card")
+    await settle()
+    assert env.events() == []
+
+
 @pytest.mark.parametrize("raw", ["/etc/passwd", "{home}/.env", "{home}/nada.pdf", "rel.pdf"])
 async def test_present_path_refuses_what_alfred_cannot_read(env: Env, raw: str) -> None:
     env.file(".env")
     with pytest.raises(ResultNotReadable):
-        env.results.present_path(raw.format(home=env.home), "card")
+        env.results.present_paths([raw.format(home=env.home)], "card")
     await settle()
     assert env.events() == []
 

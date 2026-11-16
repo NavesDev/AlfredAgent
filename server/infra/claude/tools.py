@@ -503,17 +503,18 @@ def session_tools(
 
     @sdk.tool(
         "apresentar",
-        "Mostra na tela um resultado: com 'sessao', o último resultado dela (imagem, vídeo, "
-        "documento ou relatório de mudanças); com 'caminho', um arquivo da home que você achou. "
-        "'modo': card (padrão, cartão no canto) ou ampliado (janela grande no centro); use "
-        "ampliado quando o usuário pedir para apresentar ou mostrar grande. Não fale o que está "
-        "na tela, só que mostrou.",
+        "Abre na tela, grande e no centro, o que o usuário pediu para ver: com 'sessao', o último "
+        "resultado dela (imagem, vídeo, documento ou relatório de mudanças); com 'caminhos', um "
+        "ou mais arquivos da home que você achou (vários viram um resultado só, com setas para "
+        "passar de um a outro). Use só quando o usuário pedir para mostrar, apresentar ou ver; "
+        "o cartão no canto aparece sozinho quando uma sessão termina. Não fale o que está na "
+        "tela, só que mostrou.",
         {
             "type": "object",
             "properties": {
                 "sessao": {"type": "string"},
+                "caminhos": {"type": "array", "items": {"type": "string"}},
                 "caminho": {"type": "string"},
-                "modo": {"type": "string", "enum": ["card", "ampliado"]},
             },
         },
     )
@@ -521,9 +522,14 @@ def session_tools(
         async def run() -> str:
             if results is None:
                 return "Não consigo mostrar resultados agora."
-            mode: PresentMode = "ampliado" if args.get("modo") == "ampliado" else "card"
+            # Asked for by the user: always the expanded view; the card is for a session that
+            # finished on its own (APRESENTAR line).
+            mode: PresentMode = "ampliado"
+            paths = [str(p) for p in args.get("caminhos") or []]
             if args.get("caminho"):
-                results.present_path(str(args["caminho"]), mode)
+                paths.insert(0, str(args["caminho"]))
+            if paths:
+                results.present_paths(paths, mode)
             elif args.get("sessao"):
                 results.present_last(str(args["sessao"]), mode)
             else:

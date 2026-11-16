@@ -450,9 +450,7 @@ async def test_apresentar_shows_a_file_alfred_found(tools: Tools) -> None:
     queue = tools.env.sessions._bus.subscribe()
     (tools.home / "x.pdf").write_bytes(b"%PDF")
 
-    text = await tools.call(
-        "apresentar", {"caminho": str(tools.home / "x.pdf"), "modo": "ampliado"}
-    )
+    text = await tools.call("apresentar", {"caminho": str(tools.home / "x.pdf")})
     await settle()
 
     assert text == "Mostrei na tela."
@@ -460,11 +458,27 @@ async def test_apresentar_shows_a_file_alfred_found(tools: Tools) -> None:
     assert (shown["mode"], shown["result"]["source"]) == ("ampliado", "alfred")
 
 
+async def test_apresentar_shows_several_files_at_once(tools: Tools) -> None:
+    queue = tools.env.sessions._bus.subscribe()
+    (tools.home / "a.md").write_text("# A")
+    (tools.home / "b.md").write_text("# B")
+
+    text = await tools.call(
+        "apresentar", {"caminhos": [str(tools.home / "a.md"), str(tools.home / "b.md")]}
+    )
+    await settle()
+
+    assert text == "Mostrei na tela."
+    [shown] = [e for e in drain(queue) if e["type"] == "result_presented"]
+    assert [f["name"] for f in shown["result"]["files"]] == ["a.md", "b.md"]
+    assert shown["mode"] == "ampliado"
+
+
 async def test_apresentar_refuses_secrets_and_missing_results(tools: Tools) -> None:
     (tools.home / ".env").write_text("TOKEN=1")
 
     assert await tools.call("apresentar", {"caminho": str(tools.home / ".env")}) == (
-        "Não tenho acesso a esse arquivo."
+        "Não tenho acesso a .env."
     )
     assert await tools.call("apresentar", {"sessao": "sistema"}) == (
         "A sessão sistema ainda não tem resultado."
@@ -481,7 +495,7 @@ async def test_apresentar_the_last_result_of_a_session(tools: Tools) -> None:
     await settle()
 
     [shown] = [e for e in drain(queue) if e["type"] == "result_presented"]
-    assert shown["mode"] == "card"
+    assert shown["mode"] == "ampliado"
 
 
 async def test_fechar_apresentacao(tools: Tools) -> None:
