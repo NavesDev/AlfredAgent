@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { ResultView } from '../../../api/events'
 import { ChevronLeft, ChevronRight, Monitor, X } from '../../../components/icons'
 import { formatSize, mainAction, slidesOf } from '../lib/results'
@@ -41,18 +41,37 @@ export function ResultCard({
   const [hover, setHover] = useState(false)
   const slide = slides[Math.min(at, slides.length - 1)]
 
+  // Kept in a ref: the parents re-render many times a second (voice level), and a new
+  // onDismiss each time would restart the timer forever.
+  const dismiss = useRef(onDismiss)
   useEffect(() => {
-    if (!autoCloseMs || !onDismiss || hover) return
-    const timer = setTimeout(onDismiss, autoCloseMs)
+    dismiss.current = onDismiss
+  })
+  useEffect(() => {
+    if (!autoCloseMs || hover) return
+    const timer = setTimeout(() => dismiss.current?.(), autoCloseMs)
     return () => clearTimeout(timer)
-  }, [autoCloseMs, onDismiss, hover, result.id])
+  }, [autoCloseMs, hover, result.id])
+
+  // The overlay turns click-through when the mouse leaves the card, which can swallow
+  // mouseleave; leaving the window or the page losing focus also ends the hover.
+  useEffect(() => {
+    if (!hover) return
+    const end = () => setHover(false)
+    document.documentElement.addEventListener('mouseleave', end)
+    window.addEventListener('blur', end)
+    return () => {
+      document.documentElement.removeEventListener('mouseleave', end)
+      window.removeEventListener('blur', end)
+    }
+  }, [hover])
 
   return (
     <section
       aria-label={result.title}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className="flex w-[300px] flex-col gap-2 rounded-[22px] border border-white/12 bg-[rgb(14_14_18/0.88)] p-2.5 text-ink shadow-[0_18px_40px_rgb(0_0_0/0.5)] select-none"
+      className="flex w-[300px] flex-col gap-2 surface rounded-[22px] p-2.5 text-ink select-none"
     >
       <header className="flex min-w-0 items-center gap-2 text-xs">
         <MiniOrb />
@@ -89,7 +108,7 @@ export function ResultCard({
         <Elsewhere result={result} />
       ) : (
         <>
-          <div className="aspect-video overflow-hidden rounded-[14px] bg-black/28">
+          <div className="aspect-video overflow-hidden rounded-[14px] bg-[#0e0e11] ring-1 ring-white/6">
             {slide && <ResultBody result={result} slide={slide} size="card" />}
           </div>
           <Footer>
@@ -147,7 +166,7 @@ function Footer({ children }: { children: ReactNode }) {
 /** Another device on the local network: words only, never media or files. */
 function Elsewhere({ result }: { result: ResultView }) {
   return (
-    <div className="flex flex-col gap-1.5 rounded-[14px] bg-black/28 px-3 py-2.5 text-[11.5px]">
+    <div className="flex flex-col gap-1.5 rounded-[14px] bg-[#0e0e11] px-3 py-2.5 text-[11.5px]">
       {result.summary && <span>{result.summary}</span>}
       {result.report && <p className="m-0 line-clamp-4 text-ink-2">{result.report}</p>}
       {result.changes.slice(0, 3).map((c) => (

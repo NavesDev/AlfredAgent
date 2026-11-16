@@ -101,4 +101,30 @@ describe('ResultCard', () => {
     act(() => void vi.advanceTimersByTime(30_000))
     expect(onDismiss).toHaveBeenCalledOnce()
   })
+
+  it('still leaves when the parent re-renders with a new onDismiss', () => {
+    vi.useFakeTimers()
+    const onDismiss = vi.fn()
+    const props = { result: resultView(), local: true, onExpand: vi.fn(), onOpen: vi.fn() }
+    const { rerender } = render(
+      <ResultCard
+        {...props}
+        onClose={vi.fn()}
+        autoCloseMs={30_000}
+        onDismiss={() => onDismiss()}
+      />,
+    )
+    for (let i = 0; i < 40; i++) {
+      act(() => void vi.advanceTimersByTime(1_000))
+      rerender(
+        <ResultCard
+          {...props}
+          onClose={vi.fn()}
+          autoCloseMs={30_000}
+          onDismiss={() => onDismiss()}
+        />,
+      )
+    }
+    expect(onDismiss).toHaveBeenCalledOnce()
+  })
 })

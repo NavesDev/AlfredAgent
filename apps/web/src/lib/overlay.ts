@@ -1,11 +1,16 @@
 /** Where the desktop overlay is anchored (apps/desktop `overlay_anchor`). */
 export type Anchor = { edge: 'top' | 'bottom'; align: 'left' | 'center' | 'right' }
 
-const ALIGN = { left: 'items-start', center: 'items-center', right: 'items-end' } as const
+const JUSTIFY = {
+  left: 'justify-items-start',
+  center: 'justify-items-center',
+  right: 'justify-items-end',
+} as const
 
-/** Flex-column classes that pin the pill and the card to the anchored corner of the window. */
-export const anchorClasses = ({ edge, align }: Anchor) =>
-  `${edge === 'top' ? 'justify-start' : 'justify-end'} ${ALIGN[align]}`
+/** Grid classes that stack the pill and the card in one cell pinned to the anchored corner, so
+ * one can fade out while the other comes in at the same spot. */
+export const stackClasses = ({ edge, align }: Anchor) =>
+  `${edge === 'top' ? 'items-start' : 'items-end'} ${JUSTIFY[align]}`
 
 /** The rectangle that takes the mouse, in whole logical pixels (outward). */
 export function hitRect(box: { left: number; top: number; width: number; height: number }) {

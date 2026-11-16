@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { anchorClasses, hitRect, overlayShows } from './overlay'
+import { hitRect, overlayShows, stackClasses } from './overlay'
 
 describe('overlay layout', () => {
   it('pins what floats to the preset corner of the window', () => {
-    expect(anchorClasses({ edge: 'top', align: 'right' })).toBe('justify-start items-end')
-    expect(anchorClasses({ edge: 'bottom', align: 'center' })).toBe('justify-end items-center')
-    expect(anchorClasses({ edge: 'top', align: 'left' })).toBe('justify-start items-start')
+    expect(stackClasses({ edge: 'top', align: 'right' })).toBe('items-start justify-items-end')
+    expect(stackClasses({ edge: 'bottom', align: 'center' })).toBe('items-end justify-items-center')
+    expect(stackClasses({ edge: 'top', align: 'left' })).toBe('items-start justify-items-start')
   })
 
   it('reports the card box as whole pixels', () => {

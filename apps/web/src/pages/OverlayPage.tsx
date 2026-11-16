@@ -6,9 +6,9 @@ import { ResultCard } from '../features/results/components/ResultCard'
 import { usePresentation } from '../features/results/hooks/usePresentation'
 import { useResultActions } from '../features/results/hooks/useResultActions'
 import { openViewer, overlayAnchor, setHitRect } from '../lib/desktop'
-import { anchorClasses, hitRect, overlayShows, type Anchor } from '../lib/overlay'
+import { hitRect, overlayShows, stackClasses, type Anchor } from '../lib/overlay'
 
-/** Time the pill takes to fade out before it unmounts (matches animate-pill-out). */
+/** Time the pill or the card takes to fade out before it unmounts (matches animate-pill-out). */
 const LEAVE_MS = 220
 /** The card leaves on its own after this long without the mouse on it (D13). */
 const CARD_MS = 30_000
@@ -29,13 +29,16 @@ export function OverlayPage() {
   const outOfSight = usePanelOutOfSight(active || current?.mode === 'card')
   const shows = overlayShows({ active, outOfSight, presentation: current })
   const [anchor, setAnchor] = useState<Anchor>({ edge: 'top', align: 'right' })
-  const [wasPill, setWasPill] = useState(shows === 'pill')
-  const [leaving, setLeaving] = useState(false)
+  // What was on screen before, kept a moment so it fades out instead of vanishing.
+  const [was, setWas] = useState(shows)
+  const [leaving, setLeaving] = useState<'pill' | 'card' | null>(null)
+  const [lastCard, setLastCard] = useState(current)
   const card = useRef<HTMLDivElement>(null)
-  if ((shows === 'pill') !== wasPill) {
-    setWasPill(shows === 'pill')
-    setLeaving(shows === 'none')
+  if (shows !== was) {
+    setWas(shows)
+    setLeaving(was === 'none' ? null : was)
   }
+  if (shows === 'card' && current && current !== lastCard) setLastCard(current)
 
   useEffect(() => {
     document.documentElement.classList.add('overlay')
@@ -55,7 +58,17 @@ export function OverlayPage() {
       void setHitRect(null).catch(() => {})
       return
     }
-    const report = () => void setHitRect(hitRect(el.getBoundingClientRect())).catch(() => {})
+    // The layout box, not getBoundingClientRect: that one includes the entrance animation's
+    // scale and offset, and nothing reports again when the animation ends.
+    const report = () =>
+      void setHitRect(
+        hitRect({
+          left: el.offsetLeft,
+          top: el.offsetTop,
+          width: el.offsetWidth,
+          height: el.offsetHeight,
+        }),
+      ).catch(() => {})
     report()
     const observer = new ResizeObserver(report)
     observer.observe(el)
@@ -64,14 +77,15 @@ export function OverlayPage() {
 
   useEffect(() => {
     if (!leaving) return
-    const timer = setTimeout(() => setLeaving(false), LEAVE_MS)
+    const timer = setTimeout(() => setLeaving(null), LEAVE_MS)
     return () => clearTimeout(timer)
   }, [leaving])
 
+  const cell = 'col-start-1 row-start-1'
   return (
-    <div className={`flex h-full flex-col p-2 ${anchorClasses(anchor)}`}>
-      {shows === 'card' && current ? (
-        <div ref={card} className="animate-pill-in">
+    <div className={`grid h-full p-2 ${stackClasses(anchor)}`}>
+      {shows === 'card' && current && (
+        <div key={current.result.id} ref={card} className={`${cell} animate-pill-in`}>
           <ResultCard
             result={current.result}
             local
@@ -82,10 +96,22 @@ export function OverlayPage() {
             onDismiss={presentation.dismiss}
           />
         </div>
-      ) : (
-        (shows === 'pill' || leaving) && (
+      )}
+      {leaving === 'card' && shows !== 'card' && lastCard && (
+        <div aria-hidden className={`${cell} pointer-events-none animate-pill-out`}>
+          <ResultCard
+            result={lastCard.result}
+            local
+            onExpand={() => {}}
+            onOpen={() => {}}
+            onClose={() => {}}
+          />
+        </div>
+      )}
+      {(shows === 'pill' || leaving === 'pill') && (
+        <div className={cell}>
           <VoicePill state={state} level={level} leaving={shows !== 'pill'} />
-        )
+        </div>
       )}
     </div>
   )
