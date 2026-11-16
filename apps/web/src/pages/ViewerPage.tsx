@@ -36,7 +36,7 @@ export function ViewerPage() {
 
   if (!result.data) return <Loading />
   return (
-    <div className="h-full p-2">
+    <div className="h-full">
       <ResultViewer
         result={result.data}
         index={index}

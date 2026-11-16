@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ResultView } from '../../../api/events'
 import {
+  cleanMarkdown,
   fileUrl,
   formatSize,
   isLocalHost,
@@ -62,5 +63,26 @@ describe('timeLabel', () => {
     expect(timeLabel(new Date(2026, 10, 15, 14, 32).getTime() / 1000, now)).toBe('14:32')
     expect(timeLabel(new Date(2026, 10, 14, 9, 0).getTime() / 1000, now)).toBe('ontem')
     expect(timeLabel(new Date(2026, 10, 12, 9, 0).getTime() / 1000, now)).toBe('12/11')
+  })
+})
+
+describe('cleanMarkdown', () => {
+  it('drops the front matter', () => {
+    expect(cleanMarkdown('---\ntipo: spec\nversao: 1\n---\n# Spec\n')).toBe('# Spec\n')
+  })
+
+  it('keeps a horizontal rule that is not front matter', () => {
+    expect(cleanMarkdown('# A\n\n---\n\nB')).toBe('# A\n\n---\n\nB')
+  })
+
+  it('turns wiki links into their alias or note name', () => {
+    expect(cleanMarkdown('ver [[30-Projetos/X/PRD|PRD]] e [[Índice]] e [[a/b#Seção]]')).toBe(
+      'ver PRD e Índice e b',
+    )
+  })
+  it('gives a callout a bold title', () => {
+    expect(cleanMarkdown('> [!warning] Bloqueios\n> - a\n\n> [!NOTE]\n> b')).toBe(
+      '> **Bloqueios**\n> - a\n\n> **Note**\n> b',
+    )
   })
 })

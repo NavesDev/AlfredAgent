@@ -57,3 +57,18 @@ export function slidesOf(result: { report: string | null; files: ResultFile[] })
     ...result.files.map((file, index) => ({ type: 'file' as const, index, file })),
   ]
 }
+
+/** Markdown ready to render: no YAML front matter, Obsidian `[[path|alias]]` links as their
+ * alias (or the note name), and `> [!warning] Title` callouts with a bold title. */
+export function cleanMarkdown(text: string): string {
+  return text
+    .replace(/^﻿?---\r?\n[\s\S]*?\r?\n---[ \t]*(\r?\n|$)/, '')
+    .replace(/!?\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, path: string, alias?: string) =>
+      (alias ?? path.split('/').pop()!.replace(/#.*$/, '')).trim(),
+    )
+    .replace(
+      /^([ \t]*>[ \t]*)\[!(\w+)\][+-]?[ \t]*(.*)$/gm,
+      (_, quote: string, type: string, title: string) =>
+        `${quote}**${title.trim() || type[0].toUpperCase() + type.slice(1).toLowerCase()}**`,
+    )
+}
