@@ -152,7 +152,7 @@ export function ResultViewer({ result, index, local, onIndex, onOpen, onClose }:
           >
             <ChevronLeft className="size-4" />
           </button>
-          <div className="flex min-w-0 items-center gap-1 overflow-x-auto">
+          <div className="no-scrollbar flex min-w-0 items-center gap-1 overflow-x-auto">
             {slides.map((s, i) => {
               const label = s.type === 'file' ? s.file.name : 'Relatório'
               const thumb =
