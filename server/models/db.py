@@ -3,7 +3,7 @@
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS project (
@@ -44,6 +44,17 @@ CREATE TABLE IF NOT EXISTS agent_settings (
     kind TEXT PRIMARY KEY,
     model TEXT NOT NULL,
     effort TEXT
+);
+CREATE TABLE IF NOT EXISTS result (
+    id INTEGER PRIMARY KEY,
+    session_id INTEGER REFERENCES session(id) ON DELETE CASCADE,
+    source TEXT NOT NULL CHECK (source IN ('session', 'alfred')),
+    title TEXT NOT NULL,
+    summary TEXT,
+    report TEXT,
+    changes TEXT NOT NULL DEFAULT '[]',
+    files TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS app_settings (
     key TEXT PRIMARY KEY,

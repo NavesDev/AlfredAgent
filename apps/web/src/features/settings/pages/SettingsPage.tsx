@@ -1,7 +1,15 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { SettingsView } from '../../../api/events'
 import { Row, Section, Segmented, Switch } from '../../../components/controls'
-import { Gauge, GitBranch, Image, Plug, Sparkle, Terminal } from '../../../components/icons'
+import {
+  Gauge,
+  GitBranch,
+  Image,
+  Monitor,
+  Plug,
+  Sparkle,
+  Terminal,
+} from '../../../components/icons'
 import { button, PageShell, primaryButton } from '../../../components/layout/PageShell'
 import { ModelSelect } from '../../../components/ModelSelect'
 import { Picker } from '../../../components/Picker'
@@ -9,6 +17,7 @@ import { EFFORTS, field } from '../../../lib/sessionForm'
 import { SettingsNav } from '../components/SettingsNav'
 import { UpdateSection } from '../components/UpdateSection'
 import { UsageSection } from '../components/UsageSection'
+import { OverlaySpot, POSITIONS } from '../components/OverlaySpot'
 import { SECTIONS, sectionFromHash, type SectionId } from '../lib/sections'
 import { useSettings } from '../hooks/useSettings'
 
@@ -82,6 +91,30 @@ export function Form({
 
   return (
     <>
+      {section === 'geral' && (
+        <Section
+          title="Na tela"
+          description="Onde fica o que flutua fora do painel: a pílula de voz, o card de resultado e avisos futuros."
+        >
+          <Row
+            title="Posição da pílula"
+            description="Vale para a pílula, o card e avisos futuros."
+            icon={<Monitor />}
+          >
+            <div className="flex items-center gap-3">
+              <OverlaySpot position={draft.overlay_position} />
+              <div className="w-48">
+                <Picker
+                  label="Posição da pílula"
+                  value={draft.overlay_position}
+                  options={POSITIONS}
+                  onChange={(id) => set('overlay_position', id as SettingsView['overlay_position'])}
+                />
+              </div>
+            </div>
+          </Row>
+        </Section>
+      )}
       {section === 'modelos' && (
         <>
           <Section

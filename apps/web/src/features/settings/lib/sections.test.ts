@@ -8,11 +8,13 @@ describe('sectionFromHash', () => {
     expect(sectionFromHash('')).toBe('uso')
     expect(sectionFromHash('#painel')).toBe('uso')
     expect(sectionFromHash('#atualizacoes')).toBe('atualizacoes')
+    expect(sectionFromHash('#geral')).toBe('geral')
   })
 
   it('lists the sections in the sidebar order', () => {
     expect(SECTIONS.map((s) => s.label)).toEqual([
       'Uso e limites',
+      'Geral',
       'Modelos',
       'Sessões abertas',
       'MCPs',

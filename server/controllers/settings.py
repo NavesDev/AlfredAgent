@@ -32,6 +32,7 @@ class SettingsView(BaseModel):
     image_mcp_servers: list[str]  # user-scope MCP servers that can be the image generator
     known_mcp_servers: list[str]  # user-scope servers plus the ones sessions reported
     implementation_mode: ImplementationMode
+    overlay_position: model.OverlayPosition
 
 
 class SettingsUpdate(BaseModel):
@@ -41,6 +42,7 @@ class SettingsUpdate(BaseModel):
     mcp_disabled: list[str] | None = None
     image_mcp: str | None = None  # "" goes back to automatic
     implementation_mode: ImplementationMode | None = None
+    overlay_position: model.OverlayPosition | None = None
 
 
 class Settings:
@@ -68,6 +70,7 @@ class Settings:
             image_mcp_servers=sorted(user_servers),
             known_mcp_servers=sorted(self._known_mcp | set(user_servers)),
             implementation_mode=app.implementation_mode,
+            overlay_position=app.overlay_position,
         )
 
     def app(self) -> model.AppSettings:

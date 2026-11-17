@@ -5,9 +5,9 @@ import { NavRail } from './NavRail'
 import { TitleBar } from './TitleBar'
 
 /** Out-of-focus graphite shapes, so the glass panels have something to blur. */
-function Room() {
+export function Room() {
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
       <div className="absolute inset-0 bg-[linear-gradient(180deg,#19191c_0%,#0f0f11_55%,#09090b_100%)]" />
       <div className="absolute top-[8%] -left-[6%] h-[55%] w-[40%] rounded-full bg-[#3c3c42] opacity-60 blur-[60px]" />
       <div className="absolute -top-[6%] right-[6%] h-[40%] w-[26%] rounded-full bg-[#8a8a94] opacity-[0.22] blur-[60px]" />

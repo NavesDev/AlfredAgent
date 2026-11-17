@@ -162,3 +162,15 @@ async def test_implementation_mode_starts_as_worktree_and_is_validated(bus: Even
     assert s.app().implementation_mode == "ambiente"
     with pytest.raises(ValidationError):
         SettingsUpdate(implementation_mode="nada")  # type: ignore[arg-type]
+
+
+async def test_overlay_position_starts_top_right_and_is_validated(bus: EventBus) -> None:
+    s = make(bus)
+    assert s.get().overlay_position == "top_right"
+
+    assert s.update(SettingsUpdate(overlay_position="bottom_center")).overlay_position == (
+        "bottom_center"
+    )
+    assert s.app().overlay_position == "bottom_center"
+    with pytest.raises(ValidationError):
+        SettingsUpdate(overlay_position="meio")  # type: ignore[arg-type]

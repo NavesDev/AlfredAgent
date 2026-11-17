@@ -270,3 +270,133 @@ def test_update_routes(tmp_path: Path) -> None:
     assert refused.status_code == 409 and "não commitadas" in refused.json()["detail"]
     assert applied.status_code == 202 and applied.json()["status"] == "updating"
     assert spawned == ["v0.2.0"]
+
+
+# --- results (ADR 0014) ----------------------------------------------------------------------
+
+
+def _results_client(tmp_path: Path, host: str) -> Any:
+    from controllers.results import Results
+
+    app = create_app()
+    with TestClient(app, client=(host, 5000)) as client:
+        api: Any = Api(app, client, tmp_path)
+        api.results = app.state.results = Results(api.env.db, api.env.sessions._bus, tmp_path)
+        yield api
+
+
+@pytest.fixture
+def results_api(tmp_path: Path) -> Any:
+    """A client on this computer (loopback)."""
+    yield from _results_client(tmp_path, "127.0.0.1")
+
+
+@pytest.fixture
+def phone_api(tmp_path: Path) -> Any:
+    """A phone on the local network."""
+    yield from _results_client(tmp_path, "192.168.0.20")
+
+
+def _record(api: Any, reply: str) -> int:
+    view = api.client.portal.call(api.results.record, "sistema", reply, None, None)
+    return int(view.id)
+
+
+def test_results_list_get_and_serve_a_file(results_api: Any) -> None:
+    api = results_api
+    (api.home / "a.png").write_bytes(b"PNG!")
+    rid = _record(api, f"RESUMO: pronto\nAPRESENTAR: {api.home / 'a.png'}")
+
+    listed = api.get("/api/results", params={"session": "sistema"})
+    one = api.get(f"/api/results/{rid}")
+    served = api.get(f"/api/results/{rid}/files/0")
+
+    assert [r["id"] for r in listed.json()] == [rid]
+    assert one.json()["files"] == [{"name": "a.png", "kind": "image", "size": 4, "exists": True}]
+    assert served.status_code == 200 and served.content == b"PNG!"
+    csp = served.headers["content-security-policy"]
+    assert "sandbox allow-scripts" in csp and "default-src 'none'" in csp  # no network, no origin
+    assert served.headers["x-content-type-options"] == "nosniff"
+    assert api.get("/api/results", params={"session": "nada"}).status_code == 404
+    assert api.get("/api/results", params={"session": "sistema", "limit": 31}).status_code == 422
+    assert api.get("/api/results/999").status_code == 404
+    assert api.get(f"/api/results/{rid}/files/1").status_code == 404
+
+
+def test_a_file_is_only_served_to_this_computer(phone_api: Any) -> None:
+    api = phone_api
+    (api.home / "a.png").write_bytes(b"PNG!")
+    rid = _record(api, f"APRESENTAR: {api.home / 'a.png'}")
+
+    assert api.get(f"/api/results/{rid}/files/0").status_code == 403
+    assert api.get(f"/api/results/{rid}").status_code == 200  # text still reaches it
+
+
+@pytest.mark.parametrize(
+    ("host", "local"),
+    [("127.0.0.1", True), ("::1", True), ("::ffff:127.0.0.1", True), ("192.168.0.20", False),
+     ("testclient", False), ("", False)],
+)  # fmt: skip
+def test_loopback_is_fail_closed(host: str, local: bool) -> None:
+    from types import SimpleNamespace
+
+    from api.routes.results import _loopback
+
+    request = SimpleNamespace(client=SimpleNamespace(host=host) if host else None)
+    assert _loopback(request) is local  # type: ignore[arg-type]
+
+
+def test_a_deleted_file_is_gone_and_a_secret_forbidden(results_api: Any) -> None:
+    api = results_api
+    png = api.home / "a.png"
+    png.write_bytes(b"PNG!")
+    rid = _record(api, f"APRESENTAR: {png}")
+
+    png.unlink()
+    assert api.get(f"/api/results/{rid}/files/0").status_code == 410
+    (api.home / ".ssh").mkdir()
+    (api.home / ".ssh/id_rsa").write_text("k")
+    png.symlink_to(api.home / ".ssh/id_rsa")
+    assert api.get(f"/api/results/{rid}/files/0").status_code == 403
+
+
+def test_present_and_close(results_api: Any) -> None:
+    api = results_api
+    rid = _record(api, "GUARDAR: relatório")
+
+    assert api.post(f"/api/results/{rid}/present", json={"mode": "ampliado"}).status_code == 204
+    assert api.post(f"/api/results/{rid}/present", json={"mode": "grande"}).status_code == 422
+    assert api.post("/api/results/999/present", json={"mode": "card"}).status_code == 404
+    assert api.post("/api/presentation/close").status_code == 204
+
+
+def test_settings_overlay_position(api: Api) -> None:
+    ok = api.put("/api/settings", json={"overlay_position": "bottom_center"})
+    bad = api.put("/api/settings", json={"overlay_position": "meio"})
+
+    assert ok.json()["overlay_position"] == "bottom_center"
+    assert bad.status_code == 422
+    assert api.get("/api/settings").json()["overlay_position"] == "bottom_center"
+
+
+def test_open_a_file_on_this_computer_only(results_api: Any, tmp_path: Path) -> None:
+    api = results_api
+    opened: list[tuple[Path, bool]] = []
+
+    async def fake_open(path: Path, reveal: bool) -> None:
+        opened.append((path, reveal))
+
+    api.results._open = fake_open
+    (api.home / "a.png").write_bytes(b"PNG!")
+    rid = _record(api, f"APRESENTAR: {api.home / 'a.png'}")
+
+    assert api.post(f"/api/results/{rid}/files/0/open", json={"reveal": True}).status_code == 204
+    assert api.post(f"/api/results/{rid}/files/3/open", json={}).status_code == 404
+    assert opened == [(api.home / "a.png", True)]
+
+
+def test_open_is_refused_to_a_phone(phone_api: Any) -> None:
+    api = phone_api
+    (api.home / "a.png").write_bytes(b"PNG!")
+    rid = _record(api, f"APRESENTAR: {api.home / 'a.png'}")
+    assert api.post(f"/api/results/{rid}/files/0/open", json={}).status_code == 403

@@ -19,6 +19,7 @@ Alfred listens in Brazilian Portuguese:
 "Alfred, backend: cria o endpoint de cancelamento"
 "Alfred, tenho e-mail importante hoje?"
 "Alfred, manda o backend fazer a tarefa de reembolso"
+"Alfred, me mostra o que o Design fez"
 ```
 
 ## Features
@@ -27,6 +28,7 @@ Alfred listens in Brazilian Portuguese:
 - 🧠 **One entry point:** the same Alfred answers questions, searches the web and reads mail, calendar, files and GitHub issues.
 - 🧑‍💻 **Claude Code sessions by voice:** named sessions in parallel, each tied to a project and a workspace (git worktree); delegate with "tell the backend to…".
 - 🌿 **Projects and worktrees:** workspaces mirror your worktrees; one sentence opens a branch, a worktree and a session.
+- 🖼️ **Presentations:** when a session finishes, its result (report, Markdown, PDF, images, video, pages) pops up in a corner card; say "me mostra" and Alfred opens it full size, with several files in one go.
 - 🔒 **Safe by default:** the main agent has no shell or edit tools; voice stays 100% local, reasoning runs in the cloud.
 - 🪟 **Panel and desktop app:** glass panel with a 3D orb that reacts to the voice, plan usage as rings, and a Tauri app with a tray and a floating voice pill.
 
@@ -34,13 +36,26 @@ Alfred listens in Brazilian Portuguese:
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/assets/session.jpg" alt="Session card with portrait, model and effort"><br><sub><b>Session:</b> portrait, workspace, model and effort</sub></td>
+    <td width="50%"><img src="docs/assets/session.jpg" alt="Session card with portrait, model, effort and results"><br><sub><b>Session:</b> portrait, workspace, model, effort and its results</sub></td>
     <td width="50%"><img src="docs/assets/projects.jpg" alt="Projects with their workspaces and sessions"><br><sub><b>Projects:</b> workspaces and sessions of each one</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/assets/presentation.jpg" alt="Expanded view presenting a session's Markdown result, with the files to switch between"><br><sub><b>Presentation:</b> a session's result full size; switch files with the arrows or the bottom bar</sub></td>
   </tr>
   <tr>
     <td colspan="2"><img src="docs/assets/settings.jpg" alt="Settings with plan usage and limits"><br><sub><b>Settings:</b> plan usage and limits, models, open sessions and MCPs</sub></td>
   </tr>
 </table>
+
+## Presentations
+
+Every Claude Code session can hand over what it made when a task ends: a short report plus the files worth seeing. Alfred shows it without getting in the way, then opens it big when you ask.
+
+- **Corner card:** the floating voice pill turns into a small preview of the result; click it to expand. It leaves on its own.
+- **Expanded view:** a separate window at 70% of the screen with the report and each file (Markdown, PDF, images, video, text, HTML), "Abrir no app" and "Pasta" buttons, and arrows (or ← →) to move between files.
+- **By voice:** "me mostra o que o Design fez" opens a session's latest result; "apresenta o PDF do relatório" finds the files and opens them together; "pode fechar" closes it.
+- **History:** each session keeps its last 30 results in the panel; "Mostrar" opens any of them again.
+- **Local only:** result files are served to this computer only, and the card follows the position chosen in Settings → Geral.
 
 ## How it works
 
