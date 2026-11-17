@@ -19,7 +19,7 @@ wheels = [
 
 [[package]]
 name = "alfred-server"
-version = "0.2.1"
+version = "0.3.0"
 source = { virtual = "." }
 dependencies = [
     { name = "claude-agent-sdk" },
