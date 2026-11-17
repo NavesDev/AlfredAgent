@@ -25,6 +25,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-single-instance",
+ "webkit2gtk",
 ]
 
 [[package]]

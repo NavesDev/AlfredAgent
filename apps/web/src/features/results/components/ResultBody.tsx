@@ -3,6 +3,7 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { ResultView } from '../../../api/events'
 import { FileX } from '../../../components/icons'
+import { ScrollArea } from '../../../components/ScrollArea'
 import { useFileText } from '../hooks/useFileText'
 import { usePdf } from '../hooks/usePdf'
 import {
@@ -93,7 +94,11 @@ const FITTED =
   'max-h-full max-w-full rounded-[18px] border border-white/10 shadow-[0_24px_60px_rgb(0_0_0/0.5)]'
 
 function Fitted({ children }: { children: ReactNode }) {
-  return <div className="flex size-full items-center justify-center p-4 md:px-16 md:py-8">{children}</div>
+  return (
+    <div className="flex size-full items-center justify-center p-4 md:px-16 md:py-8">
+      {children}
+    </div>
+  )
 }
 
 /** A small dark card, centered: what has no preview in the expanded view. */
@@ -159,7 +164,7 @@ function Report({ result, size }: { result: ResultView; size: Size }) {
       </div>
     )
   return (
-    <div className="size-full overflow-y-auto">
+    <ScrollArea className="overflow-y-auto">
       <article className="mx-auto flex max-w-[720px] flex-col gap-6 px-12 pt-11 pb-16 text-[15px]">
         {result.summary && (
           <p className="m-0 text-[19px] leading-snug font-medium tracking-[-0.01em] text-ink">
@@ -192,7 +197,7 @@ function Report({ result, size }: { result: ResultView; size: Size }) {
           </section>
         )}
       </article>
-    </div>
+    </ScrollArea>
   )
 }
 
@@ -223,11 +228,11 @@ function MarkdownFile({ id, index, size }: { id: number; index: number; size: Si
       </div>
     )
   return (
-    <div className="size-full overflow-y-auto">
+    <ScrollArea className="overflow-y-auto">
       <article className="prose-result mx-auto max-w-[720px] px-12 pt-11 pb-16 text-[15px]">
         {doc}
       </article>
-    </div>
+    </ScrollArea>
   )
 }
 
@@ -236,9 +241,11 @@ function TextFile({ id, index }: { id: number; index: number }) {
   if (text.isPending) return <Loading />
   if (text.isError) return <Gone />
   return (
-    <pre className="m-0 size-full overflow-auto px-4 py-3 font-mono text-[11.5px] leading-relaxed text-ink-2">
-      {text.data}
-    </pre>
+    <ScrollArea className="overflow-auto">
+      <pre className="m-0 min-h-full w-max min-w-full px-4 py-3 font-mono text-[11.5px] leading-relaxed text-ink-2">
+        {text.data}
+      </pre>
+    </ScrollArea>
   )
 }
 
@@ -268,16 +275,22 @@ function Pdf({ url, size }: { url: string; size: Size }) {
   const pageWidth = card
     ? Math.max(0, width - 24)
     : Math.min(PAGE_MAX, Math.max(0, width - PAGE_PAD * 2))
+  const doc =
+    pageWidth > 0 &&
+    Array.from({ length: pages }, (_, i) => (
+      <PdfPage key={i} pdf={pdf.data} page={i + 1} width={pageWidth} />
+    ))
+  const column = 'flex flex-col items-center gap-5 bg-[#0c0c0e]'
+  if (card)
+    return (
+      <div ref={box} className={`${column} size-full overflow-hidden pt-3`}>
+        {doc}
+      </div>
+    )
   return (
-    <div
-      ref={box}
-      className={`flex size-full flex-col items-center gap-5 bg-[#0c0c0e] ${card ? 'overflow-hidden pt-3' : 'overflow-y-auto py-8'}`}
-    >
-      {pageWidth > 0 &&
-        Array.from({ length: pages }, (_, i) => (
-          <PdfPage key={i} pdf={pdf.data} page={i + 1} width={pageWidth} />
-        ))}
-    </div>
+    <ScrollArea ref={box} className={`${column} overflow-y-auto py-8`}>
+      {doc}
+    </ScrollArea>
   )
 }
 

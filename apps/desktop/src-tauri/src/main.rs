@@ -216,6 +216,19 @@ fn set_overlay_position(app: AppHandle, preset: String) {
     });
 }
 
+/// Kinetic wheel scrolling: WebKitGTK jumps a whole step per wheel notch unless it is on.
+fn smooth_scrolling(window: &WebviewWindow) {
+    #[cfg(target_os = "linux")]
+    let _ = window.with_webview(|webview| {
+        use webkit2gtk::{SettingsExt, WebViewExt};
+        if let Some(settings) = webview.inner().settings() {
+            settings.set_enable_smooth_scrolling(true);
+        }
+    });
+    #[cfg(not(target_os = "linux"))]
+    let _ = window;
+}
+
 /// The expanded result view: a glass window over 70% of the overlay's monitor, centered,
 /// built in place. Opened again, it shows the new result and takes focus.
 #[tauri::command]
@@ -253,7 +266,7 @@ async fn open_viewer(app: AppHandle, result_id: u32, index: u32) -> Result<(), S
         .shadow(false)
         .focused(true)
         .build()
-        .map(|_| ())
+        .map(|viewer| smooth_scrolling(&viewer))
         .map_err(|e| e.to_string())
 }
 
@@ -263,6 +276,9 @@ fn main() {
             show_panel(app)
         }))
         .setup(|app| {
+            if let Some(w) = panel(app.handle()) {
+                smooth_scrolling(&w);
+            }
             create_overlay(app.handle())?;
             watch_cursor(app.handle().clone());
 

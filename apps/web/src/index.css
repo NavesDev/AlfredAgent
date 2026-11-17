@@ -282,24 +282,27 @@ html.viewer #root {
   clip-path: none;
 }
 
-/* Thin dark scrollbars in the result viewer (WebKitGTK draws light native ones). */
-html.viewer * {
-  scrollbar-width: thin;
-  scrollbar-color: rgb(255 255 255 / 0.18) transparent;
+/* ScrollArea draws its own overlay bar; hide the native one. */
+.no-scrollbar {
+  scrollbar-width: none;
 }
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Thin dark scrollbars for anything else in the result viewer (code blocks). Only the
+ * -webkit- form: setting scrollbar-width makes WebKitGTK fall back to the GTK bar. */
 html.viewer ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
-html.viewer ::-webkit-scrollbar-track {
+html.viewer ::-webkit-scrollbar-track,
+html.viewer ::-webkit-scrollbar-corner {
   background: transparent;
 }
 html.viewer ::-webkit-scrollbar-thumb {
-  background: rgb(255 255 255 / 0.16);
-  border: 3px solid transparent;
+  background: rgb(255 255 255 / 0.2);
+  border: 2px solid transparent;
   border-radius: 999px;
   background-clip: padding-box;
-}
-html.viewer ::-webkit-scrollbar-thumb:hover {
-  background-color: rgb(255 255 255 / 0.28);
 }
