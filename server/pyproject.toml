@@ -1,6 +1,6 @@
 [project]
 name = "alfred-server"
-version = "0.2.1"
+version = "0.3.0"
 description = "Alfred voice assistant server: voice loop, agents and API"
 requires-python = ">=3.11,<3.13"
 dependencies = [
