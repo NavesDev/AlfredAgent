@@ -47,6 +47,13 @@ class Speaker(Protocol):
     def notify(self, text: str) -> None: ...
 
 
+class Recorder(Protocol):
+    """controllers/results.py: where a task starts, and what its reply hands over."""
+
+    async def head(self, cwd: Path) -> str | None: ...
+    async def record(self, session: str, reply: str, cwd: Path | None, head: str | None) -> Any: ...
+
+
 # (kind, context read on every connect) -> a session that connects on its first task
 SessionFactory = Callable[[AgentKind, Callable[[], SessionContext]], Session]
 
@@ -85,10 +92,11 @@ class Sessions:
         home: Path,
         clock: Callable[[], float] = time.monotonic,
         portrait: PortraitUrl = lambda _id, _name: None,
+        results: Recorder | None = None,
     ) -> None:
         self._bus, self._talker, self._db = bus, talker, db
         self._settings, self._factory, self._home, self._clock = settings, factory, home, clock
-        self._portrait = portrait
+        self._portrait, self._results = portrait, results
         self._slots: dict[str, Slot] = {}
         self._waiters: list[asyncio.Future[None]] = []
 
@@ -312,6 +320,8 @@ class Sessions:
         slot.last_error = None
         slot.subagents.clear()
         self._publish_status(slot)
+        cwd = self._context(name).cwd
+        head = await self._results.head(cwd) if self._results else None
         try:
             reply = await slot.session.run(task)
         except AgentError as e:
@@ -331,6 +341,8 @@ class Sessions:
                 records.update_session(self._db, name, claude_session_id=reply.session_id)
             done = f"{name} terminou"
             self._talker.notify(f"{done}: {reply.summary}" if reply.summary else f"{done}.")
+            if self._results:
+                await self._results.record(name, reply.text, cwd, head)
         slot.task, slot.activity, slot.phase = None, None, None
         slot.last_used = self._clock()
         self._publish_status(slot)

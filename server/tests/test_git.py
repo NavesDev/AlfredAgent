@@ -175,3 +175,34 @@ async def test_fetch_tag_then_show_a_file_at_it(cloned: Path) -> None:
 
 async def test_current_branch(cloned: Path) -> None:
     assert await git.current_branch(cloned) == "main"
+
+
+async def test_head_is_the_commit_or_none_outside_git(repo: Path, tmp_path: Path) -> None:
+    sha = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    assert await git.head(repo) == sha
+    outside = tmp_path / "plain"
+    outside.mkdir()
+    assert await git.head(outside) is None
+    assert await git.head(tmp_path / "missing") is None
+
+
+async def test_numstat_counts_changes_since_base_including_new_files(repo: Path) -> None:
+    (repo / "a.py").write_text("one\ntwo\nthree\n")
+    subprocess.run(["git", "add", "a.py"], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-qm", "a"], cwd=repo, check=True)
+    base = await git.head(repo)
+    assert base is not None
+    (repo / "a.py").write_text("one\nTWO\n")
+    subprocess.run(["git", "commit", "-qam", "edit"], cwd=repo, check=True)
+    (repo / "b.py").write_text("x\ny\n")  # untracked, still part of the work
+
+    changes = await git.numstat(repo, base)
+
+    assert [(c.path, c.added, c.removed) for c in changes] == [("a.py", 1, 2), ("b.py", 2, 0)]
+
+
+async def test_numstat_with_a_bad_base_raises(repo: Path) -> None:
+    with pytest.raises(GitError):
+        await git.numstat(repo, "deadbeef")

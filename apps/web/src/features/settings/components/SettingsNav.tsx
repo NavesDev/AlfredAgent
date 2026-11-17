@@ -1,9 +1,10 @@
 import type { ComponentType, SVGProps } from 'react'
-import { BarChart, Download, Gauge, Plug, Sparkle } from '../../../components/icons'
+import { BarChart, Download, Gauge, Monitor, Plug, Sparkle } from '../../../components/icons'
 import { SECTIONS, type SectionId } from '../lib/sections'
 
 const ICON: Record<SectionId, ComponentType<SVGProps<SVGSVGElement>>> = {
   uso: BarChart,
+  geral: Monitor,
   modelos: Sparkle,
   sessoes: Gauge,
   mcps: Plug,

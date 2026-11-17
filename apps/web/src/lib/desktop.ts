@@ -1,5 +1,7 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { getCurrentWindow, Window } from '@tauri-apps/api/window'
+import type { OverlayPosition } from '../api/events'
+import type { Anchor } from './overlay'
 
 /** Running inside the Tauri app (apps/desktop) instead of a browser tab. */
 export const isDesktop = (): boolean => isTauri()
@@ -15,5 +17,19 @@ export async function panelOutOfSight(): Promise<boolean> {
   return !visible || minimized
 }
 
-/** Tells the shell the voice pill is on screen, so it lets the mouse grab it (to drag). */
-export const setPillShown = (shown: boolean): Promise<void> => invoke('set_pill_shown', { shown })
+/** Tells the shell which part of the overlay takes the mouse (the card); null lets every click
+ * through. Logical pixels inside the window. */
+export const setHitRect = (rect: [number, number, number, number] | null): Promise<void> =>
+  invoke('set_hit_rect', { rect })
+
+/** Where the overlay window is anchored. */
+export const overlayAnchor = (): Promise<Anchor & { preset: OverlayPosition }> =>
+  invoke('overlay_anchor')
+
+/** Moves everything that floats to another preset (the shell rebuilds the overlay there). */
+export const setOverlayPosition = (preset: OverlayPosition): Promise<void> =>
+  invoke('set_overlay_position', { preset })
+
+/** Opens (or points) the expanded result window at a result's slide. */
+export const openViewer = (resultId: number, index: number): Promise<void> =>
+  invoke('open_viewer', { resultId, index })

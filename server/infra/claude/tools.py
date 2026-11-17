@@ -10,13 +10,15 @@ from typing import TYPE_CHECKING, Any
 
 import claude_agent_sdk as sdk
 
-from errors import GitError, GitHubError, ProjectError, SessionError
+from errors import GitError, GitHubError, ProjectError, ResultError, SessionError
 from infra import github as real_github
 from infra.claude.agents import KINDS
 from models.project import MAX_DESCRIPTION
+from models.result import PresentMode
 
 if TYPE_CHECKING:
     from controllers.projects import Projects
+    from controllers.results import Results
     from controllers.sessions import Sessions
 
 SERVER = "alfred"  # MCP server name the main agent sees these tools under
@@ -26,7 +28,10 @@ Result = dict[str, Any]
 
 
 def session_tools(
-    sessions: "Sessions", projects: "Projects", github: Any = real_github
+    sessions: "Sessions",
+    projects: "Projects",
+    github: Any = real_github,
+    results: "Results | None" = None,
 ) -> list[sdk.SdkMcpTool[Any]]:
     def delegate(name: str, task: str) -> str:
         try:
@@ -496,6 +501,58 @@ def session_tools(
 
         return await _speak(run)
 
+    @sdk.tool(
+        "apresentar",
+        "Abre na tela, grande e no centro, o que o usuário pediu para ver: com 'sessao', o último "
+        "resultado dela (imagem, vídeo, documento ou relatório de mudanças); com 'caminhos', um "
+        "ou mais arquivos da home que você achou (vários viram um resultado só, com setas para "
+        "passar de um a outro). Use só quando o usuário pedir para mostrar, apresentar ou ver; "
+        "o cartão no canto aparece sozinho quando uma sessão termina. Não fale o que está na "
+        "tela, só que mostrou.",
+        {
+            "type": "object",
+            "properties": {
+                "sessao": {"type": "string"},
+                "caminhos": {"type": "array", "items": {"type": "string"}},
+                "caminho": {"type": "string"},
+            },
+        },
+    )
+    async def apresentar(args: Result) -> Result:
+        async def run() -> str:
+            if results is None:
+                return "Não consigo mostrar resultados agora."
+            # Asked for by the user: always the expanded view; the card is for a session that
+            # finished on its own (APRESENTAR line).
+            mode: PresentMode = "ampliado"
+            paths = [str(p) for p in args.get("caminhos") or []]
+            if args.get("caminho"):
+                paths.insert(0, str(args["caminho"]))
+            if paths:
+                results.present_paths(paths, mode)
+            elif args.get("sessao"):
+                results.present_last(str(args["sessao"]), mode)
+            else:
+                return "Diga de qual sessão ou qual arquivo quer ver."
+            return "Mostrei na tela."
+
+        return await _speak(run)
+
+    @sdk.tool(
+        "fechar_apresentacao",
+        "Fecha o que está na tela (cartão ou janela ampliada), quando o usuário pedir "
+        '("pode fechar", "tira da tela").',
+        {},
+    )
+    async def fechar_apresentacao(args: Result) -> Result:
+        async def run() -> str:
+            if results is None:
+                return "Não consigo mostrar resultados agora."
+            results.close()
+            return "Fechei."
+
+        return await _speak(run)
+
     return [
         *delegates,
         criar_sessao,
@@ -514,12 +571,14 @@ def session_tools(
         definir_ambiente_padrao,
         ver_issue,
         listar_issues,
+        apresentar,
+        fechar_apresentacao,
     ]
 
 
 async def _speak(run: Callable[[], Awaitable[str]]) -> Result:
     try:
         text = await run()
-    except (SessionError, ProjectError, GitError, GitHubError) as e:
+    except (SessionError, ProjectError, GitError, GitHubError, ResultError) as e:
         text = str(e)
     return {"content": [{"type": "text", "text": text}]}

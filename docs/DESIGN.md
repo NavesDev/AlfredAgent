@@ -55,6 +55,7 @@ Redesign of the web panel in Apple's glass style (visionOS). This document guide
 - Body: 13–14px, weight 500 on names.
 - Section labels: 13px, uppercase, weight 600, `--ink-2`.
 - Numbers aligned with `tabular-nums`.
+- **Display:** the "Alfred" name on the title bar only, in Newsreader italic (`opsz` 72), token `--font-display`, bundled with `@fontsource-variable/newsreader` (works offline).
 
 ## Alfred's orb
 
@@ -99,6 +100,8 @@ Redesign of the web panel in Apple's glass style (visionOS). This document guide
 - [Painel, Window and Ornaments layouts](https://claude.ai/artifact/9v7ZF6iShWm7TTdPC7hWcE)
 - [Sessions, with the three picture options](https://claude.ai/artifact/VZXzh69Zen2HUiJtNBvyEs)
 - [Projects, Project and Settings](https://claude.ai/artifact/TRisX7cDuLVeakNfrFvKVL)
+- [Font, icon and result presentation (v3)](https://claude.ai/artifact/1v5NGLoRGVnSA8s3kJML4j)
+- [Result states, history and pill position](https://claude.ai/artifact/PWfYEnrmR3vCHgRi1jrpLf)
 
 ## Decisions
 
@@ -110,4 +113,18 @@ Redesign of the web panel in Apple's glass style (visionOS). This document guide
 
 - **Title bar:** 40px transparent strip over the room that drags the window (double click maximizes). Connection dot + "Alfred" on the left; 28px round glass buttons (minimize, maximize/restore, close) on the right. Only shows in Tauri.
 - **Window:** 12px corners, no corners when maximized.
-- **Floating visualizer:** dark glass pill with the mini CSS orb (32px) and 9 rounded white bars, like the [Bar Visualizer](https://ui.elevenlabs.io/docs/components/bar-visualizer) from ElevenLabs UI (MIT). Listening and speaking: each bar's height follows its frequency band. Thinking: low bars with a wave passing through. Enters with a fade and scale.
+- **Floating visualizer:** dark glass pill with the mini CSS orb (32px) and 9 rounded white bars, like the [Bar Visualizer](https://ui.elevenlabs.io/docs/components/bar-visualizer) from ElevenLabs UI (MIT). Listening and speaking: each bar's height follows its frequency band. Thinking: low bars with a wave passing through. Enters with a fade and scale. It cannot be dragged: its spot is a preset in Settings → Geral ("Posição da pílula": corners and center, top or bottom, 8px from the work area's edge; default top right).
+- **Icon:** a frame of the real Strands orb (`apps/web/icon.html`, rendered by `apps/desktop/render_icon.mjs`), circular mask with a soft edge, transparent background; same icon on the dock and the tray.
+
+## Results
+
+References: Dynamic Island / Live Activities (card), Quick Look (expanded view), lightbox `@hirael/lightbox` (Shoogle, MIT).
+
+- **Card:** the pill grows into a 300px card in its corner (it grows down when anchored on top, up when at the bottom); 22px corners, solid dark surface (`surface` utility, `#161619`): it floats over any desktop, where translucent glass turned grey. Header: mini orb, session name and time, "1 de N", close (✕). Body by type: image/GIF 16:9 `cover`, muted looping video, report (summary and up to 3 changed files with +/−, then "+N"), document preview. Buttons: "Ampliar" (primary), "Abrir no app", "Pasta" (desktop only).
+- **Behavior:** never takes keyboard focus; leaves after 30s without interaction (hover pauses); a new result replaces it. With the panel in sight the same card shows at the panel's top right instead.
+- **Expanded view:** a separate window, 70% of the monitor, centered, in the panel's own look: the opaque graphite room as background (never the desktop showing through), a 56px title bar that drags the window (mini orb, file name, session · time · kind and size; "Abrir no app" and "Pasta" as glass pills; round glass close with red hover), 22px window corners; the slide on a dark panel (`#141417`, 24px corners, for contrast with white text): text, reports and PDF in a centered column up to 860px; images and video keep their own size and shape, centered with room around them and no panel; a file without preview is a small centered card; and a glass ornament pill at the bottom with ‹, one chip per file (icon or round thumbnail and its name), "1 de N" and ›. Esc and the arrow keys work too.
+- **Documents:** Markdown and reports at 15px in a 720px measure (`prose-result` utility); YAML front matter dropped, Obsidian `[[links]]` shown as text and callouts as a bold title. PDF pages fill the width up to 900px.
+- **States:** loading shimmer in the media slot; a missing file shows "Arquivo não existe mais" without open buttons; an unknown type is a file card whose main button is "Abrir no app"; HTML carries an "Isolado" badge; long Markdown fades out at the bottom of the card.
+- **Types:** PDF through `pdfjs-dist` (first page on the card, every page expanded); Markdown through `react-markdown` + `remark-gfm` without raw HTML; HTML in a sandboxed iframe without same-origin; text up to 1 MB in a monospaced block; anything else a file card with "Abrir no app".
+- **Other device:** title, summary and report text only, with "Arquivos só no computador".
+- **History:** under the session card, the session's results with a thumbnail and time; a missing file shows "Arquivo não existe mais".

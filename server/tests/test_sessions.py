@@ -536,3 +536,47 @@ async def test_a_new_portrait_republishes_the_session_with_its_url(env: Env, bus
 
     [status] = [e for e in of_type(drain(queue), "session_status")]
     assert status["session"]["portrait"].startswith("/api/sessions/sistema/portrait?v=")
+
+
+# --- results (ADR 0014) ----------------------------------------------------------------------
+
+
+class FakeResults:
+    def __init__(self) -> None:
+        self.heads: list[Path] = []
+        self.recorded: list[tuple[str, str, Path | None, str | None]] = []
+
+    async def head(self, cwd: Path) -> str | None:
+        self.heads.append(cwd)
+        return "abc"
+
+    async def record(self, session: str, reply: str, cwd: Path | None, head: str | None) -> None:
+        self.recorded.append((session, reply, cwd, head))
+
+
+async def test_a_finished_task_records_its_result_from_the_start_head(
+    bus: EventBus, home: Path
+) -> None:
+    env = Env(bus, home)
+    results = FakeResults()
+    env.sessions._results = results
+    session = env.script("sistema", Reply("RESUMO: ok\nAPRESENTAR: relatório", "ok"))
+
+    env.sessions.delegate("sistema", "faz")
+    await settle()
+
+    assert session.tasks == ["faz"]
+    assert results.heads == [home]
+    assert results.recorded == [("sistema", "RESUMO: ok\nAPRESENTAR: relatório", home, "abc")]
+    assert env.talker.said == ["sistema terminou: ok"]
+
+
+async def test_a_failed_task_records_nothing(env: Env) -> None:
+    results = FakeResults()
+    env.sessions._results = results
+    env.script("sistema", AgentError("caiu"))
+
+    env.sessions.delegate("sistema", "faz")
+    await settle()
+
+    assert results.recorded == []

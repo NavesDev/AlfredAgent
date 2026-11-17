@@ -6,6 +6,11 @@ import { Orb } from '../../assistant/components/Orb'
 import { useActivity } from '../../assistant/hooks/useActivity'
 import { useClearAlfred } from '../../assistant/hooks/useClearAlfred'
 import { useVoice } from '../../assistant/hooks/useVoice'
+import { ResultCard } from '../../results/components/ResultCard'
+import { ResultHistory } from '../../results/components/ResultHistory'
+import { usePresentation } from '../../results/hooks/usePresentation'
+import { useResultActions } from '../../results/hooks/useResultActions'
+import { isLocalHost } from '../../results/lib/results'
 import { SessionCard } from '../../sessions/components/SessionCard'
 import { SessionList } from '../../sessions/components/SessionList'
 import { useProjectList } from '../../sessions/hooks/useProjectList'
@@ -18,8 +23,18 @@ import { TranscriptPanel } from '../../transcript/components/TranscriptPanel'
 import { useTranscript } from '../../transcript/hooks/useTranscript'
 import { ControlBar } from '../components/ControlBar'
 import { familyOf, withAlfredModel } from '../lib/alfredModel'
+import { panelShowsCard } from '../lib/presentation'
+import { isDesktop, openViewer } from '../../../lib/desktop'
 
 const STORAGE_KEY = 'alfred.showTranscript'
+/** The card leaves on its own after this long without the mouse on it (D13). */
+const CARD_MS = 30_000
+
+/** Expanded mode: the `viewer` window on the desktop, a new tab in a browser. */
+const expand = (id: number, slide: number) =>
+  isDesktop()
+    ? void openViewer(id, slide).catch(() => {})
+    : void window.open(`/viewer?id=${id}&i=${slide}`, '_blank')
 
 function useStoredToggle(key: string) {
   const [on, setOn] = useState(() => {
@@ -49,6 +64,10 @@ export function DashboardPage() {
   const actions = useSessionActions()
   const { settings, save } = useSettings()
   const clearAlfred = useClearAlfred()
+  const presentation = usePresentation()
+  const results = useResultActions()
+  const local = isLocalHost(location.hostname)
+  const shown = presentation.current
   const [showTranscript, setShowTranscript] = useStoredToggle(STORAGE_KEY)
   const [selected, setSelected] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -93,14 +112,21 @@ export function DashboardPage() {
     )
   else if (session)
     side = (
-      <SessionCard
-        session={session}
-        onClose={() => setSelected(null)}
-        onClear={() => actions.clear.mutate(session.name)}
-        onDelete={() => actions.remove.mutate(session.name, { onSuccess: () => setSelected(null) })}
-        onChange={(change) => actions.change.mutate({ name: session.name, ...change })}
-        error={error?.message}
-      />
+      <div className="flex min-h-0 flex-col gap-4 overflow-y-auto">
+        <SessionCard
+          session={session}
+          onClose={() => setSelected(null)}
+          onClear={() => actions.clear.mutate(session.name)}
+          onDelete={() =>
+            actions.remove.mutate(session.name, { onSuccess: () => setSelected(null) })
+          }
+          onChange={(change) => actions.change.mutate({ name: session.name, ...change })}
+          error={error?.message}
+        />
+        <div className="glass rounded-panel p-4">
+          <ResultHistory session={session.name} local={local} />
+        </div>
+      </div>
     )
   else if (showTranscript)
     side = <TranscriptPanel turns={turns} onClose={() => setShowTranscript(false)} />
@@ -163,6 +189,20 @@ export function DashboardPage() {
 
         {side && <div className="flex max-h-full min-h-0 flex-col self-center">{side}</div>}
       </div>
+      {shown && panelShowsCard(shown.mode, isDesktop()) && (
+        <div className="fixed top-14 right-4 z-30 animate-pill-in">
+          <ResultCard
+            key={shown.result.id}
+            result={shown.result}
+            local={local}
+            onExpand={(slide) => expand(shown.result.id, slide)}
+            onOpen={(index, reveal) => results.open.mutate({ id: shown.result.id, index, reveal })}
+            onClose={presentation.close}
+            autoCloseMs={CARD_MS}
+            onDismiss={presentation.dismiss}
+          />
+        </div>
+      )}
     </AppShell>
   )
 }

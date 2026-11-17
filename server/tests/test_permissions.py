@@ -73,3 +73,32 @@ def test_alfred_reads_from_the_home_with_secrets_denied() -> None:
         assert rule in options.disallowed_tools
     [matcher] = options.hooks["PreToolUse"]  # type: ignore[index]
     assert matcher.hooks == [permissions.block_local_urls, permissions.guard_local_paths]
+
+
+def test_readable_files_stay_in_the_home_and_skip_secrets(home: Path) -> None:
+    ok = home / "Projetos/Vrummy/README.md"
+    assert permissions.readable(ok, home)
+    assert permissions.readable(home / "Imagens/retrato.png", home)  # existence is not its job
+    for path in (
+        Path("/etc/passwd"),
+        home.parent / "outside.txt",
+        home / "Projetos/../../outside.txt",
+        home / ".ssh/id_rsa",
+        home / ".ssh/config",
+        home / "Projetos/Vrummy/.env.local",
+        home / "certs/server.pem",
+        home / ".claude/.credentials.json",
+        home / ".claude.json",
+        home / ".config/gh/hosts.yml",
+        Path("Projetos/Vrummy/README.md"),  # relative: never guessed
+    ):
+        assert not permissions.readable(path, home), path
+
+
+def test_readable_follows_symlinks(home: Path) -> None:
+    (home / ".ssh").mkdir()
+    (home / ".ssh/id_ed25519").write_text("key")
+    (home / "foto.png").symlink_to(home / ".ssh/id_ed25519")
+    (home / "fora").symlink_to(home.parent)
+    assert not permissions.readable(home / "foto.png", home)
+    assert not permissions.readable(home / "fora/outside.txt", home)

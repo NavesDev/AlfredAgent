@@ -29,7 +29,15 @@ DEFAULT_SESSION = "sistema"
 
 SUMMARY_RULE = """Comece SEMPRE a resposta final com uma linha no formato:
 RESUMO: <até 2 frases em português do Brasil, sem código, sem caminhos longos, sem markdown>
-Essa linha é falada para o usuário. Depois dela, detalhes só se forem úteis."""
+Essa linha é falada para o usuário. Depois dela, detalhes só se forem úteis.
+Se o resultado vale ser visto, termine a resposta com UMA destas linhas:
+APRESENTAR: <itens>   (mostra na tela do usuário agora)
+GUARDAR: <itens>      (só guarda no histórico da sessão)
+Itens separados por ";": caminho absoluto de um arquivo, ou a palavra relatório (resumo das
+mudanças no código com os arquivos alterados).
+- Gerou imagem, vídeo, GIF ou documento: APRESENTAR com o caminho do arquivo.
+- Mudou código: APRESENTAR: relatório (e o caminho de um GIF ou print, se gravou um).
+- Só leu, respondeu uma pergunta ou fez algo trivial: nenhuma das duas linhas."""
 
 
 @dataclass(frozen=True)

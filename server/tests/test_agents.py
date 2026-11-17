@@ -29,6 +29,7 @@ def test_general_options_run_shell_and_files_isolated_from_mail_and_web() -> Non
     assert options.permission_mode == "auto"
     assert (options.cwd, options.model, options.resume) == (Path("/home/u"), "sonnet", None)
     assert '"downloads"' in options.system_prompt and "RESUMO:" in options.system_prompt  # type: ignore[operator]
+    assert "APRESENTAR:" in options.system_prompt and "GUARDAR:" in options.system_prompt  # type: ignore[operator]
     assert KINDS["geral"].label == "Geral"
 
 
@@ -68,6 +69,7 @@ def test_implementation_options_load_the_full_claude_code_harness() -> None:
     assert prompt["preset"] == "claude_code"
     append = prompt["append"]
     assert '"back"' in append and "Recurve" in append and "RESUMO:" in append
+    assert "APRESENTAR: relatório" in append
     assert "MCP" in append
     assert KINDS["implementacao"].label == "Implementação"
 

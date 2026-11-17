@@ -1,9 +1,18 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Window controls for the panel's title bar; the overlay checks the panel and drags itself.",
-  "windows": ["main", "overlay"],
-  "remote": { "urls": ["http://localhost:5173/*", "http://localhost:5173"] },
+  "description": "Window controls for the panel's title bar; the overlay checks the panel; the viewer closes itself.",
+  "windows": [
+    "main",
+    "overlay",
+    "viewer"
+  ],
+  "remote": {
+    "urls": [
+      "http://localhost:5173/*",
+      "http://localhost:5173"
+    ]
+  },
   "permissions": [
     "core:default",
     "core:window:allow-minimize",

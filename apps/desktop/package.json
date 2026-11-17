@@ -5,9 +5,10 @@
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",
-    "icon": "python3 make_icon.py assets/icon.png && tauri icon assets/icon.png && cd src-tauri/icons && rm -rf android ios Square*.png StoreLogo.png icon.icns icon.ico"
+    "icon": "node render_icon.mjs assets/icon.png && tauri icon assets/icon.png && cd src-tauri/icons && rm -rf android ios Square*.png StoreLogo.png icon.icns icon.ico"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2"
+    "@tauri-apps/cli": "^2",
+    "playwright": "1.64.1"
   }
 }

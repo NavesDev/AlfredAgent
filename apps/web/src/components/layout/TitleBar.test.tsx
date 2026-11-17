@@ -14,4 +14,9 @@ describe('TitleBar', () => {
     render(<TitleBar connection="open" />)
     expect(screen.getByRole('banner')).toHaveAttribute('data-tauri-drag-region')
   })
+
+  it('writes the name in the bundled italic display face', () => {
+    render(<TitleBar connection="open" />)
+    expect(screen.getByText('Alfred')).toHaveClass('font-display', 'italic')
+  })
 })

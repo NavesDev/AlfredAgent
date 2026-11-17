@@ -13,6 +13,7 @@ const settings: SettingsView = {
   image_mcp_servers: [],
   known_mcp_servers: [],
   implementation_mode: 'worktree',
+  overlay_position: 'top_right',
 }
 
 describe('Settings form, sessions section', () => {
@@ -26,5 +27,22 @@ describe('Settings form, sessions section', () => {
     expect(save.mutate).toHaveBeenCalledWith(
       expect.objectContaining({ implementation_mode: 'ambiente' }),
     )
+  })
+})
+
+describe('Settings form, general section', () => {
+  it('saves where the pill and the card float', () => {
+    const save = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null }
+    render(<Form settings={settings} save={save as never} section="geral" />)
+
+    expect(screen.getByRole('img', { name: 'Em cima à direita' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Posição da pílula' }))
+    fireEvent.click(screen.getByRole('option', { name: /Embaixo no centro/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    expect(save.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({ overlay_position: 'bottom_center' }),
+    )
+    expect(screen.getByRole('img', { name: 'Embaixo no centro' })).toBeInTheDocument()
   })
 })
